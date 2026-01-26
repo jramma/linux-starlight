@@ -5,6 +5,7 @@ import starlightThemeObsidian from 'starlight-theme-obsidian'
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://linux-starlight.vercel.app",
   integrations: [
     starlight({
       title: "Linux Starlight",
@@ -26,6 +27,12 @@ export default defineConfig({
         ca: {
           label: "Català",
         },
+      },
+      customCss: [
+        './src/styles/global.css'
+      ],
+      components: {
+        Head: './src/overrides/Head.astro',
       },
       plugins: [starlightThemeObsidian()],
     }),
