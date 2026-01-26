@@ -11,24 +11,19 @@ This module covers the fundamentals of Linux, official certifications, and the p
 
 ## Topics Covered
 
-### 1. Overview and Certifications
-- Introduction to the Linux ecosystem.
-- Key certifications for Junior Sysadmins:
-  - **LFCS** (Linux Foundation Certified Sysadmin)
-  - **RHCSA** (Red Hat Certified System Administrator)
+This module is divided into the following detailed sections:
 
-### 2. Linux Installation
-Typical installation process for enterprise distributions:
-- **Ubuntu Server**: Standard installation steps.
-- **Rocky Linux** (RHEL compatible): Installation variations.
+### [1.1 Overview and Certifications](/en/module-1/1-overview/)
+-   The Linux Ecosystem (Debian vs. RHEL).
+-   Key certifications: LFCS and RHCSA.
 
-### 3. Basic Partitioning and Boot Process
-Understanding how the system starts and stores data.
-- **GRUB**: The boot loader.
-- **systemd**: The init system (brief introduction).
-- Partitioning basics during installation.
+### [1.2 Linux Installation](/en/module-1/2-installation/)
+-   Step-by-step guide for installing **Ubuntu Server**.
+-   Step-by-step guide for installing **Rocky Linux**.
 
-### 4. Initial Configuration
-Steps to take immediately after installation:
-- Setting the **hostname**.
-- Configuring basic **networking** to ensure connectivity.
+### [1.3 Partitioning and Boot Process](/en/module-1/3-partitioning-boot/)
+-   Filesystem Hierarchy Standard (FHS).
+-   Understanding partitions (MBR vs. GPT) and the Linux boot process (GRUB, Systemd).
+
+### [1.4 Initial Configuration](/en/module-1/4-configuration/)
+-   First steps after reboot: Hostname, Network, and SSH.

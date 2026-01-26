@@ -2,7 +2,7 @@
 title: Module 4. Storage and File Systems
 description: Managing disks, partitions, and file systems.
 sidebar:
-  order: 4
+  order: 1
 ---
 
 **Duration**: 4 hours
@@ -11,30 +11,21 @@ This module covers how Linux interacts with storage devices, from physical disks
 
 ## Topics Covered
 
-### 1. Block Devices and Partitions
-- Identifying devices (`/dev/sda`, `/dev/nvme0n1`).
-- Partitioning tools: `fdisk` (MBR) and `gdisk` (GPT).
+This module is divided into the following detailed sections:
 
-### 2. File Systems
-- Creating file systems (formatting): `mkfs.ext4`, `mkfs.xfs`.
-- Mounting file systems manually: `mount`.
+### [4.1 Disks and Partitions](/en/module-4/1-disks-partitions/)
+-   Block devices (`/dev/sda`).
+-   Partitioning tools: `fdisk` (MBR) and `gdisk` (GPT).
 
-### 3. Logical Volume Management (LVM)
-Flexible storage management.
-- Physical Volumes (PV) -> Volume Groups (VG) -> Logical Volumes (LV).
+### [4.2 Filesystems](/en/module-4/2-filesystems/)
+-   Formatting with `mkfs.ext4` and `mkfs.xfs`.
+-   Mounting and unmounting manually.
 
-```mermaid
-graph TD
-    Disk1[Physical Disk 1 /dev/sda] --> PV1[Physical Volume 1]
-    Disk2[Physical Disk 2 /dev/sdb] --> PV2[Physical Volume 2]
-    PV1 --> VG[Volume Group 'data_vg']
-    PV2 --> VG
-    VG --> LV1[Logical Volume 'root']
-    VG --> LV2[Logical Volume 'home']
-    LV1 --> FS1[Ext4 Filesystem]
-    LV2 --> FS2[XFS Filesystem]
-```
+### [4.3 Logical Volume Management (LVM)](/en/module-4/3-lvm/)
+-   Flexible storage with PVs, VGs, and LVs.
+-   Resizing volumes dynamically.
 
-### 4. Persistent Mounts and Network Storage
-- Configuring `/etc/fstab` for automatic mounting on boot.
-- Accessing network storage via NFS.
+### [4.4 Persistent Mounts and NFS](/en/module-4/4-persistence/)
+-   Configuring `/etc/fstab` for automatic mounting.
+-   Safe editing practices (UUID).
+-   Connecting to Network File Storage (NFS).

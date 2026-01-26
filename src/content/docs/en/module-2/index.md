@@ -2,7 +2,7 @@
 title: Module 2. Shell Usage and Fundamental Commands
 description: Mastering the command line interface, text editing, and file management.
 sidebar:
-  order: 2
+  order: 1
 ---
 
 **Duration**: 6 hours
@@ -11,33 +11,25 @@ This module focuses on building fluency with the command line, which is essentia
 
 ## Topics Covered
 
-### 1. File Navigation and Management
-Essential commands for moving around the filesystem and manipulating files.
-- `ls`: List directory contents.
-- `cp`: Copy files and directories.
-- `mv`: Move or rename files.
-- `rm`: Remove files and directories.
+This module is divided into the following detailed sections:
 
-### 2. Text Editing with `vim`
-- Modes: Insert, Command, Visual.
-- Saving and quitting (`:wq`, `:q!`).
-- Basic navigation and editing.
+### [2.1 File Navigation and Management](/en/module-2/1-navigation/)
+-   Commands: `ls`, `cd`, `pwd`.
+-   Managing files: `cp`, `mv`, `rm`, `mkdir`.
 
-### 3. Pipes, Redirections, and Filters
-Chaining commands to create powerful pipelines.
-- `|` (Pipe): Pass output of one command to another.
-- `>`, `>>` (Redirection): Save output to files.
-- `grep`: Search text patterns.
-- `cat`, `less`: View file contents.
+### [2.2 Text Editing with Vim](/en/module-2/2-text-editing/)
+-   Understanding Modes (Normal, Insert, Command).
+-   Basic editing, saving, and quitting.
 
-### 4. Permission Management
-Understanding Linux file permissions.
-- `chmod`: Change mode (permissions).
-- `chown`: Change owner and group.
-- `sudo`: Execute commands with superuser privileges.
+### [2.3 Pipes, Redirections, and Filters](/en/module-2/3-pipes-filters/)
+-   Redirecting Output (`>`, `>>`, `|`).
+-   Filtering text streams: `grep`, `cat`, `less`, `sort`, `wc`.
 
-### 5. Process Control
-Managing running programs.
-- `ps`, `top`: View running processes.
-- `kill`: Terminate processes.
-- Background (`&`) vs. Foreground jobs.
+### [2.4 Permission Management](/en/module-2/4-permissions/)
+-   Understanding `rwx` permissions.
+-   Using `chmod` (symbolic and octal) and `chown`.
+
+### [2.5 Process Control](/en/module-2/5-processes/)
+-   Monitoring: `top`, `ps`.
+-   Signals: `kill` vs `kill -9`.
+-   Background jobs (`&`) and job control.

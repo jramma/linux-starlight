@@ -1,0 +1,64 @@
+---
+title: 1.3 Partitioning and Boot Process
+description: Understanding disk layouts, filesystems, and how Linux starts.
+sidebar:
+  order: 4
+---
+
+## Storage Basics
+
+### The Filesystem Hierarchy Standard (FHS)
+Linux organizes files in a tree structure, not drive letters (C:, D:). Everything starts at `/` (root).
+
+| Path | Purpose |
+| :--- | :--- |
+| `/` | **Root**. The top of the hierarchy. |
+| `/boot` | Kernel (`vmlinuz`), initramfs, and bootloader config. |
+| `/etc` | **Configuration** files. |
+| `/home` | User data (e.g., `/home/alice`). |
+| `/root` | Home directory for the `root` user. |
+| `/var` | **Variable** data: logs, databases, websites (`/var/www`). |
+| `/tmp` | Temporary files (often cleared on reboot). |
+| `/bin`, `/usr/bin` | Binaries (programs) like `ls`, `cp`. |
+
+### Partitioning Schemes
+
+#### MBR (Master Boot Record)
+-   Legacy.
+-   Max 4 primary partitions.
+-   Max 2TB disk size.
+
+#### GPT (GUID Partition Table)
+-   Modern standard (part of UEFI spec).
+-   Practically unlimited partitions.
+-   Supports massive disks (Zettabytes).
+
+**Recommended Partition Layout**:
+1.  **EFI System Partition** (100-500MB): FAT32. Needed for UEFI boot.
+2.  `/boot` (1GB): Ext4/XFS.
+3.  `swap`: Virtual memory. (Rule of thumb: 1x-2x RAM, though less critical with modern massive RAM).
+4.  `/` (Root): The rest of the disk (often managing `/home` and `/var` inside it, or separating them for safety).
+
+## The Boot Process
+
+How do we get from power button to login prompt?
+
+```mermaid
+graph TD
+    A[BIOS / UEFI] -->|POST & Hardware Init| B[Bootloader (GRUB2)]
+    B -->|Selects OS| C[Kernel]
+    C -->|Mounts Initramfs| D[Initramfs (Temporary Root)]
+    D -->|Loads Drivers| E[Real Root Filesystem Mounted]
+    E -->|Starts Init Process| F[systemd (PID 1)]
+    F -->|Parallel Execution| G[Targets & Services]
+    G --> H[Login Prompt]
+```
+
+1.  **BIOS/UEFI**: Firmware initializes hardware and looks for the boot device.
+2.  **GRUB2 (Grand Unified Bootloader)**: Detailed menu to select the Kernel. Loads the Kernel into memory.
+3.  **Kernel**: The core OS. It initializes hardware drivers.
+4.  **Initramfs**: A small temporary filesystem loaded into RAM. It helps the kernel fix mounting the *real* hard drive (e.g., loading decryption keys or specialized drivers).
+5.  **Init (Systemd)**: The first process (`PID 1`). It reads configuration files and starts all other services (Network, SSH, Web Server) in parallel.
+
+> [!TIP] Related Concepts
+> Learn more about handling disks in **[Module 4: Disks and Partitions](../module-4/1-disks-partitions/)**.

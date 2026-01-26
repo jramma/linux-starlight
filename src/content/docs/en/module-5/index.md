@@ -2,7 +2,7 @@
 title: Module 5. Networking and Basic Security
 description: Configuring network interfaces, firewalls, and SSH security.
 sidebar:
-  order: 5
+  order: 1
 ---
 
 **Duration**: 6 hours
@@ -11,31 +11,20 @@ This module ensures you can connect your Linux server to the world securely.
 
 ## Topics Covered
 
-### 1. Static IP Configuration
-- Understanding IP addressing, subnets, and gateways.
-- Tools: `ip addr`, `ip route`, `ping`, `ss` (socket statistics).
-- Configuration via Netplan (Ubuntu) or NetworkManager (RHEL/Rocky).
+This module is divided into the following detailed sections:
 
-```mermaid
-graph LR
-    Server[Linux Server] -- eth0 --> Switch
-    Switch --> Router
-    Router -- Gateway --> Internet
-    Server -.-> |SSH Port 22| Admin[Admin Workstation]
-```
+### [5.1 Network Configuration](/en/module-5/1-network-config/)
+-   Concepts: IP, Netmask, Gateway, DNS.
+-   Configuration: Netplan (Ubuntu) and NetworkManager (Rocky).
 
-### 2. Firewalls
-Protecting the server from unwanted traffic.
-- **UFW** (Uncomplicated Firewall) for Ubuntu.
-- **firewalld** for RHEL/Rocky.
-- Allowing/Denying specific ports and services.
+### [5.2 Firewalls](/en/module-5/2-firewalls/)
+-   Configuring **UFW** (Ubuntu).
+-   Configuring **firewalld** (Rocky).
 
-### 3. Secure SSH Configuration
-Hardening remote access.
-- Generating key pairs (`ssh-keygen`).
-- Disabling password authentication in `/etc/ssh/sshd_config`.
-- Managing `.ssh/authorized_keys`.
+### [5.3 Secure SSH Configuration](/en/module-5/3-ssh-security/)
+-   Setting up Key-based authentication.
+-   Hardening `sshd_config` (Disabling root and password login).
 
-### 4. Introduction to Security
-- Basic concepts of **SELinux** and **AppArmor** (Mandatory Access Control).
-- Why they are important and how to check their status.
+### [5.4 Security Frameworks](/en/module-5/4-security-basics/)
+-   Introduction to Mandatory Access Control.
+-   SELinux (Enforcing/Permissive) and AppArmor.

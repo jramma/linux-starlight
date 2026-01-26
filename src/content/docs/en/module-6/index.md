@@ -2,7 +2,7 @@
 title: Module 6. Scripting and Automation + Review
 description: Automating tasks with Bash and reviewing for certifications.
 sidebar:
-  order: 6
+  order: 1
 ---
 
 **Duration**: 4 hours
@@ -11,22 +11,20 @@ The final module shifts focus from manual tasks to automation, a key skill for m
 
 ## Topics Covered
 
-### 1. Introduction to Bash Scripting
-- Shebang (`#!/bin/bash`).
-- Variables and user input.
-- Control flow: `if`, `for` loops, `while` loops.
-- Exit codes.
+This module is divided into the following detailed sections:
 
-### 2. Automation of Administrative Tasks
-- Writing scripts to back up files.
-- Scripts to check system status and email reports.
+### [6.1 Bash Scripting Basics](/en/module-6/1-bash-scripting/)
+-   Variables, Loops, and Conditionals.
+-   Exit codes.
 
-### 3. Introduction to Containers
-A brief look at modern deployment.
-- **Docker** / **Podman** basics.
-- Running a simple container.
+### [6.2 Automation Examples](/en/module-6/2-automation/)
+-   Writing a backup script.
+-   Combining scripts with Cron.
 
-### 4. General Review and Exam Orientation
-- Reviewing key concepts from Modules 1-5.
-- Exam strategies for LFCS and RHCSA.
-- Resource recommendations for continued study.
+### [6.3 Introduction to Containers](/en/module-6/3-containers/)
+-   Docker vs Podman.
+-   Running your first container.
+
+### [6.4 Review and Exam Prep](/en/module-6/4-review/)
+-   Summary of essential commands for certifications.
+-   Tips for passing LFCS/RHCSA.
