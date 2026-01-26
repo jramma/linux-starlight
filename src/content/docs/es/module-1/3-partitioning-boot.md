@@ -1,0 +1,64 @@
+---
+title: 1.3 Particionamiento y Proceso de Arranque
+description: Comprender los esquemas de disco, sistemas de archivos y cómo arranca Linux.
+sidebar:
+  order: 4
+---
+
+## Conceptos Básicos de Almacenamiento
+
+### El Estándar de Jerarquía de Sistemas de Archivos (FHS)
+Linux organiza los archivos en una estructura de árbol, no letras de unidad (C:, D:). Todo comienza en `/` (raíz).
+
+| Ruta | Propósito |
+| :--- | :--- |
+| `/` | **Raíz**. La cima de la jerarquía. |
+| `/boot` | Kernel (`vmlinuz`), initramfs y configuración del gestor de arranque. |
+| `/etc` | Archivos de **Configuración**. |
+| `/home` | Datos de usuario (ej., `/home/alice`). |
+| `/root` | Directorio personal para el usuario `root`. |
+| `/var` | Datos **Variables**: registros, bases de datos, sitios web (`/var/www`). |
+| `/tmp` | Archivos temporales (a menudo borrados al reiniciar). |
+| `/bin`, `/usr/bin` | Binarios (programas) como `ls`, `cp`. |
+
+### Esquemas de Particionamiento
+
+#### MBR (Master Boot Record)
+-   Legado.
+-   Máx 4 particiones primarias.
+-   Máx 2TB de tamaño de disco.
+
+#### GPT (GUID Partition Table)
+-   Estándar moderno (parte de la especificación UEFI).
+-   Particiones prácticamente ilimitadas.
+-   Soporta discos masivos (Zettabytes).
+
+**Disposición de Particiones Recomendada**:
+1.  **Partición del Sistema EFI** (100-500MB): FAT32. Necesaria para el arranque UEFI.
+2.  `/boot` (1GB): Ext4/XFS.
+3.  `swap`: Memoria virtual. (Regla general: 1x-2x RAM, aunque menos crítico con RAM masiva moderna).
+4.  `/` (Raíz): El resto del disco (a menudo gestionando `/home` y `/var` dentro, o separándolos por seguridad).
+
+## El Proceso de Arranque
+
+¿Cómo llegamos desde el botón de encendido hasta el prompt de inicio de sesión?
+
+```mermaid
+graph TD
+    A[BIOS / UEFI] -->|POST & Hardware Init| B[Bootloader (GRUB2)]
+    B -->|Selects OS| C[Kernel]
+    C -->|Mounts Initramfs| D[Initramfs (Temporary Root)]
+    D -->|Loads Drivers| E[Real Root Filesystem Mounted]
+    E -->|Starts Init Process| F[systemd (PID 1)]
+    F -->|Parallel Execution| G[Targets & Services]
+    G --> H[Login Prompt]
+```
+
+1.  **BIOS/UEFI**: El firmware inicializa el hardware y busca el dispositivo de arranque.
+2.  **GRUB2 (Grand Unified Bootloader)**: Menú detallado para seleccionar el Kernel. Carga el Kernel en la memoria.
+3.  **Kernel**: El sistema operativo central. Inicializa los controladores de hardware.
+4.  **Initramfs**: Un pequeño sistema de archivos temporal cargado en la RAM. Ayuda al kernel a arreglar el montaje del disco duro *real* (ej., cargando claves de descifrado o controladores especializados).
+5.  **Init (Systemd)**: El primer proceso (`PID 1`). Lee archivos de configuración e inicia todos los otros servicios (Red, SSH, Servidor Web) en paralelo.
+
+> [!TIP] Conceptos Relacionados
+> Aprende más sobre el manejo de discos en el **[Módulo 4: Discos y Particiones](../module-4/1-disks-partitions/)**.

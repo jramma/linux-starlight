@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-**Systemd** is the init system used by almost all modern major distributions. It manages "Units", most commonly "Service Units" (`.service`).
+**Systemd** is the init system used by almost all modern major distributions. It manages "Units", most commonly "Service Units" (`.service`). It replaces older init systems and manages processes (see [[/en/module-2/5-processes|Process Control]]) more robustly.
 
 ## Systemctl Commands
 
@@ -30,3 +30,17 @@ sudo systemctl enable --now nginx
 
 ## Unit Files
 Service definitions live in `/lib/systemd/system/` (defaults) and `/etc/systemd/system/` (custom overrides).
+
+## Practice Exercises
+
+1.  **Investigate SSH**:
+    -   Check the status of the SSH service: `systemctl status ssh` (or `sshd`).
+    -   Is it active? Is it enabled?
+2.  **Manage a Dummy Service**:
+    -   Install `apache2` or `nginx` if you can, or pick an existing service like `cron`.
+    -   Stop the service. Verify it's stopped.
+    -   Start it again.
+    -   Disable it (so it won't start on boot).
+    -   Enable it again.
+3.  **Logs**:
+    -   Use `journalctl -u ssh` (or `sshd`) to view logs specifically for that service.

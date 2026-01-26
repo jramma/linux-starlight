@@ -1,0 +1,45 @@
+---
+title: 2.2 Edició de Text amb Vim
+description: L'editor de text de terminal essencial (i infame).
+sidebar:
+  order: 2
+---
+
+Per què **Vim**? Està instal·lat en gairebé tots els sistemes tipus Unix per defecte. En un shell de rescat, potser no tens `nano` o `code`, però tindràs `vi` o `vim`.
+
+## Els Modes
+
+Vim és "modal". Les tecles fan coses diferents depenent del mode.
+
+1.  **Mode Normal**: El per defecte. Les tecles són comandes (navegació, copiar/enganxar). Prem `Esc` per tornar aquí.
+2.  **Mode Inserció**: Per escriure text. Prem `i` per entrar-hi.
+3.  **Mode Comanda (Ex)**: Per guardar/sortir. Prem `:` per entrar-hi.
+
+## Full de Trucs
+
+### 1. Obrir i Sortir
+-   `vim file.txt`: Obrir fitxer.
+-   `:w`: **Write** (Guardar).
+-   `:q`: **Quit** (Sortir).
+-   `:wq`: Guardar i Sortir.
+-   `:q!`: Sortir **sense** guardar (descartar canvis).
+
+### 2. Edició Bàsica
+-   `i`: Canviar a Mode Inserció (començar a escriure).
+-   `Esc`: Tornar a Mode Normal.
+
+### 3. Navegació (Mode Normal)
+-   `h` `j` `k` `l`: Esquerra, Baix, Dalt, Dreta (les fletxes també funcionen).
+-   `gg`: Anar a l'inici del fitxer.
+-   `G`: Anar al final del fitxer.
+-   `/patró`: Buscar "patró". (`n` per al següent).
+
+### 4. Accions Directes (Mode Normal)
+-   `dd`: Esborrar (tallar) la línia actual.
+-   `yy`: Yank (copiar) la línia actual.
+-   `p`: Enganxar a sota.
+-   `u`: Desfer.
+-   `Ctrl + r`: Refer.
+
+> [!NOTE]
+> Si trobes Vim massa difícil inicialment, `nano` és una alternativa més simple i sense modes. Però dominar els bàsics de Vim és un superpoder.

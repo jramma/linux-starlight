@@ -1,0 +1,44 @@
+---
+title: 4.4 Montajes Persistentes y NFS
+description: Hacer que los montajes sobrevivan a un reinicio.
+sidebar:
+  order: 5
+---
+
+## /etc/fstab
+
+Los montajes de línea de comandos (`sudo mount`) desaparecen cuando reinicias. Para hacerlos permanentes, edita `/etc/fstab`.
+
+> [!WARNING]
+> Un error en `/etc/fstab` puede causar que tu sistema falle al arrancar. ¡Verifica siempre antes de reiniciar!
+
+### Mejor Práctica: Usar UUIDs
+Los nombres de dispositivo (`/dev/sdb1`) pueden cambiar si desconectas/conectas discos. Los **UUIDs** (Identificadores Únicos Universales) nunca cambian.
+
+1.  Encontrar UUID: `sudo blkid`
+2.  Editar archivo: `sudo nano /etc/fstab`
+
+**Format**:
+`<UUID Dispositivo> <Punto Montaje> <Sistema Archivos> <Opciones> <Volcado> <Paso>`
+
+**Ejemplo**:
+```text
+UUID=1234-abcd-5678  /mnt/data  ext4  defaults  0  2
+```
+
+3.  **Verificar**: ejecuta `sudo mount -a`. Si no da errores, estás seguro.
+
+## Sistema de Archivos en Red (NFS)
+
+Acceder al almacenamiento a través de la red.
+
+**Configuración del Cliente**:
+1.  Instalar comunes: `sudo apt install nfs-common` (Ubuntu) o `sudo dnf install nfs-utils` (Rocky).
+2.  Probar montaje:
+    ```bash
+    sudo mount ip_servidor:/recurso/compartido /mnt/punto_montaje_local
+    ```
+3.  Añadir a `fstab` para persistencia:
+    ```text
+    ip_servidor:/recurso  /mnt/local  nfs  defaults  0  0
+    ```

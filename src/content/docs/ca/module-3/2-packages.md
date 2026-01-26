@@ -1,0 +1,64 @@
+---
+title: 3.2 Gestió de Paquets
+description: Instal·lar, actualitzar i eliminar programari.
+sidebar:
+  order: 3
+---
+
+Linux utilitza repositoris ("repos") per gestionar el programari de forma segura. Generalment no es descarreguen fitxers `.exe` de la web.
+
+## Debian / Ubuntu (`apt`)
+Utilitza paquets `.deb` (veure [[/ca/module-1/1-overview|Famílies de Distribucions]]).
+
+```bash
+# 1. Actualitzar la llista de paquets disponibles (metadades del repo)
+sudo apt update
+
+# 2. Instal·lar un paquet
+sudo apt install nginx
+
+# 3. Actualitzar tots els paquets instal·lats a l'última versió
+sudo apt upgrade
+
+# 4. Eliminar un paquet
+sudo apt remove nginx
+
+# 5. Cercar un paquet
+apt search nginx
+```
+
+## RHEL / Rocky (`dnf`)
+Utilitza paquets `.rpm`. `dnf` és el successor de `yum`.
+
+```bash
+# 1. Verificar actualitzacions
+sudo dnf check-update
+
+# 2. Instal·lar (també actualitza les metadades automàticament)
+sudo dnf install nginx
+
+# 3. Actualitzar tot el sistema
+sudo dnf update
+
+# 4. Eliminar un paquet
+sudo dnf remove nginx
+
+# 5. Veure informació
+dnf info nginx
+```
+
+> [!NOTE]
+> En sistemes RHEL/CentOS 7 antics, veureu `yum`. A RHEL 8/9, `yum` és només un enllaç simbòlic a `dnf`.
+
+## Exercicis Pràctics
+
+1.  **Actualitzar Primer**:
+    -   Executa l'ordre d'actualització apropiada per al teu sistema (`apt update` o `dnf check-update`).
+2.  **Instal·lar Eines**:
+    -   Instal·la `git` i `curl`.
+    -   Verifica que estan instal·lats comprovant les seves versions (`git --version`).
+3.  **Cercar**:
+    -   Cerca un paquet anomenat `htop`.
+    -   Instal·la'l i executa'l.
+4.  **Netejar**:
+    -   Elimina `htop` si no el vols.

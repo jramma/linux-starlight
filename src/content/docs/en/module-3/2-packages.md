@@ -8,7 +8,7 @@ sidebar:
 Linux uses repositories ("repos") to manage software securely. You generally do not download `.exe` files from the web.
 
 ## Debian / Ubuntu (`apt`)
-Uses `.deb` packages.
+Uses `.deb` packages (see [[/en/module-1/1-overview|Distribution Families]]).
 
 ```bash
 # 1. Update list of available packages (repo metadata)
@@ -49,3 +49,16 @@ dnf info nginx
 
 > [!NOTE]
 > On older RHEL/CentOS 7 systems, you will see `yum`. On RHEL 8/9, `yum` is just a symlink to `dnf`.
+
+## Practice Exercises
+
+1.  **Update First**:
+    -   Run the update command appropriate for your system (`apt update` or `dnf check-update`).
+2.  **Install Tools**:
+    -   Install `git` and `curl`.
+    -   Verify they are installed by checking their versions (`git --version`).
+3.  **Search**:
+    -   Search for a package named `htop`.
+    -   Install it and run it.
+4.  **Clean**:
+    -   Remove `htop` if you don't want it.

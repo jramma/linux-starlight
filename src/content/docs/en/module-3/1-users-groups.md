@@ -14,6 +14,8 @@ Authentication in Linux revolves around three plain text files in `/etc`.
 | `/etc/shadow` | **Encrypted** passwords. | Readable only by root (600/640). |
 | `/etc/group` | Group memberships. | Readable by anyone (644). |
 
+(See [[/en/module-2/4-permissions|Permission Management]] for details on 644/600 modes)
+
 ## User Management
 
 Create, modify, and delete users.
@@ -44,3 +46,17 @@ sudo groupadd developers
 # Delete a group
 sudo groupdel developers
 ```
+
+## Practice Exercises
+
+1.  **New Recruit**:
+    -   Create a new user `intern`.
+    -   Assign them a password.
+    -   Verify their entry in `/etc/passwd`.
+2.  **Group Work**:
+    -   Create a group called `ops`.
+    -   Add your current user and the `intern` user to this group.
+    -   Verify with the `groups` command (e.g., `groups intern`).
+3.  **Cleanup**:
+    -   Delete the `intern` user and their home directory.
+    -   Delete the `ops` group.

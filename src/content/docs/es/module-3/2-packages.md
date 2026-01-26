@@ -1,0 +1,64 @@
+---
+title: 3.2 Gestión de Paquetes
+description: Instalar, actualizar y eliminar software.
+sidebar:
+  order: 3
+---
+
+Linux utiliza repositorios ("repos") para gestionar el software de forma segura. Generalmente no se descargan archivos `.exe` de la web.
+
+## Debian / Ubuntu (`apt`)
+Utiliza paquetes `.deb` (ver [[/es/module-1/1-overview|Familias de Distribuciones]]).
+
+```bash
+# 1. Actualizar la lista de paquetes disponibles (metadatos del repo)
+sudo apt update
+
+# 2. Instalar un paquete
+sudo apt install nginx
+
+# 3. Actualizar todos los paquetes instalados a la última versión
+sudo apt upgrade
+
+# 4. Eliminar un paquete
+sudo apt remove nginx
+
+# 5. Buscar un paquete
+apt search nginx
+```
+
+## RHEL / Rocky (`dnf`)
+Utiliza paquetes `.rpm`. `dnf` es el sucesor de `yum`.
+
+```bash
+# 1. Verificar actualizaciones
+sudo dnf check-update
+
+# 2. Instalar (también actualiza los metadatos automáticamente)
+sudo dnf install nginx
+
+# 3. Actualizar todo el sistema
+sudo dnf update
+
+# 4. Eliminar un paquete
+sudo dnf remove nginx
+
+# 5. Ver información
+dnf info nginx
+```
+
+> [!NOTE]
+> En sistemas RHEL/CentOS 7 antiguos, verás `yum`. En RHEL 8/9, `yum` es solo un enlace simbólico a `dnf`.
+
+## Ejercicios Prácticos
+
+1.  **Actualizar Primero**:
+    -   Ejecuta el comando de actualización apropiado para tu sistema (`apt update` o `dnf check-update`).
+2.  **Instalar Herramientas**:
+    -   Instala `git` y `curl`.
+    -   Verifica que están instalados comprobando sus versiones (`git --version`).
+3.  **Buscar**:
+    -   Busca un paquete llamado `htop`.
+    -   Instálalo y ejecútalo.
+4.  **Limpiar**:
+    -   Elimina `htop` si no lo quieres.
