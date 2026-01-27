@@ -33,6 +33,7 @@ export default defineConfig({
       ],
       components: {
         Head: './src/overrides/Head.astro',
+        Footer: './src/overrides/Footer.astro',
       },
       plugins: [
         starlightThemeNova(/* options */),

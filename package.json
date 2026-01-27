@@ -2,6 +2,7 @@
   "name": "linux-starlight",
   "type": "module",
   "version": "0.0.1",
+  "author": "jramma.com",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",

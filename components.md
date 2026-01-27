@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 -->
 import { Aside } from '@astrojs/starlight/components'
 
 <Aside>Some content in an aside.</Aside>
