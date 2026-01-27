@@ -5,6 +5,8 @@ sidebar:
   order: 5
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 Once the system reboots, you are faced with a black screen and a login prompt. What now?
 
 ## 1. Login
@@ -28,6 +30,8 @@ sudo -i
 # or
 sudo su -
 ```
+
+<Aside type="danger">Switching to a root shell can be dangerous. Execute commands with caution.</Aside>
 
 ## 3. Hostname
 
@@ -69,7 +73,8 @@ From your laptop/workstation:
 ssh user@<server-ip-address>
 ```
 
-**Troubleshooting SSH**:
+<Aside type="note" title="Troubleshooting SSH">
 1.  Is the service running? `systemctl status ssh` (or `sshd` on Rocky).
 2.  Is the firewall blocking it?
 3.  Is the IP correct?
+</Aside>

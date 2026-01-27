@@ -5,6 +5,9 @@ sidebar:
   order: 4
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from 'starlight-theme-nova/components';
+
 ## Storage Basics
 
 ### The Filesystem Hierarchy Standard (FHS)
@@ -34,10 +37,13 @@ Linux organizes files in a tree structure, not drive letters (C:, D:). Everythin
 -   Supports massive disks (Zettabytes).
 
 **Recommended Partition Layout**:
+
+<Aside type="tip">
 1.  **EFI System Partition** (100-500MB): FAT32. Needed for UEFI boot.
 2.  `/boot` (1GB): Ext4/XFS.
 3.  `swap`: Virtual memory. (Rule of thumb: 1x-2x RAM, though less critical with modern massive RAM).
 4.  `/` (Root): The rest of the disk (often managing `/home` and `/var` inside it, or separating them for safety).
+</Aside>
 
 ## The Boot Process
 
@@ -60,5 +66,8 @@ graph TD
 4.  **Initramfs**: A small temporary filesystem loaded into RAM. It helps the kernel fix mounting the *real* hard drive (e.g., loading decryption keys or specialized drivers).
 5.  **Init (Systemd)**: The first process (`PID 1`). It reads configuration files and starts all other services (Network, SSH, Web Server) in parallel.
 
-> [!TIP] Related Concepts
-> Learn more about handling disks in **[Module 4: Disks and Partitions](../module-4/1-disks-partitions/)**.
+<LinkCard
+  title="Related Concepts: Disks and Partitions"
+  href="../module-4/1-disks-partitions/"
+  description="Learn more about handling disks in Module 4."
+/>

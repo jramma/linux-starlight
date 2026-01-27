@@ -5,6 +5,8 @@ sidebar:
   order: 2
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 ## The Linux Ecosystem
 
 Linux is a free, open-source operating system kernel created by **Linus Torvalds** in 1991. Today, "Linux" typically refers to the kernel plus a collection of GNU utilties and software, forming a variety of **"distributions" (distros)**.
@@ -39,5 +41,7 @@ Validating your skills is essential for career progression. This course targets 
 -   **Exam Format**: 100% Performance-based (EX200).
 -   **Distributions**: RHEL.
 
-> [!TIP]
-> **Why performance-based?** Multiple-choice exams are rare in Linux admin. You must know *how* to do the task, not just remember the theory. Muscle memory is key.
+
+<Aside type="tip" title="Why performance-based?">
+Multiple-choice exams are rare in Linux admin. You must know *how* to do the task, not just remember the theory. Muscle memory is key.
+</Aside>

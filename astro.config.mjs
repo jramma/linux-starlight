@@ -1,7 +1,7 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import starlightThemeObsidian from 'starlight-theme-obsidian'
+import starlightThemeNova from "starlight-theme-nova";
 
 // https://astro.build/config
 export default defineConfig({
@@ -34,7 +34,9 @@ export default defineConfig({
       components: {
         Head: './src/overrides/Head.astro',
       },
-      plugins: [starlightThemeObsidian()],
+      plugins: [
+        starlightThemeNova(/* options */),
+      ],
     }),
   ],
 });

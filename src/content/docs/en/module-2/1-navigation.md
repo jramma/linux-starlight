@@ -5,6 +5,8 @@ sidebar:
   order: 1
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 ## Hierarchy
 
 Recall that everything starts at `/`.
@@ -40,5 +42,6 @@ You rarely run just `ls`. Common flags:
 | `mv` | Move (or Rename) | `mv notes.txt doc.txt` |
 | `rm` | Remove (Delete) | `rm file.txt` |
 
-> [!CAUTION]
-> **`rm -rf /`**: The `rm -r` (recursive) combined with `-f` (force) is dangerous. It deletes folders and their contents without asking. Always double-check your path before hitting Enter.
+<Aside type="danger" title="rm -rf /">
+**`rm -rf /`**: The `rm -r` (recursive) combined with `-f` (force) is dangerous. It deletes folders and their contents without asking. Always double-check your path before hitting Enter.
+</Aside>

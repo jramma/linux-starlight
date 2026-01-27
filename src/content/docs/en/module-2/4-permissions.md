@@ -5,6 +5,8 @@ sidebar:
   order: 4
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 In Linux, every file and directory is owned by a **User** and a **Group**, and has permissions for **User (u)**, **Group (g)**, and **Others (o)**.
 
 ## Viewing Permissions
@@ -41,10 +43,13 @@ Common patterns:
 -   **644** (`rw-r--r--`): Standard for data files.
 -   **600** (`rw-------`): Secure (SSH keys). Only owner can read/write.
 -   **777**: Everyone can do everything. **Avoid this!**
+    <Aside type="danger">Avoid 777 permissions in production as it allows anyone to modify or execute the file.</Aside>
 
 ## Changing Ownership (`chown`)
 
 Only `root` can change ownership of files.
+
+<Aside type="caution">Changing file ownership can break applications if not done carefully.</Aside>
 
 ```bash
 # Change owner to bob

@@ -5,6 +5,8 @@ sidebar:
   order: 2
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 Why **Vim**? It is installed on almost every Unix-like system by default. In a rescue shell, you might not have `nano` or `code`, but you will have `vi` or `vim`.
 
 ## The Modes
@@ -41,5 +43,6 @@ Vim is "modal". Keys do different things depending on the mode.
 -   `u`: Undo.
 -   `Ctrl + r`: Redo.
 
-> [!NOTE]
-> If you find Vim too difficult initially, `nano` is a simpler, modeless alternative. But mastering Vim basics is a superpower.
+<Aside type="tip">
+If you find Vim too difficult initially, `nano` is a simpler, modeless alternative. But mastering Vim basics is a superpower.
+</Aside>

@@ -3,6 +3,7 @@ title: 3.1 User and Group Management
 description: Managing access to the system.
 sidebar:
   order: 2
+link: /en/module-3/1-users-groups/
 ---
 
 ## The Big Three Files

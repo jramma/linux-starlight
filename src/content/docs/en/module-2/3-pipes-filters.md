@@ -5,7 +5,11 @@ sidebar:
   order: 3
 ---
 
-The Unix Philosophy: **"Write programs that do one thing and do it well. Write programs to work together."**
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="note" title="The Unix Philosophy">
+"Write programs that do one thing and do it well. Write programs to work together."
+</Aside>
 
 ## Redirection
 

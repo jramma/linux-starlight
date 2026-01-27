@@ -5,6 +5,8 @@ sidebar:
   order: 5
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 Every running program is a **process** with a unique **PID** (Process ID).
 
 ## Viewing Processes
@@ -20,6 +22,7 @@ Creating a "zombie" or stopping a stuck program.
 
 -   `kill <PID>`: Send SIGTERM (15). Asks nicely to stop.
 -   `kill -9 <PID>`: Send SIGKILL (9). Forces stop immediately (can lose data).
+    <Aside type="danger">Use `kill -9` only as a last resort, as it can cause data loss or corruption.</Aside>
 -   `killall <name>`: Kill processes by name instead of ID.
 
 ## Background Jobs
