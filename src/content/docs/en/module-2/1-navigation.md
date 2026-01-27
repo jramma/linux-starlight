@@ -42,6 +42,38 @@ You rarely run just `ls`. Common flags:
 | `mv` | Move (or Rename) | `mv notes.txt doc.txt` |
 | `rm` | Remove (Delete) | `rm file.txt` |
 
-<Aside type="danger" title="rm -rf /">
-**`rm -rf /`**: The `rm -r` (recursive) combined with `-f` (force) is dangerous. It deletes folders and their contents without asking. Always double-check your path before hitting Enter.
 </Aside>
+
+## Finding Files
+
+Common tools to locate files on the system:
+
+### `find`
+Searching for files in a directory hierarchy.
+
+- **Syntax**: `find [path] [expression]`
+- **Examples**:
+    -   `find /etc -name "*.conf"`: Find all files in `/etc` ending with `.conf`.
+    -   `find . -type f`: Find only files in current directory.
+    -   `find . -type d`: Find only directories.
+    -   `find /var/log -size +10M`: Find files larger than 10MB.
+    -   `find . -perm 777`: Find files with 777 permissions.
+    -   `find . -mtime -1`: Find files modified in the last 24 hours.
+    -   `find . -user alice`: Find files owned by user `alice`.
+
+### `locate`
+Find files by name using a prebuilt database (faster than `find` but might be outdated).
+
+- **Syntax**: `locate [pattern]`
+- **Update DB**: `sudo updatedb` (updates the database used by locate).
+
+### `which`
+Locate a command.
+
+- **Example**: `which python` (shows the path to the python executable).
+
+### `whereis`
+Locate the binary, source, and manual page files for a command.
+
+- **Example**: `whereis ls`
+

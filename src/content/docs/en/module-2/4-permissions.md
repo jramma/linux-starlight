@@ -58,6 +58,39 @@ sudo chown bob file.txt
 # Change owner to bob and group to staff
 sudo chown bob:staff file.txt
 
+```bash
 # Recursive (folder)
 sudo chown -R bob:staff /var/www/html
 ```
+
+## Special Permissions
+
+Beyond standard read/write/execute, there are three special permissions:
+
+| Permission | Code | Function on File | Function on Directory |
+| :--- | :--- | :--- | :--- |
+| **SUID** (Set User ID) | `s` (4) | Run as the file owner (e.g., `passwd`). | N/A |
+| **SGID** (Set Group ID) | `s` (2) | Run as the group owner. | New files inherit the group. |
+| **Sticky Bit** | `t` (1) | N/A | Only owner can delete their own files (e.g., `/tmp`). |
+
+### Setting Special Permissions
+
+- **Symbolic**:
+    -   `chmod u+s file` (SUID)
+    -   `chmod g+s dir` (SGID)
+    -   `chmod +t dir` (Sticky)
+- **Octal** (Fourth digit prefixed):
+    -   `chmod 4755 file` (SUID)
+    -   `chmod 2755 dir` (SGID)
+    -   `chmod 1777 dir` (Sticky)
+
+## Default Permissions (`umask`)
+
+When you create a file or directory, it gets default permissions determined by the `umask`.
+
+- **Standard umask**: `0022` (or `022`).
+- **Calculation**:
+    -   Files start at `666`. `666 - 022 = 644` (`rw-r--r--`).
+    -   Directories start at `777`. `777 - 022 = 755` (`rwxr-xr-x`).
+- **Changing**: `umask 027` (results in strict permissions).
+

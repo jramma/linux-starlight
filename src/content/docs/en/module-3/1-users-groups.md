@@ -34,9 +34,32 @@ sudo usermod -aG developers anna
 # Lock account (disable login)
 sudo usermod -L anna
 
+```bash
 # Delete user (and their home directory)
 sudo userdel -r anna
 ```
+
+## Root Access (`su` vs `sudo`)
+
+The **root** user is the system administrator with unlimited privileges.
+
+### `sudo` (SuperUser DO)
+Run a single command with root privileges. Safe and logged.
+
+-   **Usage**: `sudo [command]`
+-   **Config**: `/etc/sudoers` (Edit with `visudo`).
+
+### `su` (Switch User)
+Switch to another user account (default is root).
+
+-   `su`: Switch to root (keeps current environment variables).
+-   `su -`: Switch to root and load root's environment (recommended).
+-   `su - anna`: Switch to user 'anna'.
+
+<Aside type="caution">
+Avoid logging in as root directly for daily tasks. Use `sudo` instead to prevent accidental system damage.
+</Aside>
+
 
 ## Group Management
 

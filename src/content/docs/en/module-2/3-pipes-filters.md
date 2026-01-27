@@ -63,3 +63,41 @@ Count how many running processes are owned by "root":
 ```bash
 ps aux | grep "^root" | wc -l
 ```
+
+## Text Processing Tools
+
+Commands to protect, sort, merge, and transform text.
+
+| Command | Function | Example |
+| :--- | :--- | :--- |
+| `cut` | Remove sections from each line of files | `cut -d: -f1 /etc/passwd` (Get usernames) |
+| `tr` | Translate or delete characters | `echo "hello" | tr 'a-z' 'A-Z'` (Uppercase) |
+| `sort` | Sort lines of text files | `sort file.txt` |
+| `uniq` | Report or omit repeated lines | `sort file.txt | uniq` |
+| `wc` | Print newline, word, and byte counts | `wc -l file.txt` |
+
+## Stream Editors (`sed`)
+
+`sed` is a stream editor for filtering and transforming text.
+
+- **Substitute (Search & Replace)**:
+    ```bash
+    # Replace the first occurrence of 'foo' with 'bar' in each line
+    sed 's/foo/bar/' file.txt
+    
+    # Replace ALL occurrences ('g' for global)
+    sed 's/foo/bar/g' file.txt
+    
+    # Edit the file in-place ('-i')
+    sed -i 's/foo/bar/g' file.txt
+    ```
+
+- **Delete Lines**:
+    ```bash
+    # Delete the 3rd line
+    sed '3d' file.txt
+    
+    # Delete lines containing "error"
+    sed '/error/d' file.txt
+    ```
+
