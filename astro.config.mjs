@@ -5,7 +5,7 @@ import starlightThemeNova from "starlight-theme-nova";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://linux-starlight.vercel.app",
+  site: "https://linux-starlight.netlify.app/",
   integrations: [
     starlight({
       title: "Linux Starlight",
