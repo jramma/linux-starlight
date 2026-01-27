@@ -5,9 +5,13 @@ sidebar:
   order: 3
 ---
 
+import { Aside } from '@astrojs/starlight/components'
+
+
 Linux utilitza repositoris ("repos") per gestionar el programari de forma segura. Generalment no es descarreguen fitxers `.exe` de la web.
 
 ## Debian / Ubuntu (`apt`)
+
 Utilitza paquets `.deb` (veure [[/ca/module-1/1-overview|Famílies de Distribucions]]).
 
 ```bash
@@ -28,6 +32,7 @@ apt search nginx
 ```
 
 ## RHEL / Rocky (`dnf`)
+
 Utilitza paquets `.rpm`. `dnf` és el successor de `yum`.
 
 ```bash
@@ -47,18 +52,18 @@ sudo dnf remove nginx
 dnf info nginx
 ```
 
-> [!NOTE]
-> En sistemes RHEL/CentOS 7 antics, veureu `yum`. A RHEL 8/9, `yum` és només un enllaç simbòlic a `dnf`.
-
+<Aside type="note">
+ En sistemes RHEL/CentOS 7 antics, veureu `yum`. A RHEL 8/9, `yum` és només un enllaç simbòlic a `dnf`.
+</Aside>
 ## Exercicis Pràctics
 
-1.  **Actualitzar Primer**:
-    -   Executa l'ordre d'actualització apropiada per al teu sistema (`apt update` o `dnf check-update`).
-2.  **Instal·lar Eines**:
-    -   Instal·la `git` i `curl`.
-    -   Verifica que estan instal·lats comprovant les seves versions (`git --version`).
-3.  **Cercar**:
-    -   Cerca un paquet anomenat `htop`.
-    -   Instal·la'l i executa'l.
-4.  **Netejar**:
-    -   Elimina `htop` si no el vols.
+1. **Actualitzar Primer**:
+    - Executa l'ordre d'actualització apropiada per al teu sistema (`apt update` o `dnf check-update`).
+2. **Instal·lar Eines**:
+    - Instal·la `git` i `curl`.
+    - Verifica que estan instal·lats comprovant les seves versions (`git --version`).
+3. **Cercar**:
+    - Cerca un paquet anomenat `htop`.
+    - Instal·la'l i executa'l.
+4. **Netejar**:
+    - Elimina `htop` si no el vols.

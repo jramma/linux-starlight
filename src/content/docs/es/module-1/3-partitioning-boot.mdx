@@ -5,6 +5,8 @@ sidebar:
   order: 4
 ---
 
+import { Aside } from '@astrojs/starlight/components'
+
 ## Conceptos Básicos de Almacenamiento
 
 ### El Estándar de Jerarquía de Sistemas de Archivos (FHS)
@@ -60,5 +62,6 @@ graph TD
 4.  **Initramfs**: Un pequeño sistema de archivos temporal cargado en la RAM. Ayuda al kernel a arreglar el montaje del disco duro *real* (ej., cargando claves de descifrado o controladores especializados).
 5.  **Init (Systemd)**: El primer proceso (`PID 1`). Lee archivos de configuración e inicia todos los otros servicios (Red, SSH, Servidor Web) en paralelo.
 
-> [!TIP] Conceptos Relacionados
-> Aprende más sobre el manejo de discos en el **[Módulo 4: Discos y Particiones](../module-4/1-disks-partitions/)**.
+<Aside type="tip">
+ Aprende más sobre el manejo de discos en el **[Módulo 4: Discos y Particiones](../module-4/1-disks-partitions/)**.
+</Aside>

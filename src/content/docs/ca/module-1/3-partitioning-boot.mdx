@@ -5,6 +5,9 @@ sidebar:
   order: 4
 ---
 
+import { Aside } from '@astrojs/starlight/components'
+
+
 ## Conceptes Bàsics d'Emmagatzematge
 
 ### L'Estàndard de Jerarquia de Sistemes de Fitxers (FHS)
@@ -60,5 +63,7 @@ graph TD
 4.  **Initramfs**: Un petit sistema de fitxers temporal carregat a la RAM. Ajuda al kernel a arreglar el muntatge del disc dur *real* (ex., carregant claus de desxifrat o controladors especialitzats).
 5.  **Init (Systemd)**: El primer procés (`PID 1`). Llegeix fitxers de configuració i inicia tots els altres serveis (Xarxa, SSH, Servidor Web) en paral·lel.
 
-> [!TIP] Conceptes Relacionats
-> Aprèn més sobre la gestió de discs al **[Mòdul 4: Discs i Particions](../module-4/1-disks-partitions/)**.
+<Aside type="tip">
+ Conceptes Relacionats
+ Aprèn més sobre la gestió de discs al **[Mòdul 4: Discs i Particions](/ca/module-4/1-disks-partitions/)**.
+</Aside>

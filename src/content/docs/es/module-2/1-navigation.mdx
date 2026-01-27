@@ -5,13 +5,17 @@ sidebar:
   order: 1
 ---
 
+import { Aside } from '@astrojs/starlight/components'
+
+
 ## Jerarquía
 
 Recuerda que todo comienza en `/`.
 
 ### Conceptos de PATH
--   **Ruta absoluta**: Comienza con `/`. Siempre funciona, sin importar dónde estés. (ej.: `/home/user/docs/file.txt`).
--   **Ruta relativa**: *No* comienza con `/`. Depende de tu ubicación actual. (ej.: `docs/file.txt` o `../file.txt`).
+
+- **Ruta absoluta**: Comienza con `/`. Siempre funciona, sin importar dónde estés. (ej.: `/home/user/docs/file.txt`).
+- **Ruta relativa**: *No* comienza con `/`. Depende de tu ubicación actual. (ej.: `docs/file.txt` o `../file.txt`).
 
 ## Comandos de navegación
 
@@ -26,9 +30,10 @@ Recuerda que todo comienza en `/`.
 ### Opciones de `ls`
 
 Rara vez ejecutas solo `ls`. Opciones habituales:
--   `ls -l`: Listado **largo** (permisos, propietario, tamaño, fecha).
--   `ls -a`: **Todos** los archivos (muestra archivos ocultos que empiezan por `.`).
--   `ls -lh`: Listado largo con tamaños **legibles para humanos** (MB, GB).
+
+- `ls -l`: Listado **largo** (permisos, propietario, tamaño, fecha).
+- `ls -a`: **Todos** los archivos (muestra archivos ocultos que empiezan por `.`).
+- `ls -lh`: Listado largo con tamaños **legibles para humanos** (MB, GB).
 
 ## Gestión de archivos
 
@@ -41,8 +46,9 @@ Rara vez ejecutas solo `ls`. Opciones habituales:
 | `mv` | Mover (o renombrar) | `mv notes.txt doc.txt` |
 | `rm` | Eliminar (borrar) | `rm file.txt` |
 
-> [!CAUTION]
-> **`rm -rf /`**: El `rm -r` (recursivo) combinado con `-f` (forzar) es peligroso. Borra carpetas y su contenido sin preguntar. Revisa siempre la ruta antes de pulsar Enter.
+<Aside type="caution">
+ **`rm -rf /`**: El `rm -r` (recursivo) combinado con `-f` (forzar) es peligroso. Borra carpetas y su contenido sin preguntar. Revisa siempre la ruta antes de pulsar Enter.
+</Aside>
 
 ## Búsqueda de archivos
 
@@ -54,13 +60,13 @@ Busca archivos en una jerarquía de directorios.
 
 - **Sintaxis**: `find [ruta] [expresión]`
 - **Ejemplos**:
-    -   `find /etc -name "*.conf"`: Busca todos los archivos en `/etc` que terminen en `.conf`.
-    -   `find . -type f`: Busca solo archivos en el directorio actual.
-    -   `find . -type d`: Busca solo directorios.
-    -   `find /var/log -size +10M`: Busca archivos mayores de 10 MB.
-    -   `find . -perm 777`: Busca archivos con permisos 777.
-    -   `find . -mtime -1`: Busca archivos modificados en las últimas 24 horas.
-    -   `find . -user alice`: Busca archivos cuyo propietario sea el usuario `alice`.
+  - `find /etc -name "*.conf"`: Busca todos los archivos en `/etc` que terminen en `.conf`.
+  - `find . -type f`: Busca solo archivos en el directorio actual.
+  - `find . -type d`: Busca solo directorios.
+  - `find /var/log -size +10M`: Busca archivos mayores de 10 MB.
+  - `find . -perm 777`: Busca archivos con permisos 777.
+  - `find . -mtime -1`: Busca archivos modificados en las últimas 24 horas.
+  - `find . -user alice`: Busca archivos cuyo propietario sea el usuario `alice`.
 
 ### `locate`
 
