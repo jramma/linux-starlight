@@ -5,21 +5,27 @@ sidebar:
   order: 4
 ---
 
+import { Aside } from "@astrojs/starlight/components";
+
 SSH es la puerta de entrada a tu servidor. Es el objetivo #1 para los ataques de fuerza bruta.
 
 ## Autenticación Basada en Claves
 
 Más seguro que las contraseñas.
 
-1.  **Generar Claves** (en tu portátil):
+1. **Generar Claves** (en tu portátil):
+
     ```bash
     ssh-keygen -t ed25519
     ```
-2.  **Copiar Clave Pública al Servidor**:
+
+2. **Copiar Clave Pública al Servidor**:
+
     ```bash
     ssh-copy-id user@ip_servidor
     ```
-3.  **Probar Inicio de Sesión**:
+
+3. **Probar Inicio de Sesión**:
     Ahora deberías iniciar sesión sin contraseña.
 
 ## Endurecimiento de `/etc/ssh/sshd_config`
@@ -37,5 +43,6 @@ PasswordAuthentication no
 **Reiniciar SSH** para aplicar:
 `sudo systemctl restart ssh` (o `sshd`).
 
-> [!CAUTION]
-> Antes de añadir `PasswordAuthentication no`, ¡asegúrate de que tu inicio de sesión con clave funciona! De lo contrario, ejecutas "El Bloqueo Digital" y pierdes el acceso a tu servidor.
+<Aside type="caution">
+Antes de añadir `PasswordAuthentication no`, ¡asegúrate de que tu inicio de sesión con clave funciona! De lo contrario, ejecutas "El Bloqueo Digital" y pierdes el acceso a tu servidor.
+</Aside>

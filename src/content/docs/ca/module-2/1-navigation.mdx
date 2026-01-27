@@ -5,13 +5,16 @@ sidebar:
   order: 1
 ---
 
+import { Aside } from "@astrojs/starlight/components";
+
 ## Jerarquia
 
 Recorda que tot comença a `/`.
 
 ### Conceptes de PATH
--   **Camí absolut**: Comença amb `/`. Sempre funciona, sense importar on siguis. (ex.: `/home/user/docs/file.txt`).
--   **Camí relatiu**: *No* comença amb `/`. Depèn de la teva ubicació actual. (ex.: `docs/file.txt` o `../file.txt`).
+
+- **Camí absolut**: Comença amb `/`. Sempre funciona, sense importar on siguis. (ex.: `/home/user/docs/file.txt`).
+- **Camí relatiu**: *No* comença amb `/`. Depèn de la teva ubicació actual. (ex.: `docs/file.txt` o `../file.txt`).
 
 ## Comandes de navegació
 
@@ -26,9 +29,10 @@ Recorda que tot comença a `/`.
 ### Opcions de `ls`
 
 Rarament executes només `ls`. Opcions habituals:
--   `ls -l`: Llistat **llarg** (permisos, propietari, mida, data).
--   `ls -a`: **Tots** els fitxers (mostra els fitxers ocults que comencen per `.`).
--   `ls -lh`: Llistat llarg amb mides **llegibles per a humans** (MB, GB).
+
+- `ls -l`: Llistat **llarg** (permisos, propietari, mida, data).
+- `ls -a`: **Tots** els fitxers (mostra els fitxers ocults que comencen per `.`).
+- `ls -lh`: Llistat llarg amb mides **llegibles per a humans** (MB, GB).
 
 ## Gestió de fitxers
 
@@ -41,9 +45,9 @@ Rarament executes només `ls`. Opcions habituals:
 | `mv` | Moure (o canviar el nom) | `mv notes.txt doc.txt` |
 | `rm` | Eliminar (esborrar) | `rm file.txt` |
 
-> [!CAUTION]
-> **`rm -rf /`**: El `rm -r` (recursiu) combinat amb `-f` (forçar) és perillós. Esborra carpetes i el seu contingut sense preguntar. Revisa sempre el camí abans de prémer Enter.
-
+<Aside type="warning">
+**`rm -rf /`**: El `rm -r` (recursiu) combinat amb `-f` (forçar) és perillós. Esborra carpetes i el seu contingut sense preguntar. Revisa sempre el camí abans de prémer Enter.
+</Aside>
 ## Cerca de fitxers
 
 Eines habituals per localitzar fitxers al sistema:
@@ -54,13 +58,13 @@ Cerca fitxers en una jerarquia de directoris.
 
 - **Sintaxi**: `find [ruta] [expressió]`
 - **Exemples**:
-    -   `find /etc -name "*.conf"`: Cerca tots els fitxers a `/etc` que acabin en `.conf`.
-    -   `find . -type f`: Cerca només fitxers al directori actual.
-    -   `find . -type d`: Cerca només directoris.
-    -   `find /var/log -size +10M`: Cerca fitxers més grans de 10 MB.
-    -   `find . -perm 777`: Cerca fitxers amb permisos 777.
-    -   `find . -mtime -1`: Cerca fitxers modificats en les últimes 24 hores.
-    -   `find . -user alice`: Cerca fitxers propietat de l'usuari `alice`.
+  - `find /etc -name "*.conf"`: Cerca tots els fitxers a `/etc` que acabin en `.conf`.
+  - `find . -type f`: Cerca només fitxers al directori actual.
+  - `find . -type d`: Cerca només directoris.
+  - `find /var/log -size +10M`: Cerca fitxers més grans de 10 MB.
+  - `find . -perm 777`: Cerca fitxers amb permisos 777.
+  - `find . -mtime -1`: Cerca fitxers modificats en les últimes 24 hores.
+  - `find . -user alice`: Cerca fitxers propietat de l'usuari `alice`.
 
 ### `locate`
 
