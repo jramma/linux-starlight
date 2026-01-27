@@ -5,6 +5,8 @@ sidebar:
   order: 2
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 ## Los Tres Grandes Archivos
 La autenticación en Linux gira en torno a tres archivos de texto plano en `/etc`.
 
@@ -36,6 +38,27 @@ sudo usermod -L anna
 # Eliminar usuario (y su directorio personal)
 sudo userdel -r anna
 ```
+
+## Acceso Root (`su` vs `sudo`)
+
+El usuario **root** es el administrador del sistema con privilegios ilimitados.
+
+### `sudo` (SuperUser DO)
+Ejecuta un solo comando con privilegios de root. Seguro y registrado.
+
+-   **Uso**: `sudo [comando]`
+-   **Configuración**: `/etc/sudoers` (Editar con `visudo`).
+
+### `su` (Switch User)
+Cambia a otra cuenta de usuario (por defecto es root).
+
+-   `su`: Cambia a root (mantiene las variables de entorno actuales).
+-   `su -`: Cambia a root y carga el entorno de root (recomendado).
+-   `su - anna`: Cambia al usuario 'anna'.
+
+<Aside type="caution">
+Evita iniciar sesión como root directamente para tareas diarias. Usa `sudo` en su lugar para prevenir daños accidentales al sistema.
+</Aside>
 
 ## Gestión de Grupos
 

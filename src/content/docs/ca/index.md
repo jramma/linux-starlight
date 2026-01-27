@@ -17,6 +17,8 @@ hero:
       variant: primary
 ---
 
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
 ## Sobre aquest Curs
 
 Aquest document presenta l'estructura del curs proposat, les fonts utilitzades i la cobertura estimada en relació amb les certificacions oficials de Linux (LFCS, RHCSA).
@@ -25,9 +27,34 @@ El curs s'estructura en **6 mòduls** de 4–6 hores, per a un total de **30 hor
 
 ### Resum dels Mòduls
 
-1.  **[Introducció a Linux i Desplegament Inicial](/ca/module-1/)** (4h)
-2.  **[Ús del Shell i Comandes Fonamentals](/ca/module-2/)** (6h)
-3.  **[Administració de Sistemes: Usuaris, Paquets i Serveis](/ca/module-3/)** (6h)
-4.  **[Emmagatzematge i Sistemes de Fitxers](/ca/module-4/)** (4h)
-5.  **[Xarxes i Seguretat Bàsica](/ca/module-5/)** (6h)
-6.  **[Scripting i Automatització + Repàs](/ca/module-6/)** (4h)
+<CardGrid stagger>
+    <Card title="1. Introducció i Desplegament" icon="rocket">
+        **Introducció a Linux i Desplegament Inicial** (4h)
+        Primers passos, instal·lació i conceptes bàsics del kernel i la shell.
+    </Card>
+
+    <Card title="2. Comandes i Shell" icon="terminal">
+        **Ús de la Shell i Comandes Fonamentals** (6h)
+        Domini de la línia d'ordres, canonades, redireccions i eines essencials.
+    </Card>
+
+    <Card title="3. Administració" icon="setting">
+        **Administració del Sistema: Usuaris, Paquets i Serveis** (6h)
+        Gestió de permisos, control de processos i manteniment de programari.
+    </Card>
+
+    <Card title="4. Emmagatzematge" icon="document">
+        **Emmagatzematge i Sistemes de Fitxers** (4h)
+        Particionament, muntatge de discs, LVM i gestió de quotes.
+    </Card>
+
+    <Card title="5. Xarxes i Seguretat" icon="shield">
+        **Xarxes i Seguretat Bàsica** (6h)
+        Configuració de xarxa, tallafocs, SSH i bastionat del sistema.
+    </Card>
+
+    <Card title="6. Automatització" icon="seti:javascript">
+        **Scripting, Automatització i Repàs** (4h)
+        Bash scripting avançat i preparació per a escenaris de certificació.
+    </Card>
+</CardGrid>

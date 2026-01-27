@@ -5,6 +5,8 @@ sidebar:
   order: 2
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 ## Els Tres Grans Fitxers
 L'autenticació a Linux gira al voltant de tres fitxers de text pla a `/etc`.
 
@@ -36,6 +38,27 @@ sudo usermod -L anna
 # Eliminar usuari (i el seu directori personal)
 sudo userdel -r anna
 ```
+
+## Accés Root (`su` vs `sudo`)
+
+L'usuari **root** és l'administrador del sistema amb privilegis il·limitats.
+
+### `sudo` (SuperUser DO)
+Executa una sola comanda amb privilegis de root. Segur i registrat.
+
+-   **Ús**: `sudo [comanda]`
+-   **Configuració**: `/etc/sudoers` (Editar amb `visudo`).
+
+### `su` (Switch User)
+Canvia a un altre compte d'usuari (per defecte és root).
+
+-   `su`: Canvia a root (manté les variables d'entorn actuals).
+-   `su -`: Canvia a root i carrega l'entorn de root (recomanat).
+-   `su - anna`: Canvia a l'usuari 'anna'.
+
+<Aside type="caution">
+Evita iniciar sessió com a root directament per a tasques diàries. Utilitza `sudo` en el seu lloc per prevenir danys accidentals al sistema.
+</Aside>
 
 ## Gestió de Grups
 

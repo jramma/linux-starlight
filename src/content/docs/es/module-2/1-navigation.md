@@ -10,35 +10,73 @@ sidebar:
 Recuerda que todo comienza en `/`.
 
 ### Conceptos de PATH
--   **Ruta Absoluta**: Comienza con `/`. Siempre funciona, no importa dónde estés. (ej., `/home/user/docs/file.txt`).
--   **Ruta Relativa**: *No* comienza con `/`. Depende de tu ubicación actual. (ej., `docs/file.txt` o `../file.txt`).
+-   **Ruta absoluta**: Comienza con `/`. Siempre funciona, sin importar dónde estés. (ej.: `/home/user/docs/file.txt`).
+-   **Ruta relativa**: *No* comienza con `/`. Depende de tu ubicación actual. (ej.: `docs/file.txt` o `../file.txt`).
 
-## Comandos de Navegación
+## Comandos de navegación
 
 | Comando | Nombre | Función |
 | :--- | :--- | :--- |
 | `pwd` | Print Working Directory | Te dice dónde estás ahora mismo. |
 | `cd` | Change Directory | Te mueve a una nueva carpeta. |
-| `cd ..` | | Mueve un nivel arriba. |
-| `cd ~` | | Mueve a tu directorio personal (home). |
+| `cd ..` | | Sube un nivel. |
+| `cd ~` | | Va a tu directorio personal (home). |
 | `ls` | List | Muestra los archivos en el directorio actual. |
 
-### Banderas de `ls`
-Raramente ejecutas solo `ls`. Banderas comunes:
--   `ls -l`: Listado **Largo** (permisos, propietario, tamaño, fecha).
--   `ls -a`: **Todos** los archivos (muestra archivos ocultos que empiezan con `.`).
--   `ls -lh`: Listado largo con tamaños **legibles por humanos** (MB, GB).
+### Opciones de `ls`
 
-## Gestión de Archivos
+Rara vez ejecutas solo `ls`. Opciones habituales:
+-   `ls -l`: Listado **largo** (permisos, propietario, tamaño, fecha).
+-   `ls -a`: **Todos** los archivos (muestra archivos ocultos que empiezan por `.`).
+-   `ls -lh`: Listado largo con tamaños **legibles para humanos** (MB, GB).
+
+## Gestión de archivos
 
 | Comando | Función | Ejemplo |
 | :--- | :--- | :--- |
-| `mkdir` | Make Directory | `mkdir projects` |
+| `mkdir` | Crear directorio | `mkdir projects` |
 | `touch` | Crear archivo vacío | `touch notes.txt` |
-| `cp` | Copy | `cp notes.txt backup.txt` |
-| `cp -r` | Copy Recursive (Carpeta) | `cp -r projects/ projects-backup/` |
-| `mv` | Move (o Rename) | `mv notes.txt doc.txt` |
-| `rm` | Remove (Delete) | `rm file.txt` |
+| `cp` | Copiar | `cp notes.txt backup.txt` |
+| `cp -r` | Copiar de forma recursiva (carpeta) | `cp -r projects/ projects-backup/` |
+| `mv` | Mover (o renombrar) | `mv notes.txt doc.txt` |
+| `rm` | Eliminar (borrar) | `rm file.txt` |
 
 > [!CAUTION]
-> **`rm -rf /`**: El `rm -r` (recursivo) combinado con `-f` (forzar) es peligroso. Borra carpetas y su contenido sin preguntar. Siempre revisa tu ruta antes de presionar Enter.
+> **`rm -rf /`**: El `rm -r` (recursivo) combinado con `-f` (forzar) es peligroso. Borra carpetas y su contenido sin preguntar. Revisa siempre la ruta antes de pulsar Enter.
+
+## Búsqueda de archivos
+
+Herramientas habituales para localizar archivos en el sistema:
+
+### `find`
+
+Busca archivos en una jerarquía de directorios.
+
+- **Sintaxis**: `find [ruta] [expresión]`
+- **Ejemplos**:
+    -   `find /etc -name "*.conf"`: Busca todos los archivos en `/etc` que terminen en `.conf`.
+    -   `find . -type f`: Busca solo archivos en el directorio actual.
+    -   `find . -type d`: Busca solo directorios.
+    -   `find /var/log -size +10M`: Busca archivos mayores de 10 MB.
+    -   `find . -perm 777`: Busca archivos con permisos 777.
+    -   `find . -mtime -1`: Busca archivos modificados en las últimas 24 horas.
+    -   `find . -user alice`: Busca archivos cuyo propietario sea el usuario `alice`.
+
+### `locate`
+
+Encuentra archivos por nombre usando una base de datos preconstruida (más rápido que `find`, pero puede estar desactualizada).
+
+- **Sintaxis**: `locate [patrón]`
+- **Actualizar la BD**: `sudo updatedb` (actualiza la base de datos que utiliza `locate`).
+
+### `which`
+
+Localiza un comando.
+
+- **Ejemplo**: `which python` (muestra la ruta del ejecutable de Python).
+
+### `whereis`
+
+Localiza el binario, el código fuente y las páginas de manual de un comando.
+
+- **Ejemplo**: `whereis ls`

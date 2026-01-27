@@ -10,35 +10,73 @@ sidebar:
 Recorda que tot comença a `/`.
 
 ### Conceptes de PATH
--   **Camí Absolut**: Comença amb `/`. Sempre funciona, no importa on siguis. (ex., `/home/user/docs/file.txt`).
--   **Camí Relatiu**: *No* comença amb `/`. Depèn de la teva ubicació actual. (ex., `docs/file.txt` o `../file.txt`).
+-   **Camí absolut**: Comença amb `/`. Sempre funciona, sense importar on siguis. (ex.: `/home/user/docs/file.txt`).
+-   **Camí relatiu**: *No* comença amb `/`. Depèn de la teva ubicació actual. (ex.: `docs/file.txt` o `../file.txt`).
 
-## Comandes de Navegació
+## Comandes de navegació
 
 | Comanda | Nom | Funció |
 | :--- | :--- | :--- |
-| `pwd` | Print Working Directory | Et diu on ets ara mateix. |
-| `cd` | Change Directory | Et mou a una nova carpeta. |
-| `cd ..` | | Mou un nivell amunt. |
-| `cd ~` | | Mou al teu directori personal (home). |
-| `ls` | List | Mostra els fitxers al directori actual. |
+| `pwd` | Print Working Directory | T'indica on ets ara mateix. |
+| `cd` | Change Directory | Et mou a una carpeta nova. |
+| `cd ..` | | Puja un nivell. |
+| `cd ~` | | Va al teu directori personal (home). |
+| `ls` | List | Mostra els fitxers del directori actual. |
 
-### Banderes de `ls`
-Rarament executes només `ls`. Banderes comunes:
--   `ls -l`: Llistat **Llarg** (permisos, propietari, mida, data).
--   `ls -a`: **Tots** els fitxers (mostra fitxers ocults que comencen amb `.`).
--   `ls -lh`: Llistat llarg amb mides **llegibles per humans** (MB, GB).
+### Opcions de `ls`
 
-## Gestió de Fitxers
+Rarament executes només `ls`. Opcions habituals:
+-   `ls -l`: Llistat **llarg** (permisos, propietari, mida, data).
+-   `ls -a`: **Tots** els fitxers (mostra els fitxers ocults que comencen per `.`).
+-   `ls -lh`: Llistat llarg amb mides **llegibles per a humans** (MB, GB).
+
+## Gestió de fitxers
 
 | Comanda | Funció | Exemple |
 | :--- | :--- | :--- |
-| `mkdir` | Make Directory | `mkdir projects` |
+| `mkdir` | Crear directori | `mkdir projects` |
 | `touch` | Crear fitxer buit | `touch notes.txt` |
-| `cp` | Copy | `cp notes.txt backup.txt` |
-| `cp -r` | Copy Recursive (Carpeta) | `cp -r projects/ projects-backup/` |
-| `mv` | Move (o Rename) | `mv notes.txt doc.txt` |
-| `rm` | Remove (Delete) | `rm file.txt` |
+| `cp` | Copiar | `cp notes.txt backup.txt` |
+| `cp -r` | Copiar de manera recursiva (carpeta) | `cp -r projects/ projects-backup/` |
+| `mv` | Moure (o canviar el nom) | `mv notes.txt doc.txt` |
+| `rm` | Eliminar (esborrar) | `rm file.txt` |
 
 > [!CAUTION]
-> **`rm -rf /`**: El `rm -r` (recursiu) combinat amb `-f` (forçar) és perillós. Esborra carpetes i el seu contingut sense preguntar. Sempre revisa el teu camí abans de prémer Enter.
+> **`rm -rf /`**: El `rm -r` (recursiu) combinat amb `-f` (forçar) és perillós. Esborra carpetes i el seu contingut sense preguntar. Revisa sempre el camí abans de prémer Enter.
+
+## Cerca de fitxers
+
+Eines habituals per localitzar fitxers al sistema:
+
+### `find`
+
+Cerca fitxers en una jerarquia de directoris.
+
+- **Sintaxi**: `find [ruta] [expressió]`
+- **Exemples**:
+    -   `find /etc -name "*.conf"`: Cerca tots els fitxers a `/etc` que acabin en `.conf`.
+    -   `find . -type f`: Cerca només fitxers al directori actual.
+    -   `find . -type d`: Cerca només directoris.
+    -   `find /var/log -size +10M`: Cerca fitxers més grans de 10 MB.
+    -   `find . -perm 777`: Cerca fitxers amb permisos 777.
+    -   `find . -mtime -1`: Cerca fitxers modificats en les últimes 24 hores.
+    -   `find . -user alice`: Cerca fitxers propietat de l'usuari `alice`.
+
+### `locate`
+
+Troba fitxers pel nom mitjançant una base de dades preconstruïda (més ràpid que `find`, però pot estar desactualitzada).
+
+- **Sintaxi**: `locate [patró]`
+- **Actualitzar la BD**: `sudo updatedb` (actualitza la base de dades que utilitza `locate`).
+
+### `which`
+
+Localitza un comandament.
+
+- **Exemple**: `which python` (mostra el camí de l'executable de Python).
+
+### `whereis`
+
+Localitza el binari, el codi font i les pàgines de manual d'un comandament.
+
+- **Exemple**: `whereis ls`

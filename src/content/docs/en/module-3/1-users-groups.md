@@ -6,6 +6,8 @@ sidebar:
 link: /en/module-3/1-users-groups/
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 ## The Big Three Files
 Authentication in Linux revolves around three plain text files in `/etc`.
 

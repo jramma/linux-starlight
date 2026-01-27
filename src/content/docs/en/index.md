@@ -16,7 +16,7 @@ hero:
       icon: external
 ---
 
-import { LinkCard } from 'starlight-theme-nova/components';
+import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## About this Course
 
@@ -26,9 +26,34 @@ The course is structured into **6 modules** of 4–6 hours, for a total of **30 
 
 ### Modules Overview
 
-<LinkCard title="1. Introduction to Linux and Initial Deployment" href="/en/module-1/" description="4h" />
-<LinkCard title="2. Shell Usage and Fundamental Commands" href="/en/module-2/" description="6h" />
-<LinkCard title="3. System Administration: Users, Packages, and Services" href="/en/module-3/" description="6h" />
-<LinkCard title="4. Storage and File Systems" href="/en/module-4/" description="4h" />
-<LinkCard title="5. Networking and Basic Security" href="/en/module-5/" description="6h" />
-<LinkCard title="6. Scripting and Automation + Review" href="/en/module-6/" description="4h" />
+<CardGrid stagger>
+    <Card title="1. Introduction and Deployment" icon="rocket">
+        **Introduction to Linux and Initial Deployment** (4h)
+        First steps, installation, and basic concepts of the kernel and shell.
+    </Card>
+
+    <Card title="2. Commands and Shell" icon="terminal">
+        **Shell Usage and Fundamental Commands** (6h)
+        Mastering the command line, pipes, redirections, and essential tools.
+    </Card>
+
+    <Card title="3. Administration" icon="setting">
+        **System Administration: Users, Packages, and Services** (6h)
+        Permission management, process control, and software maintenance.
+    </Card>
+
+    <Card title="4. Storage" icon="document">
+        **Storage and File Systems** (4h)
+        Partitioning, disk mounting, LVM, and quota management.
+    </Card>
+
+    <Card title="5. Networking and Security" icon="shield">
+        **Networking and Basic Security** (6h)
+        Network configuration, firewalls, SSH, and system hardening.
+    </Card>
+
+    <Card title="6. Automation" icon="seti:javascript">
+        **Scripting, Automation, and Review** (4h)
+        Advanced Bash scripting and preparation for certification scenarios.
+    </Card>
+</CardGrid>
