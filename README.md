@@ -62,7 +62,7 @@ linux-starlight/
 
 El sitio está disponible en tres idiomas:
 
-- 🇪🇸 **Español** (idioma por defecto)
+- 🇪🇸 **Español**
 - 🇬🇧 **English**
 - **Català**
 
@@ -144,7 +144,4 @@ Este proyecto es open source y está disponible para que cualquiera lo use, modi
 
 ## 👤 Autor
 
-jramma
-
-- Website: [jramma.com](https://jramma.com)
 - GitHub: [@jramma](https://github.com/jramma)
