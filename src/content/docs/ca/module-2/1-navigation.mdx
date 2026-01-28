@@ -11,10 +11,14 @@ import { Aside } from "@astrojs/starlight/components";
 
 Recorda que tot comença a `/`.
 
-### Conceptes de PATH
+### Conceptes de rutes (path)
 
 - **Camí absolut**: Comença amb `/`. Sempre funciona, sense importar on siguis. (ex.: `/home/user/docs/file.txt`).
 - **Camí relatiu**: *No* comença amb `/`. Depèn de la teva ubicació actual. (ex.: `docs/file.txt` o `../file.txt`).
+
+<Aside type="note">
+No confonguis les **rutes de fitxer** amb la variable d'entorn **`$PATH`**. Les rutes descriuen on són els fitxers al sistema; `$PATH` és la llista de directoris on el shell busca executables quan escrius una comanda. Pots veure'l amb `echo $PATH`.
+</Aside>
 
 ## Comandes de navegació
 
@@ -24,6 +28,7 @@ Recorda que tot comença a `/`.
 | `cd` | Change Directory | Et mou a una carpeta nova. |
 | `cd ..` | | Puja un nivell. |
 | `cd ~` | | Va al teu directori personal (home). |
+| `cd -` | | Torna al directori anterior. |
 | `ls` | List | Mostra els fitxers del directori actual. |
 
 ### Opcions de `ls`
@@ -33,6 +38,16 @@ Rarament executes només `ls`. Opcions habituals:
 - `ls -l`: Llistat **llarg** (permisos, propietari, mida, data).
 - `ls -a`: **Tots** els fitxers (mostra els fitxers ocults que comencen per `.`).
 - `ls -lh`: Llistat llarg amb mides **llegibles per a humans** (MB, GB).
+- `ls -la`: Llistat llarg de **tots** els fitxers (incloent ocults).
+- `ls -ltr`: Ordena per data (els més recents al final).
+
+### Patrons glob (comodins)
+
+Els comodins ajuden a seleccionar múltiples fitxers:
+
+- `*.txt`: Tots els `.txt`.
+- `file?.txt`: Coincideix `file1.txt`, `fileA.txt`, etc.
+- `docs/*/index.md`: Qualsevol `index.md` dins d'un subdirectori de `docs/`.
 
 ## Gestió de fitxers
 
@@ -44,6 +59,12 @@ Rarament executes només `ls`. Opcions habituals:
 | `cp -r` | Copiar de manera recursiva (carpeta) | `cp -r projects/ projects-backup/` |
 | `mv` | Moure (o canviar el nom) | `mv notes.txt doc.txt` |
 | `rm` | Eliminar (esborrar) | `rm file.txt` |
+| `rmdir` | Eliminar directori **buit** | `rmdir old-empty-dir` |
+| `rm -i` | Confirmació interactiva | `rm -i file.txt` |
+
+<Aside type="tip">
+Si una ruta conté espais, **envolta-la amb cometes**: `mv "Informe Final.txt" informes/`.
+</Aside>
 
 <Aside type="danger">
 **`rm -rf /`**: El `rm -r` (recursiu) combinat amb `-f` (forçar) és perillós. Esborra carpetes i el seu contingut sense preguntar. Revisa sempre el camí abans de prémer Enter.
@@ -65,6 +86,10 @@ Cerca fitxers en una jerarquia de directoris.
   - `find . -perm 777`: Cerca fitxers amb permisos 777.
   - `find . -mtime -1`: Cerca fitxers modificats en les últimes 24 hores.
   - `find . -user alice`: Cerca fitxers propietat de l'usuari `alice`.
+  - `find . -iname "*.jpg"`: Cerca sense tenir en compte majúscules/minúscules.
+  - `find . -maxdepth 2 -name "*.md"`: Limita la profunditat de la cerca.
+  - `find . -not -path "*/node_modules/*"`: Exclou directoris no desitjats.
+  - `find . -type f -name "*.log" -exec ls -l {} \;`: Executa una acció per a cada resultat.
 
 ### `locate`
 
@@ -84,3 +109,17 @@ Localitza un comandament.
 Localitza el binari, el codi font i les pàgines de manual d'un comandament.
 
 - **Exemple**: `whereis ls`
+
+## El `$PATH` i la resolució de comandes
+
+Quan escrius una comanda, el shell busca l'executable en cada directori de `$PATH` (separats per `:`).
+
+- **Veure el teu PATH**: `echo $PATH`
+- **Afegir temporalment un directori**: `export PATH="$HOME/bin:$PATH"`
+- **Fer-ho persistent**:
+  - En `bash`: afegeix l'export a `~/.bashrc` o `~/.profile`
+  - En `zsh`: afegeix-lo a `~/.zshrc`
+
+<Aside type="tip">
+Si `which` no troba una comanda però existeix l'executable, comprova que el seu directori estigui al `$PATH` o invoca'l amb la **ruta completa** (`/usr/local/bin/foo`) o una **ruta relativa** (`./foo`).
+</Aside>

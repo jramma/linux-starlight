@@ -11,10 +11,14 @@ import { Aside } from "@astrojs/starlight/components";
 
 Recall that everything starts at `/`.
 
-### PATH Concepts
+### Path concepts (file paths)
 
 - **Absolute Path**: Starts with `/`. Always works, no matter where you are. (e.g., `/home/user/docs/file.txt`).
 - **Relative Path**: Does _not_ start with `/`. Depends on your current location. (e.g., `docs/file.txt` or `../file.txt`).
+
+<Aside type="note">
+Do not confuse **file paths** with the environment variable **`$PATH`**. File paths describe where files are on the system; `$PATH` is the list of directories the shell searches for executables when you type a command. See it with `echo $PATH`.
+</Aside>
 
 ## Navigation Commands
 
@@ -24,6 +28,7 @@ Recall that everything starts at `/`.
 | `cd`    | Change Directory        | Moves you to a new folder.            |
 | `cd ..` |                         | Move up one level.                    |
 | `cd ~`  |                         | Move to your home directory.          |
+| `cd -`  |                         | Go back to the previous directory.    |
 | `ls`    | List                    | Shows files in the current directory. |
 
 ### `ls` Flags
@@ -33,6 +38,16 @@ You rarely run just `ls`. Common flags:
 - `ls -l`: **Long** listing (permissions, owner, size, date).
 - `ls -a`: **All** files (shows hidden files starting with `.`).
 - `ls -lh`: Long listing with **human-readable** sizes (MB, GB).
+- `ls -la`: Long listing of **all** files (including hidden).
+- `ls -ltr`: Sort by date (most recent at the end).
+
+### Glob patterns (wildcards)
+
+Wildcards help select multiple files:
+
+- `*.txt`: All `.txt` files.
+- `file?.txt`: Matches `file1.txt`, `fileA.txt`, etc.
+- `docs/*/index.md`: Any `index.md` inside a subdirectory of `docs/`.
 
 ## File Management
 
@@ -44,6 +59,12 @@ You rarely run just `ls`. Common flags:
 | `cp -r` | Copy Recursive (Folder) | `cp -r projects/ projects-backup/` |
 | `mv`    | Move (or Rename)        | `mv notes.txt doc.txt`             |
 | `rm`    | Remove (Delete)         | `rm file.txt`                      |
+| `rmdir` | Remove **empty** directory | `rmdir old-empty-dir`            |
+| `rm -i` | Interactive confirmation | `rm -i file.txt`                  |
+
+<Aside type="tip">
+If a path contains spaces, **wrap it in quotes**: `mv "Final Report.txt" reports/`.
+</Aside>
 
 ## Finding Files
 
@@ -62,6 +83,10 @@ Searching for files in a directory hierarchy.
   - `find . -perm 777`: Find files with 777 permissions.
   - `find . -mtime -1`: Find files modified in the last 24 hours.
   - `find . -user alice`: Find files owned by user `alice`.
+  - `find . -iname "*.jpg"`: Case-insensitive match.
+  - `find . -maxdepth 2 -name "*.md"`: Limit search depth.
+  - `find . -not -path "*/node_modules/*"`: Exclude unwanted directories.
+  - `find . -type f -name "*.log" -exec ls -l {} \;`: Run an action for each result.
 
 ### `locate`
 
@@ -81,3 +106,17 @@ Locate a command.
 Locate the binary, source, and manual page files for a command.
 
 - **Example**: `whereis ls`
+
+## `$PATH` and command resolution
+
+When you type a command, the shell searches for the executable in each directory in `$PATH` (separated by `:`).
+
+- **See your PATH**: `echo $PATH`
+- **Temporarily add a directory**: `export PATH="$HOME/bin:$PATH"`
+- **Make it persistent**:
+  - In `bash`: add the export to `~/.bashrc` or `~/.profile`
+  - In `zsh`: add it to `~/.zshrc`
+
+<Aside type="tip">
+If `which` cannot find a command but the executable exists, ensure its directory is in `$PATH`, or invoke it with the **absolute path** (`/usr/local/bin/foo`) or a **relative path** (`./foo`).
+</Aside>

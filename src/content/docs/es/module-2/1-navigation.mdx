@@ -12,10 +12,14 @@ import { Aside } from '@astrojs/starlight/components'
 
 Recuerda que todo comienza en `/`.
 
-### Conceptos de PATH
+### Conceptos de rutas (path)
 
 - **Ruta absoluta**: Comienza con `/`. Siempre funciona, sin importar dónde estés. (ej.: `/home/user/docs/file.txt`).
 - **Ruta relativa**: *No* comienza con `/`. Depende de tu ubicación actual. (ej.: `docs/file.txt` o `../file.txt`).
+
+<Aside type="note">
+No confundas las **rutas de archivos** con la variable de entorno **`$PATH`**. Las rutas describen dónde están los archivos en el sistema; `$PATH` es la lista de directorios donde el shell busca ejecutables cuando escribes una orden. Puedes verlo con `echo $PATH`.
+</Aside>
 
 ## Comandos de navegación
 
@@ -25,6 +29,7 @@ Recuerda que todo comienza en `/`.
 | `cd` | Change Directory | Te mueve a una nueva carpeta. |
 | `cd ..` | | Sube un nivel. |
 | `cd ~` | | Va a tu directorio personal (home). |
+| `cd -` | | Vuelve al directorio anterior. |
 | `ls` | List | Muestra los archivos en el directorio actual. |
 
 ### Opciones de `ls`
@@ -34,6 +39,16 @@ Rara vez ejecutas solo `ls`. Opciones habituales:
 - `ls -l`: Listado **largo** (permisos, propietario, tamaño, fecha).
 - `ls -a`: **Todos** los archivos (muestra archivos ocultos que empiezan por `.`).
 - `ls -lh`: Listado largo con tamaños **legibles para humanos** (MB, GB).
+- `ls -la`: Listado largo de **todos** los archivos (incluyendo ocultos).
+- `ls -ltr`: Ordena por fecha (los más recientes al final).
+
+### Patrones glob (comodines)
+
+Los comodines ayudan a seleccionar múltiples archivos:
+
+- `*.txt`: Todos los `.txt`.
+- `file?.txt`: Coincide `file1.txt`, `fileA.txt`, etc.
+- `docs/*/index.md`: Cualquier `index.md` dentro de un subdirectorio de `docs/`.
 
 ## Gestión de archivos
 
@@ -45,6 +60,12 @@ Rara vez ejecutas solo `ls`. Opciones habituales:
 | `cp -r` | Copiar de forma recursiva (carpeta) | `cp -r projects/ projects-backup/` |
 | `mv` | Mover (o renombrar) | `mv notes.txt doc.txt` |
 | `rm` | Eliminar (borrar) | `rm file.txt` |
+| `rmdir` | Eliminar directorio **vacío** | `rmdir old-empty-dir` |
+| `rm -i` | Confirmación interactiva | `rm -i file.txt` |
+
+<Aside type="tip">
+Si una ruta contiene espacios, **envuélvela con comillas**: `mv "Informe Final.txt" informes/`.
+</Aside>
 
 <Aside type="caution">
  **`rm -rf /`**: El `rm -r` (recursivo) combinado con `-f` (forzar) es peligroso. Borra carpetas y su contenido sin preguntar. Revisa siempre la ruta antes de pulsar Enter.
@@ -67,6 +88,10 @@ Busca archivos en una jerarquía de directorios.
   - `find . -perm 777`: Busca archivos con permisos 777.
   - `find . -mtime -1`: Busca archivos modificados en las últimas 24 horas.
   - `find . -user alice`: Busca archivos cuyo propietario sea el usuario `alice`.
+  - `find . -iname "*.jpg"`: Búsqueda sin distinguir mayúsculas/minúsculas.
+  - `find . -maxdepth 2 -name "*.md"`: Limita la profundidad de búsqueda.
+  - `find . -not -path "*/node_modules/*"`: Excluye directorios no deseados.
+  - `find . -type f -name "*.log" -exec ls -l {} \;`: Ejecuta una acción por cada resultado.
 
 ### `locate`
 
@@ -86,3 +111,17 @@ Localiza un comando.
 Localiza el binario, el código fuente y las páginas de manual de un comando.
 
 - **Ejemplo**: `whereis ls`
+
+## `$PATH` y resolución de comandos
+
+Cuando escribes una orden, el shell busca el ejecutable en cada directorio de `$PATH` (separados por `:`).
+
+- **Ver tu PATH**: `echo $PATH`
+- **Añadir temporalmente un directorio**: `export PATH="$HOME/bin:$PATH"`
+- **Hacerlo persistente**:
+  - En `bash`: añade el export a `~/.bashrc` o `~/.profile`
+  - En `zsh`: añádelo a `~/.zshrc`
+
+<Aside type="tip">
+Si `which` no encuentra una orden pero el ejecutable existe, verifica que su directorio esté en `$PATH` o invócalo con la **ruta absoluta** (`/usr/local/bin/foo`) o una **ruta relativa** (`./foo`).
+</Aside>
