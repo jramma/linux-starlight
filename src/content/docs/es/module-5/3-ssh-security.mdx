@@ -15,18 +15,18 @@ Más seguro que las contraseñas.
 
 1. **Generar Claves** (en tu portátil):
 
-    ```bash
-    ssh-keygen -t ed25519
-    ```
+   ```bash
+   ssh-keygen -t ed25519
+   ```
 
 2. **Copiar Clave Pública al Servidor**:
 
-    ```bash
-    ssh-copy-id user@ip_servidor
-    ```
+   ```bash
+   ssh-copy-id user@ip_servidor
+   ```
 
 3. **Probar Inicio de Sesión**:
-    Ahora deberías iniciar sesión sin contraseña.
+   Ahora deberías iniciar sesión sin contraseña.
 
 ## Endurecimiento de `/etc/ssh/sshd_config`
 
@@ -44,5 +44,7 @@ PasswordAuthentication no
 `sudo systemctl restart ssh` (o `sshd`).
 
 <Aside type="caution">
-Antes de añadir `PasswordAuthentication no`, ¡asegúrate de que tu inicio de sesión con clave funciona! De lo contrario, ejecutas "El Bloqueo Digital" y pierdes el acceso a tu servidor.
+  Antes de añadir `PasswordAuthentication no`, ¡asegúrate de que tu inicio de
+  sesión con clave funciona! De lo contrario, ejecutas "El Bloqueo Digital" y
+  pierdes el acceso a tu servidor.
 </Aside>

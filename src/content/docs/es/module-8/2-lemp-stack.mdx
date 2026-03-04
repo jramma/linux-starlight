@@ -1,0 +1,150 @@
+---
+title: 8.2 La Pila de Software (LEMP Stack)
+description: Ve más allá del HTML estático. Integra bases de datos MariaDB y procesadores PHP asincrónicos para lograr aplicaciones dinámicas.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás el significado del acrónimo corporativo global LEMP. - Sabrás
+  conectar Nginx a un ejecutor CGI invisible capaz de leer código pesado PHP
+  (`php-fpm`). - Instalarás un motor de SQL Relacional abierto (`MariaDB`). -
+  Auditarás las colisiones de comunicación usando `journalctl`.
+</PreCheck>
+
+## 1. Dejando atrás la edad de piedra
+
+En la lección anterior encendimos un Nginx capaz de mostrar un solitario archivo `index.html`.
+El problema en 2026 es que ninguna página corporativa real usa HTML estático crudo dictado a mano. Las empresas emplean Gestores de Contenido monstruosos (como WordPress) o ERPs (como Odoo), los cuales están programados puramente usando Lenguajes Dinámicos (como **PHP** o **Python**) y almacenan millones de usuarios en **Bases de Datos relacionales** estructuradas.
+
+Al ecosistema Sysadmin mundial estándar conformado por **L**inux, **E**ngine-X (Nginx), **M**ariaDB y **P**HP se le conoce corporativamente como la infraestructura **Stack LEMP**.
+
+---
+
+## 2. El Procesador de Lenguaje (`PHP-FPM`)
+
+Nginx es un genio sirviendo archivos pasivos a la red (como fotos o HTML), pero es un inútil intentando entender código de lenguajes de programación.
+Si un usuario intenta visitar `http://empresa.com/login.php`, Nginx no tiene ni ideal de procesarlo y, por defecto, se rinde y ofrece al usuario la "descarga fría" de todo el código de programación interno a su disco local. ¡Un agujero de seguridad brutal!
+
+Para solucionar esto existen los **FPM (FastCGI Process Managers)**. Básicamente son demonios de sistema (`systemctl`) que corren independientemente escondidos al fondo escuchando órdenes.
+
+```bash
+# Instalamos la navaja suiza de ejecución rápida asincrónica php-fpm
+sudo apt install php-fpm
+```
+
+### Configurando a Nginx para que delegue peticiones
+
+A Nginx hay que instruirle para que derive el trabajo difícil a nuestro recién instalado obrero de fondo. En el archivo `sites-available/empresa.com` añadiremos un bloque "Location" de francotirador especial que dice: _"En el instante en el que veas un archivo con terminación \.php, ni lo mires, envíaselo por un conducto TCP local a nuestro amigo FPM instalado ahora, él te devolverá el HTML masticado"_.
+
+```nginx
+server {
+    listen 80;
+    server_name mi-empresa.com;
+    root /var/www/mi-empresa.com/html;
+    # Decimos que prefiera correr index.php primero si existe
+    index index.php index.html;
+
+    # ¡El conducto Socket maestro!
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        # Lanzando el balón de trabajo al socket unix ultrarrápido del obrero FPM versión 8
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+    }
+}
+```
+
+---
+
+## 3. El Corazón Transaccional (`MariaDB`)
+
+El último pilar de la Pila LEMP recae sobre el almacenamiento elástico. Sustituiremos la obsoleta deidad original (MySQL) por su alternativa comunitaria Open Source superior, estandarizada actualmente en los servidores de todo el globo terráqueo: **MariaDB**.
+
+```bash
+# Lo bajará y arrancará el servicio automáticamente
+sudo apt install mariadb-server
+
+# El script LFCS que CIERRA puertas vulnerables de fábrica
+sudo mariadb-secure-installation
+```
+
+_(Ese maravilloso script de aseguramiento te obligará interactivamente a colocarle clave al administrador maestro ("Root"), borrará bases de datos "Test" inútiles y prohibirá brutalmente que alguien averigüe tu IP pública y se conecte a la base de datos sin estar logueado localmente)._
+
+---
+
+## 4. Auditoría Post-Despliegue
+
+La complejidad se multiplica al apilar servicios dispares (`Nginx`, `PHP`, y `MariaDB`), todos atados fuertemente por sus permisos del Módulo 2 al usuario maestro estandarizado de la web `www-data`.
+Si tras realizar el ensamblado en el examen LFCS del Stack el navegador vomita una fatal **Página Blanca de la Muerte (Error HTTP 500)**, ¡jamás toques botones ni te inventes soluciones rezando!
+
+1. Pídele al demonio Web que te narre los horrores que ha vivido:
+   `journalctl -u nginx --no-pager | tail -n 20`
+2. Ve al diario sangriento local que guardan los obreros y revísalo con los comandos clásicos:
+   `tail -f /var/log/nginx/error.log`
+
+Encontrarás respuestas precisas como _"php-fpm carece del driver mariadb-php para conectar al corazón del SQL"_ o _"Permiso denegado al abrir archivo var/www/..."_.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Es de noche. Has desplegado el Stack LEMP. Echas a andar Nginx subiendo tu archivo de programación secreta `calculos-financieros.php` al public*html web. Como eres un purista, ignoraste instalar y activar el eslabón obrero mágico `php-fpm` o no incluiste su respectivo bloque traductor especial \_location fastcgi_pass* en el archivo "sites-available". Un cliente real carga por primera vez la recien nacida URL desde Mozilla Firefox. ¿Cual es el estrepitoso y dantesco resultado visible desencadenado por el navegador según el protocolo estandarizado?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       La masacre del código crudo (Data Breach). Al Nginx carecer de un
+       procesador PHP atado en su ruta, no percibe al fichero como programa;
+       asume que es un inocente y frío "fichero de texto más" como si fuera un
+       MP3. Por ende, servirá ciegamente vía HTTP a través de internet el
+       archivo empaquetándolo, y el navegador del cliente procederá a descargar
+       automáticamente el `.php` crudo al escritorio robándote la lógica
+       profunda y las contraseñas de las bases de datos escritas en tus códigos
+       fuente.
+     </Option>
+     <Option>
+       Aparecerá una alerta blanca con HTTP 404 de Archivo No Encontrado.
+     </Option>
+     <Option>
+       MariaDB activará la barrera del script secure-installation cortándolo en
+       Localhost.
+     </Option>
+   </MultipleChoice>
+
+2. Hemos inyectado MariaDB. Se espera que corra eternamente como un banco. Un programador se enfadó contigo en Slack exigiéndote que configures mediante UFW un `allow 3306` puro abierto de MariaDB para la IP de su casa. Sin embargo el servidor deniega su conexión desde fuera incesantemente. Descubres asombrado que MariaDB ni siquiera instaló un puerto global atado arrojando `ss -tulpn` y mostrando "127.0.0.1:3306" por bandera. Tú no programaste eso. ¿Quién le ató las manos y cortó el cuello remoto de la base de datos por seguridad de tu infraestructura?
+
+   <MultipleChoice>
+     <Option>Iptables a través del módulo MBR de GRUB.</Option>
+     <Option>Lo cortó Nginx mediante el bloque Server interno.</Option>
+     <Option isCorrect>
+       El mandato imperativo de seguridad: Ejecutaste en tu puesta a punto la
+       orden quirúrgica de cierre `mariadb-secure-installation` en la shell.
+       Este asistente vital modificó al vuelo las concesiones bind cerrando la
+       base de datos al loopback Local y eliminando usuarios comodín anónimos
+       preconfigurados que atraían hackers internautas, asegurando que nadie en
+       este mundo físico que no esté internamente dentro de este servidor
+       debian, jamás, podrá llamarle por puerto.
+     </Option>
+   </MultipleChoice>
+
+3. Conoces profundamente la anatomía sysadmin LFCS. Cuando descargas una herramienta corporativa gigantesca (como un CRM de facturación), te regalan centenares de miles de archivos PHP revueltos en descargas comprimidas tarballs. Si tú las descomprimes burdamente todas con tu usuario personal local logueado desde tu casa hacia el trono maestro de despacho web ubicado en `/var/www/crm/html` mediante un simple arrastre... ¿qué orden correctiva OBLIGATORIA global te quedará por dictar sobre todo el enjambre arbóreo de carpetas antes de esperar que el FPM y Nginx arranquen mágicamente los procesamientos dinámicos sin estallar con "Denials 403"?
+   <MultipleChoice>
+     <Option isCorrect>
+       La Purificación de la Tutela Jerárquica Obrero: Estás forzado a lanzar la
+       encriptación de propiedad `sudo chown -R www-data:www-data
+       /var/www/crm/html`. Con el modificador Recursivo (`-R`), descenderás
+       transfiriendo atómica y piramidalmente el 100% de la pertenencia local de
+       los 100,000 subarchivos hacia el Demonio abstracto universal web
+       (`www-data`). Solo entonces, los obreros de Systemd poseerán el derecho
+       legítimo para leerlo y operarlo sobre el motor.
+     </Option>
+     <Option>`sudo aa-enforce 777 /var/nginx/`</Option>
+     <Option>
+       Ejecutar `sudo update-grub` para asegurar que sobrevivan reinicios de
+       MariaDB.
+     </Option>
+   </MultipleChoice>

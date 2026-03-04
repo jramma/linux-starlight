@@ -1,0 +1,131 @@
+---
+title: 6.3 La Dimensión del Tiempo (NTP)
+description: Configura el huso horario y mantén a tu servidor sincronizado al milisegundo con el mundo usando Chrony y timedatectl.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás la letalidad de un servidor "desincronizado". - Distinguirás
+  entre la hora de la BIOS (`hwclock`) y la hora del S.O. - Sabrás utilizar
+  `timedatectl` para fijar tu continente (Timezone). - Configurarás el protocolo
+  NTP instalando y manejando `chrony`.
+</PreCheck>
+
+## 1. El Peligro del Tiempo
+
+Para un ordenador personal, tener el reloj atrasado 5 minutos solo significa que llegarás tarde a una reunión. **Para un Servidor de base de datos, 5 minutos de atraso significan la destrucción del negocio:**
+
+- **Criptografía Rota**: Si un servidor tuyo intenta conectarse a la pasarela de pagos del banco, y el banco detecta que el reloj de tu servidor dice que son las 15:00 mientras que en el banco son las 15:05, el banco catalogará la conexión como un "Ataque de Replay" y cortará tus transacciones financieras en seco.
+- **Logs Inservibles**: Si sufres un hackeo, y un servidor registra el ataque a las 11:00 y el otro servidor lo registra a las 11:02 porque no estaban sincronizados entre sí, es imposible reconstruir la autopsia de por dónde entró el hacker.
+
+---
+
+## 2. Los Dos Relojes
+
+Todo ordenador tiene en realidad **dos relojes diferenciados** que pelean entre sí:
+
+1. **Reloj de Hardware (Real Time Clock - RTC)**: El chip físico alimentado por la pila de botón de la placa base.
+2. **Reloj del Sistema (Software)**: El reloj imaginario que Linux empieza a contar en la memoria RAM nada más encenderse leyendo inicialmente la BIOS.
+
+Podemos obligarlos a hablarse:
+
+```bash
+# Ver la hora real de la diminuta BIOS de la placa base
+sudo hwclock --show
+
+# Obligar a la BIOS a ajustarse forozosamente a la hora que tenga el Linux ahora mismo
+sudo hwclock --systohc
+```
+
+---
+
+## 3. Configurar la Franja Horaria (Timezone)
+
+Por defecto, los servidores modernos corporativos siempre se configuran en **UTC (Universal Time Coordinated)**, sin retrasos ni adelantos ni cambios de verano, para que todos los servidores del mundo hablen el mismo idioma en los Logs.
+
+Aun así, si necesitas forzar la hora local de Madrid o México, la herramienta obligatoria de Systemd es `timedatectl`:
+
+```bash
+# Ver el resumen y estado de la hora actual
+timedatectl status
+
+# Buscar cómo se escribe el nombre oficial de Madrid
+timedatectl list-timezones | grep Madrid
+
+# Asignar la zona horaria perpetuamente (Reemplaza el antiguo /etc/localtime)
+sudo timedatectl set-timezone Europe/Madrid
+```
+
+---
+
+## 4. NTP: El Latido Global (`chrony`)
+
+En lugar de ajustar la hora a mano como en un reloj de pulsera, los servidores utilizan el mágico **Network Time Protocol (NTP)**. NTP viaja por internet, se conecta a relojes atómicos controlados por universidades y gobiernos, y calcula el retraso que genera el cable submarino de internet para ajustar la hora de tu máquina al absoluto milisegundo perfecto de manera constante y paramétrica cada pocos minutos.
+
+En el viejo estándar se usaba un paquete llamado `ntp`. En el mundo LFCS moderno corporativo de hoy se exige usar su versión rápida y superior: **`chrony`**.
+
+```bash
+# Instalamos el motor de reloj atómico
+sudo apt install chrony
+
+# Iniciar y asegurar que corre cada vez que el servidor se encienda
+sudo systemctl enable --now chronyd
+```
+
+Si quieres ver cómo de bien se está comunicando tu servidor con el mundo exterior:
+
+```bash
+# Monitorea los servidores atómicos mundiales a los que estás enlazado
+chronyc sources -v
+```
+
+_(Si ves líneas con símbolos de `^_`, significa que estás mágicamente enganchado y tu reloj JAMÁS se atrasará ni un segundo).\*
+
+---
+
+## Comprueba tus conocimientos
+
+1. Tras encender cinco nuevos servidores clonados de una plantilla antigua que ha estado apagada 2 años, notas que la base de datos de los 5 equipos arroja el timestamp del año 2022 y las conexiones con el Master fallan. Necesitas reventar y forzar instantáneamente la hora con un estándar sin depender de interfaces gráficas. Identifica el comando fundamental para decirle a la matriz de Systemd que estampe la hora local a Madrid.
+
+   <MultipleChoice>
+     <Option>`sudo hwclock --adjust Europe/Madrid`</Option>
+     <Option isCorrect>
+       La utilidad moderna para dominar la dimensión temporal sin interactuar
+       con ficheros arcaicos es: `sudo timedatectl set-timezone Europe/Madrid`
+     </Option>
+     <Option>`sudo systemctl restart time`</Option>
+   </MultipleChoice>
+
+2. Acabas de alquilar en Hetzner (Alemania) 3 servidores desnudos para montar un cluster bancario el cual va a enviar miles de transacciones cruzadas por segundo. Tu jefe te recalca la extrema e imperativa regla de oro Sysadmin sobre cómo deben estar configurados todos los husos horarios del ecosistema para no corromper la trazabilidad en bases de datos con los cambios de verano/invierno de cada país. ¿Qué Timezone se exige usar en clústeres?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El pilar central innamovible: Todos los servidores se rigen y deben
+       dejarse configurados forzosamente en `UTC`. Jamás sufren adelantos y
+       atrasos gubernamentales por políticas de luz solar, lo que garantiza
+       secuencias lógicas inquebrantables.
+     </Option>
+     <Option>
+       La hora local del país de la central corporativa del Banco.
+     </Option>
+     <Option>Europe/Berlin, dado que allí reside el metal.</Option>
+   </MultipleChoice>
+
+3. Tiras el comando `chronyc sources -v` y adviertes que te estás comunicando por defecto con el gran pool global europeo `pool.ntp.org` para ajustar tus milisegundos. Sin embargo, tu empresa tiene alta seguridad militar en intranet aislada y te acaban de abrir un puerto hacia su propio servidor "Satelital GPS" situado internamente en la IP `10.0.0.9`. ¿Para que Chrony deje de llamar al exterior y use tu IP interna como Dios del tiempo, qué habría que manipular teóricamente?
+   <MultipleChoice>
+     <Option>Habría que purgar `chrony` e instalar `systemd-timesyncd`</Option>
+     <Option>Editaríamos `/etc/fstab/chrony` introduciendo la IP.</Option>
+     <Option isCorrect>
+       La configuración sagrada se edita alterando el fichero núcleo
+       `/etc/chrony/chrony.conf` (o sencillamente `/etc/chrony.conf` en RHEL),
+       eliminando o comentando las directivas `pool` vigentes para forzar y
+       sustituirlas por: `server 10.0.0.9 iburst` procediendo a recargar después
+       el demonio.
+     </Option>
+   </MultipleChoice>

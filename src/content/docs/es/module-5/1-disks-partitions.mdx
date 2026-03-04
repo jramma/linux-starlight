@@ -1,0 +1,150 @@
+---
+title: 5.1 Anatomía de Discos y Particiones
+description: Diferencias entre /dev/sda y /dev/nvme, tablas MBR vs GPT, y uso de fdisk/parted.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprenderás la nomenclatura de dispositivos en el directorio mágico `/dev/`.
+  - Sabrás utilizar `lsblk` para obtener el mapa de todos tus discos conectados.
+  - Entenderás por qué MBR está muerto a favór de GPT. - Aprenderás a esculpir
+  nuevos trozos de disco en consola usando `fdisk` y `parted`.
+</PreCheck>
+
+En Linux, todo —absolutamente todo— es un archivo. Incluso los trozos de metal giratorio de 2 Terabytes.
+Si conectas un Disco Duro nuevo a tu servidor, no aparecerá mágicamente una "Unidad D:". En su lugar, el Kernel creará un archivo especial opaco dentro de la carpeta `/dev` (Devices).
+
+Dependiendo del cable físico que use ese disco, Linux le pondrá un nombre distinto:
+
+- Discos clásicos (SATA/USB): Se llamarán `sda` (Primer disco), `sdb` (Segundo disco), `sdc`, etc.
+- Discos flash modernos (NVMe): Se llamarán `nvme0n1` (Primer disco), `nvme1n1`, etc.
+
+## 1. El Radar de Discos (`lsblk`)
+
+Nunca, bajo ninguna circunstancia, operes un disco a ciegas. Tu mejor amigo antes de tocar nada es el comando "List Block Devices" (`lsblk`).
+Este comando dibuja un árbol jerárquico inofensivo que te muestra qué discos físicos tienes y en cuántas particiones están cortados.
+
+```bash
+# Ver el mapa de discos sin tamaño alterado
+lsblk
+
+# Ver el mapa de discos incluyendo el tipo de filesystem instalado en ellos
+lsblk -f
+```
+
+La salida típica te mostrará el disco "padre" (`sda`), y como "hijos" ramificados sus particiones numéricas (`sda1`, `sda2`).
+
+---
+
+## 2. El Tablero de Dibujo: MBR vs GPT
+
+Un disco crudo recién comprado no sirve de nada. Tienes que subdividirlo lógicamente (particionarlo). Pero antes de hacer particiones, el disco necesita un "Índice" en su primer sector físico que apunte a dónde empieza y termina cada partición.
+Hay dos tecnologías enfrentadas por la historia para este índice:
+
+### MBR (Master Boot Record) - El Anciano (1983)
+
+- Solo soporta discos de hasta **2 Terabytes máximo**. Si conectas un disco de 4TB, el sistema ignorará los 2TB extra.
+- Solo permite crear **4 particiones primarias**. Para tener más, tienes que crear una aberración llamada "Partición Extendida".
+- **Comando clásico para editarlo**: `fdisk /dev/sdb`
+
+### GPT (GUID Partition Table) - El Estándar Moderno
+
+- Soporta discos de trillones de Terabytes (Zettabytes).
+- Permite 128 particiones nativas como mínimo sin trucos sucios.
+- Trae copia de seguridad del índice al final del disco por si el inicial se corrompe.
+- **Comando moderno para editarlo**: `parted /dev/sdb` o `gdisk`.
+
+<Aside type="tip" title="La regla de fdisk">
+  Aunque `fdisk` nació para MBR, las versiones modernas de hoy en día ya
+  soportan GPT. Sin embargo, en la certificación LFCS se te exigirá saber
+  manejar `parted` sí o sí para scripts desatendidos.
+</Aside>
+
+---
+
+## 3. Esculpiendo Discos en vivo
+
+Hagamos de cuenta que hemos enchufado un disco vacío de 10GB que Linux llamó `/dev/sdb`. Vamos a crearle una partición ocupando todo el espacio.
+
+### Opción A: A la vieja escuela (Interactivo con `fdisk`)
+
+```bash
+sudo fdisk /dev/sdb
+```
+
+Entrarás a un prompt oscuro. Presiona `m` para ver la ayuda. Los pasos sagrados son:
+
+1. Pulsar `n` (New) para nueva partición.
+2. Pulsar `p` (Primary).
+3. Presionar **Enter, Enter, Enter** para aceptar todos los valores por defecto que asumen "todo el disco".
+4. Pulsar `p` (Print) para comprobar visualmente que se ha esculpido tu partición `sdb1`.
+5. Si te equivocaste pulsar `q` (Quit sin guardar). Si todo cuadra pulsar **`w` (Write)** para grabar en metal los cambios y salir.
+
+### Opción B: A la moderna y automatizada (`parted`)
+
+`parted` no tiene por qué ser interactivo, le puedes lanzar la orden directamente en una sola línea, ideal para cuando despliegas 500 servidores de golpe con un script.
+
+```bash
+# 1. Asignarle el índice moderno GPT al disco virgen
+sudo parted /dev/sdb mklabel gpt
+
+# 2. Crear una partición primaria ocupando el 100% (desde el byte 0% al 100%)
+sudo parted -a opt /dev/sdb mkpart primary 0% 100%
+```
+
+Al terminar con cualquiera de las dos utilidades, si vuelves a ejecutar tu radar `lsblk`, verás que ha nacido con éxito un nuevo hijo llamado `sdb1` esperando a ser formateado en la siguiente lección.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Ejecutas `lsblk` en tu servidor y observas la siguiente salida para un disco concreto: Un disco padre virtualizado de Azure llamado `/dev/sdc` de 5TB del cual cuelga un único hijo particionado llamado `/dev/sdc1` también de 5TB. ¿Qué formato de tabla de particiones está gastando obligatoriamente este disco en su primer sector?
+
+   <MultipleChoice>
+     <Option>MBR (Master Boot Record).</Option>
+     <Option isCorrect>
+       GPT (GUID Partition Table). El viejo estándar MBR tiene una limitación
+       arquitectónica matemática de 2 Terabytes. Es físicamente imposible que
+       una partición MBR abarque 5TB enteros, por lo que el disco usa GPT
+       obligatoriamente.
+     </Option>
+     <Option>`ext4`, ya que ese es el formato moderno estándar.</Option>
+   </MultipleChoice>
+
+2. Acabas de entrar al menú oscuro del manipulador clásico de particiones ejecutando `sudo fdisk /dev/sdb`. Sin querer, presionas `d` (Delete) un montón de veces y el programa te avisa que acabas de borrar las 3 particiones que contenían todos los datos históricos de facturación de la empresa. Empiezas a sudar frío. ¿Cuál es el procedimiento Sysadmin LFCS para no ir a la cárcel?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Presionar la tecla `q` (Quit) y presionar Enter. La herramienta fdisk
+       trabaja íntegramente en la memoria RAM y es absolutamente inofensiva
+       hasta que presionas la tecla de confirmación letal `w` (Write). Saliendo
+       con q abortas los cambios matemáticos.
+     </Option>
+     <Option>
+       Apagar el ordenador tirando del cable eléctrico físicamente.
+     </Option>
+     <Option>
+       Presionar `u` (Undo) miles de veces hasta recuperar la tabla a su estado
+       anterior.
+     </Option>
+   </MultipleChoice>
+
+3. Te piden de urgencia añadir un nuevo disco duro SSD ultra-rápido basado en estándar PCIe directo a la placa base en un servidor de bases de datos moderno. Insertado el disco y encendido Debian, vas corriendo a buscar la partición a `/dev/sda` pero Linux te dice que no existe. ¿Por qué ocurre esto y dónde puede residir ese archivo en base a su naturaleza física?
+   <MultipleChoice>
+     <Option>Porque falta cargar el driver usando modprobe ext4.</Option>
+     <Option>
+       Porque siempre se llaman `/dev/hda` en servidores profesionales.
+     </Option>
+     <Option isCorrect>
+       La nomenclatura física "sd" solo se aplica históricamente a discos que
+       operan bajo protocolos SCSI/SATA/USB. Los discos modernos directos al
+       puerto PCI (Non-Volatile Memory Express) generan un archivo transparente
+       que comienza obligatoriamente por `/dev/nvmeXnY`.
+     </Option>
+   </MultipleChoice>

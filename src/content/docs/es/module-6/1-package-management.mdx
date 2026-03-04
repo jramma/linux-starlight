@@ -1,0 +1,166 @@
+---
+title: 6.1 Repositorios y APT
+description: El ecosistema de software en Debian. Differencias entre dpkg, apt, y la edición manual de sources.list.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Comprenderás la filosofía de seguridad extrema de los "Repositorios"
+  oficiales. - Dominarás el cirujano de bajo nivel `dpkg` para instalar archivos
+  locales sueltos. - Sabrás utilizar el gestor de alto nivel `apt` para resolver
+  infiernos de dependencias. - Aprenderás a amputar software limpiando la
+  configuración (`purge`). - Auditarás orígenes externos editando
+  `/etc/apt/sources.list`.
+</PreCheck>
+
+## 1. La Filosofía del Repositorio
+
+En Windows o macOS, la norma es abrir el navegador, buscar "Descargar Firefox", entrar a una web aleatoria, bajar un `.exe` o `.dmg` y rezar para que no tenga virus.
+En Linux empresarial, esa práctica está **estrictamente desaconsejada**.
+
+El software en Debian se descarga desde inmensas bibliotecas centrales verificadas criptográficamente por la comunidad llamadas **Repositorios**. El ciclo de vida del software pasa por dos herramientas que todo LFCS debe dominar: `dpkg` (el cirujano local) y `apt` (el buscador global con internet).
+
+---
+
+## 2. El Cirujano Ciego: `dpkg`
+
+Debian Package (dpkg) es la herramienta fundamental de bajo nivel. Solamente sirve para manipular archivos de instalación empaquetados (con la extensión `.deb`) que ya tengas físicamente guardados en tu disco duro.
+
+Imagina que alguien te pasa un pendrive con el archivo `google-chrome.deb`.
+
+```bash
+# Instalar un paquete .deb local
+sudo dpkg -i google-chrome.deb
+
+# Listar absolutamente todo el software que hay en tu máquina
+dpkg -l
+```
+
+**La Ceguera de DPKG**:
+`dpkg` es estúpido. Si intentas instalar Chrome pero tu servidor no tiene instalada la librería gráfica de fuentes `libfontconfig`, `dpkg` colapsará escupiendo un error gigante rojo llamado **"Fallo de Dependencias"** y dejará la instalación a medias (rota). Como `dpkg` no tiene internet, no sabe de dónde bajarse `libfontconfig` para arreglarlo.
+
+Para solucionar eso inventaron `apt`.
+
+---
+
+## 3. El Dios del Software: `apt` (Advanced Package Tool)
+
+`apt` envuelve a `dpkg`. Cuando usas `apt`, este se conecta a internet, busca en el repositorio oficial de Debian, descarga el programa, **descarga automáticamente todos los cientos de requisitos y librerías que ese programa necesite (resolución de dependencias)**, y finalmente se los pasa a `dpkg` listos en bandeja de plata para que los instale sin errores.
+
+### El ciclo de vida diario de un Sysadmin con APT
+
+**1. Sincronizar el Índice Diariamente (`update`)**
+`apt` tiene una libreta local con los nombres del software que existe. Antes de instalar nada, hay que actualizar esa libreta para que sepa si hoy salió una versión nueva.
+
+```bash
+sudo apt update
+```
+
+**2. Descubrir Software (`search` / `show`)**
+
+```bash
+# Buscar programas relacionados con bases de datos
+apt search mariadb
+
+# Ver la ficha técnica profunda de un programa antes de instalarlo
+apt show nginx
+```
+
+**3. Instalar (`install) y Actualizar (upgrade`)**
+
+```bash
+# Instalar un programa (resuelve dependencias solo)
+sudo apt install nginx
+
+# Actualizar TODOS los programas de tu servidor a la versión de hoy
+sudo apt upgrade
+```
+
+---
+
+## 4. El Arte de Eliminar Software
+
+Si ejecutas `sudo apt remove nginx`, el programa se desinstala, sí. **Pero deja atrás en el disco duro todos los archivos de configuración (`/etc/nginx`) intactos** por si te arrepientes "el año que viene" y lo vuelves a instalar.
+
+En producción, a menudo queremos eliminar las huellas absolutas de un software mal configurado para empezar totalmente desde cero. Para amputaciones totales, jamás usamos _remove_, usamos el Purgante:
+
+```bash
+# Purga: Desinstala y adicionalmente destruye toda huella de configuración.
+sudo apt purge nginx
+
+# Barrido general: Un comando vital que audita si han quedado librerías huérfanas
+# que se bajaron hace meses para un software que ya borraste, y las elimina para liberar disco duro.
+sudo apt autoremove
+```
+
+---
+
+## 5. Hackeando los Orígenes (`sources.list`)
+
+"¿Y de qué webs se baja apt sus cosas escondidas?"
+Todo reside en un diminuto y peligroso fichero de texto. Si lo vacías por error, `apt` morirá y creerá que no existe el internet.
+
+```bash
+sudo nano /etc/apt/sources.list
+```
+
+Dentro verás líneas parecidas a esta:
+`deb http://deb.debian.org/debian/ bookworm main contrib non-free`
+
+- **`deb`**: Significa que de aquí descargamos ejecutables compilados listos para usar (si pusiera `deb-src`, bajaría solo código fuente para programadores).
+- **`bookworm`**: Es el nombre en clave de tu versión de Debian.
+- **`main contrib non-free`**: Puesto que Debian es radical con el "Software Libre", por defecto un servidor nuevo solo baja software Open Source (`main`). Si quieres poder bajar drivers propietarios (por ejemplo de Nvidia), tienes que entrar a este fichero y escribir a mano la palabra `non-free-firmware` al final de la línea, guardar y ejecutar `sudo apt update`.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Un compañero te da un archivo descargado de internet llamado `teams-linux.deb`. Lo ejecutas con `sudo dpkg -i teams-linux.deb` e inmediatamente el terminal vomita líneas rojas indicando "Unmet dependencies" arruinando la instalación. Tu compañero te dice que no te preocupes, que uses otro comando mágico de `apt` que escanea las catástrofes de `dpkg` instaladas a medias, viaja a internet, baja las dependencias que faltaban y parchea la instalación rota sanándola completamente. ¿Cuál es ese comando?
+
+   <MultipleChoice>
+     <Option>`sudo apt upgrade --force`</Option>
+     <Option isCorrect>
+       El mandato sanador: `sudo apt install -f` (Fix-broken). Este invaluable
+       parámetro revisa el caché de paquetes rotos caídos de `dpkg`, extrae las
+       piezas faltantes de internet y las alinea.
+     </Option>
+     <Option>`sudo dpkg --heal`</Option>
+   </MultipleChoice>
+
+2. Editando el fichero `/etc/apt/sources.list` has sustituido la palabra "bookworm" (Debian 12) por "trixie" (el inestable y futuro Debian 13). Has guardado el archivo. Emocionado, a los diez segundos escribes `sudo apt install firefox` esperando tener la versión experimental moderna de dicho Firefox, pero el servidor te instala la vieja que ya tenías ayer ¿Por qué falló tu experimento?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Se te olvidó el eslabón de sincronización vital: Ejecutar `sudo apt
+       update`. Editar el archivo sources.list es inútil si no le ordenas al
+       índice local de APT que viaje a esa nueva URL escrita y se descargue el
+       nuevo catálogo de productos actualizado.
+     </Option>
+     <Option>
+       Porque debiste usar `dpkg` al tratarse de ramas experimentales.
+     </Option>
+     <Option>
+       Porque cambiaste a "trixie" en lugar de cambiar "main" por "non-free".
+     </Option>
+   </MultipleChoice>
+
+3. Existe un servicio web crítico de backend que está fallando por estar mal configurado en `/etc/`. Tu jefe te ordena "desinstalarlo y volver a instalarlo completamente limpio y de fábrica" para borrar las huellas del desastre. Tiras un `sudo apt remove backend` para después tirarle un `sudo apt install backend`. El programa arranca y... ¡vuelve a fallar usando la configuración vieja! ¿Qué orden erraste?
+   <MultipleChoice>
+     <Option isCorrect>
+       Te equivocaste amputando. La cláusula `remove` preserva egoístamente
+       todos los ficheros del directorio /etc/ por diseño para no enfadar a los
+       sysadmins en desinstalaciones accidentales. Para matar su código Y su
+       configuración de fábrica en un solo holocausto tenías que usar
+       forzosamente `sudo apt purge backend`.
+     </Option>
+     <Option>
+       Tenías que haber reiniciado el Pc con Systemd durante el intermedio.
+     </Option>
+     <Option>Olvidaste usar --hard en el remove.</Option>
+   </MultipleChoice>

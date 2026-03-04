@@ -1,0 +1,143 @@
+---
+title: 7.1 Principios de Seguridad
+description: La filosofía Zero Trust. Protege tu servidor incluso del contacto físico añadiendo una contraseña al cargador GRUB.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás el Principio del Privilegio Mínimo. - Sabrás por qué iniciar
+  sesión como `root` está prohibido corporativamente. - Aprenderás la técnica
+  LFCS para asegurar físicamente el servidor poniéndole candado a **GRUB**.
+</PreCheck>
+
+## 1. La Filosofía "Zero Trust" (Confianza Cero)
+
+En el pasado, la seguridad consistía en poner un cortafuegos en el router de la empresa, y asumir que todas las computadoras de dentro de la oficina (la Intranet) eran amigas de total y absoluta confianza.
+Hoy en día, un empleado enchufa un USB infectado en su portátil de RRHH, y el virus viaja por la Intranet amiga asaltando libremente todos los servidores de bases de datos de la empresa sin oposición.
+
+**Zero Trust** significa que tu servidor Debian no confía ni en internet, ni en los demás servidores de la oficina de al lado, ni en los propios usuarios que tienen cuenta en la máquina.
+
+### Regla 1: El Principio del Mínimo Privilegio
+
+Si creas una cuenta de usuario para que un humano haga copias de seguridad de la carpeta `/var/www/`, ese usuario debería recibir permiso de lectura, pero **no** permiso de escritura, ni permisos para entrar a las carpetas de correos de sus compañeros.
+Si hackean la contraseña de ese usuario humano, el hacker solo podrá leer la web, mitigando en un 99% el desastre.
+
+### Regla 2: La Muerte del inicio de sesión Root
+
+Jamás, en todo este curso de 30 horas, se te ha pedido abrir tu PuTTY / Terminal e iniciar sesión escribiendo de usuario `root`.
+A los hackers les encantan los sistemas Linux que permiten loguearse como administrador por SSH, porque ya saben que el nombre de usuario es `root`, así que dedican todos sus diccionarios de ataque automático a adivinar únicamente tu contraseña.
+Al iniciar sesión con un usuario normal como `jramma` y emplear `sudo` intermitentemente, fuerzas al hacker a tener que adivinar **dos** secretos letales: tú nombre de usuario y tú contraseña para lograr un brecha.
+
+---
+
+## 2. Defensa Física Extrema (Candado a GRUB)
+
+¿Recuerdas el **Módulo 4: Arranque**? Allí te enseñé a salvar tu propia vida: si olvidabas la contraseña del servidor, en la pantalla de GRUB pulsabas la tecla `e`, inyectabas `init=/bin/bash` y Linux te abría una terminal mágica de Root perdonándote todas las contraseñas.
+
+Esta táctica, aunque es magia pura para Sysadmins legales que olvidan claves, es un **Ataque Físico Crítico** si lo usa un vigilante jurado de tu empresa al que echan a las 3:00 am, se cuela en la sala de servidores armando con un teclado viejo de 5 dólares, y te revienta el disco duro usando ese mismo viejo truco del `init=/bin/bash`.
+
+Para aprobar el rescate pero blindar el asalto físico en el examen LFCS, **hay que ponerle una contraseña al gestor de arranque GRUB**.
+
+### 1. Generar el Hash Imposible
+
+GRUB es un programa tonto sin base de datos. Necesita guardar la contraseña cifrada en un archivo.
+
+```bash
+# Escribe este comando y teclea una clave que jamás olvidarás
+grub-mkpasswd-pbkdf2
+```
+
+La consola te escupirá una llave gigantesca asombrosamente larga cifrada hiper-segura que empieza típicamente por `grub.pbkdf2.sha512...` cópiala en tu portapapeles.
+
+### 2. Inyectar el Hash en la Configuración
+
+```bash
+# Vamos a los scripts de forja del menú de GRUB
+sudo nano /etc/grub.d/40_custom
+```
+
+Al final del fichero, debajo de todas las líneas, añade estas dos, estableciendo al usuario general histórico `root` (no confundir con el del kernel, esto es solo local de grub) y pegando tu cadena gigante generada antes.
+
+```text
+set superusers="root"
+password_pbkdf2 root grub.pbkdf2.sha512...[PEGATULAAAAAAAAAAARGOHASH AQUI]...
+```
+
+### 3. Forjar la Espada
+
+Como aprendimos en el Módulo 4, editar cosas de grub en archivos de texto no hace literalmente nada al gestor binario ubicado en el metal. Actualiza el binario:
+
+```bash
+sudo update-grub
+```
+
+¡Listo! A partir de mañana, si encendemos el servidor y seleccionamos arrancar "Debian", el PC nos dejará continuar con normalidad en silencio. **PERO**, si alguien malicioso (o tú mismo) decide en el menú presionar la tecla `e` de "Editar" en un intento de manipular e inyectar un bash de emergencia sin candados, **GRUB se negará** exigiéndole escribir el súper usuario (`root`) y la súper contraseña física que indicaste, parando al hacker local en seco.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Tu gerente quiere justificar una partida de presupuesto para aislar los servidores en una "VLAN" apartada de los ordenadores del departamento de Recursos Humanos. Te pregunta por qué se hace esto si ambos departamentos están bajo el mismo techo, y afirmas que es un mecanismo derivado de la filosofía Zero Trust. ¿En qué consiste puramente el modelo Zero Trust frente a las redes internas a la hora de levantar muros?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El viejo paradigma confiaba ciegamente en cualquier conexión originada
+       "dentro" del edificio. Zero Trust destruye las zonas seguras dictando que
+       toda máquina es un enemigo potencial infectado, por lo que todo tráfico
+       interno cruzado debe evaluarse, limitarse, aislarse y repelerse con
+       cortafuegos como si de internet se tratase desde el nivel 0.
+     </Option>
+     <Option>
+       Consiste en forzar a cambiar de contraseña cada 15 días eliminando el
+       riesgo.
+     </Option>
+     <Option>
+       Es una política para usar antivirus Open Source en Windows en lugar de
+       defender servidores.
+     </Option>
+   </MultipleChoice>
+
+2. Hemos protegido férreamente nuestro servidor corporativo generando un hash invencible de 512 bits lanzando el generador `grub-mkpasswd-pbkdf2`. Acto seguido, hemos abierto como sysadmins el generador estático personalizable anexando la cláusula candado al inicio editando `nano /etc/grub.d/40_custom`. Una vez guardado el fichero estamos satisfechos y nos vamos al Starbucks a seguir trabajando. Un chico de mantenimiento del banco nos la vuelve a liar al de media hora colándose físicamente al servidor usando el truco de la tecla `e`. ¡Has fallado! ¿Por qué?
+
+   <MultipleChoice>
+     <Option>
+       El algoritmo hash pbkdf2 no es seguro contra teclados USB genéricos.
+     </Option>
+     <Option>
+       Porque falta incluir el archivo estático en el `/etc/fstab`
+     </Option>
+     <Option isCorrect>
+       Editar la receta temporal en la rama de archivos `grub.d` o en
+       `default/grub` en memoria y texto humano... no altera nada el binario
+       ensamblador que despacha la fase del cargador BIOS de arranque duro que
+       reside en las primeras celdas del disco. Se te olvidó estampar, soldar y
+       compilar la configuración para que el disco duro la reconozca lanzando el
+       vital e irrevocable comando `sudo update-grub`.
+     </Option>
+   </MultipleChoice>
+
+3. Conoces profundamente el Principio de Mínimo Privilegio. Tienes que conceder permisos a un Analista de Datos recién llegado para que compruebe los logs generados en bruto en la ruta `/var/log/app_financiera/`. Un viejo administrador te dice "es super fácil, métele a ese usuario los permisos completos del grupo root y así podrá bucear por todas y cualquiera de las carpetas de log habidas y por haber sin molestarte el fin de semana por falta de permisos". Evalúa esta aserción según los principios Sysadmin LFCS.
+   <MultipleChoice>
+     <Option isCorrect>
+       Esa aserción es abominable y contraria a cualquier regulación de
+       seguridad global (como la ISO 27001). Darle permisos holísticos
+       superiores a un usuario sobre "todas y cualesquiera de las carpetas" en
+       nombre de la vagancia, otorga acceso colateral, incrementa
+       exponencialmente el riesgo atómico en caso de robo de esa cuenta y rompe
+       frontalmente el Mínimo Privilegio de garantizar el Acceso Justo y
+       Necesario (Just In Time - Solo a su aplicación en específico).
+     </Option>
+     <Option>
+       Es la opción temporal óptima porque AppArmor encapsulará y detendrá a
+       root también si hace cosas malas.
+     </Option>
+     <Option>
+       Está perfecto y acelerará las labores de Big Data del equipo.
+     </Option>
+   </MultipleChoice>

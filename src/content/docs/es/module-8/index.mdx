@@ -1,0 +1,49 @@
+---
+title: Módulo 8. Proyecto Final y Simulador
+description: Clase 8 - La cima de la montaña LFCS. Despliega un clúster LEMP completo y sobrevive a tres desastres técnicos en tiempo récord.
+sidebar:
+  order: 1
+---
+
+---
+
+## **Duración Estimada**: 4 horas (Clase 8 FIN)
+
+¡Has llegado al final absoluto del camino! Atrás quedaron las 28 horas fundacionales construyendo tabiques, formateando discos y editando textitos planos.
+
+A un Administrador de Sistemas LFCS no le pagan por saber cómo funciona un disco duro. El Administrador de sistemas existe única y literalmente para dar vida, sostener en pie y escalar **Al Software de Negocio**.
+
+En este Módulo 8 definitivo del curso usaremos todo lo aprendido en los 7 módulos anteriores simultáneamente como las piezas de Lego de una maquinaria de reloj que culminará en un despliegue "Real World" corporativo.
+
+## Mentalidad LFCS para este módulo
+
+- **La Confluencia**: Vas a tejer redes instalando paquetes (Módulo 6), abriendo puertos de cortafuegos (Módulo 7), administrando permisos a grupos y usuarios invisibles (Módulo 3) y forzando resiliencias en el arranque (Módulo 4). Todo a la vez.
+- **Troubleshooting Endurecido**: En el examen y en la vida real te darán un servidor despiezado sin contexto. Tendrás que deducir los crímenes puramente leyendo los logs históricos.
+
+---
+
+## Temas de la Clase 8
+
+### [8.1 El Anfitrión: Motor Nginx](/es/module-8/1-webserver-nginx/)
+
+- Usar APT para cimentar Nginx. Dominar sus estados en Systemd.
+- Perforar nuestra barrera dictatorial de UFW para dar a luz al puerto TCP/80 al mundo exterior.
+- La base empresarial: Construir Bloques Servidor aislando dominios falsos (`server_name`).
+
+### [8.2 La Pila de Software: Entorno LEMP](/es/module-8/2-lemp-stack/)
+
+- Linux, Nginx, MariaDB y PHP (LEMP).
+- Conectar componentes dispares e integrar a los obreros de ejecución `PHP-FPM`.
+- Arreglar colisiones de permisos chown/chmod dando la llave maestra de tus carpetas web al infame usuario fantasma `www-data`.
+
+### [8.3 El Simulacro LFCS (Solución de Desastres)](/es/module-8/3-lfcs-troubleshooting/)
+
+- El Infierno 1: Todo ha reventado y el disco raíz del servidor devuelve 0 Bytes libres cortando el SQL. Tendrás que ensancharlo en caliente operando Módulo 5 (LVM / `lvextend`).
+- El Infierno 2: Un ex-empleado ha destruido maliciosamente el MBR del disco o cambiado la contraseña. Tendrás que recurrir a aislar GRUB y colar un `init=/bin/bash` por debajo de la puerta de rescate.
+- Aprenderás a deducir culpabilidades con `journalctl -p err`.
+
+### [8.4 Despedida y Continuación (LFCE)](/es/module-8/4-course-conclusion/)
+
+- Has adquirido el "Core". ¿Qué te depara el mercado?
+- Conceptos superiores para DevOps: Automatización (Ansible) y Contenedores (Docker / Kubernetes).
+- Diferencias entre la LFCS fundacional vs la brutal LFCE (Linux Foundation Certified Engineer) orientada a Arquitectura de red a gran escala.

@@ -1,0 +1,173 @@
+---
+title: 8.1 El Anfitrión (Nginx)
+description: Despliega el motor web asincrónico líder en el mundo. Configura Virtual Hosts y abre agujeros en tu muralla UFW.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás por qué Nginx domina sobre el viejo Apache. - Instalarás y
+  orquestarás el Demonio Web usando `systemctl`. - Sabrás abrir la frontera
+  80/tcp permanentemente en UFW. - Crearás un bloque "Server" (`VirtualHost`)
+  corporativo en `/etc/nginx/sites-available`.
+</PreCheck>
+
+## 1. El Triunfo de Nginx
+
+Históricamente, el rey de internet era "Apache". Apache funcionaba contratando a un "camarero" (Proceso) por cada cliente que entraba a tu página web web. Si entraban 10,000 clientes a la vez (Efecto Slashdot), Apache contrataba 10,000 camareros, reventando literalmente la memoria RAM de tu servidor y forzando un reinicio letal.
+
+**Nginx** es un servidor asincrónico impulsado por "Eventos". Utiliza un solo camarero matemático (Worker) capaz de servir ágilmente los pedidos de 10,000 clientes simultáneos sin sudar ni pestañear y consumiendo 3 míseros Megabytes de RAM. Por eso Nginx es el estándar dorado en la nube moderna LFCS.
+
+### Despliegue del Demonio
+
+```bash
+# Sincronizamos orígenes e instalamos
+sudo apt update
+sudo apt install nginx
+
+# Nos aseguramos de que arranque si el PC sufre un apagón
+sudo systemctl enable --now nginx
+
+# Comprobamos su estado vivo y leemos sus últimos 10 logs
+sudo systemctl status nginx
+```
+
+---
+
+## 2. Perforando la Muralla (Integrando Módulo 7)
+
+Nginx ya está encendido e intentando servir la página web de bienvenida al universo exterior en el puerto 80... **pero nuestro Firewall UFW de la clase anterior se lo está denegando a nivel Kernel**.
+
+Debemos crear el agujero quirúrgico permanente en la muralla para habilitar el tráfico de internet:
+
+```bash
+# Permitimos peticiones al puerto estandarizado Web (HTTP)
+sudo ufw allow 80/tcp
+
+# Reiniciamos la armadura
+sudo ufw reload
+```
+
+Si ahora vas a tu navegador y tecleas la IP de tu servidor (`http://tu-ip-publica`), verás un gigantesco cartel blanco dictaminando "Welcome to nginx!".
+
+---
+
+## 3. Alojamiento Múltiple (Virtual Hosts)
+
+El cartel de bienvenida es bonito, pero las empresas no pagan servidores para tener 1 sola página web. Un solo servidor Debian con Nginx puede alojar _infinitas páginas web diferentes_ poseyendo una IP única, discerniendo inteligentemente la web a despachar dependiendo del nombre de dominio (URL) que haya escrito el cliente en su barra de Google Chrome.
+
+A esta magia divisoria se la conoce como "Bloques Server" o Host Virtual.
+
+Vamos a crear la casa de nuestra primera web ficticia llamada `mi-empresa.com`.
+
+### 1. Forjando la carpeta de documentos
+
+```bash
+# Creamos la carpeta esqueleto para los HTMLs
+sudo mkdir -p /var/www/mi-empresa.com/html
+
+# Le regalamos la propiedad de la carpeta al usuario oscuro maestro web (Módulo 2 chown)
+sudo chown -R www-data:www-data /var/www/mi-empresa.com/html
+
+# Escribimos un diminuto HTML de prueba
+echo "<h1>La web de la empresa</h1>" | sudo tee /var/www/mi-empresa.com/html/index.html
+```
+
+### 2. Enseñarle los planos a Nginx
+
+Nginx tiene una carpeta donde guarda todas las webs "disponibles". Tenemos que crearle un perfil:
+
+```bash
+sudo nano /etc/nginx/sites-available/mi-empresa.com
+```
+
+Dentro, escribiremos su perfil estricto indicándole a qué dominio atiende y en qué carpeta del disco duro reside.
+
+```nginx
+server {
+    listen 80;
+    server_name mi-empresa.com www.mi-empresa.com;
+
+    root /var/www/mi-empresa.com/html;
+    index index.html;
+}
+```
+
+### 3. El Enlace Simbólico y el Reinicio (Integrando Módulo 2)
+
+Nginx separa elegantemente los sitios "Disponibles" (`sites-available`) de los que de verdad van a estar "Encendidos al público" (`sites-enabled`).
+Para encender nuestra web, Sysadmin LFCS jamás copia el archivo. Crea un Acceso Directo Inquebrantable (Enlace Simbólico suave `ln -s`) apuntando desde la carpeta de disponibilidad hacia la carpeta de encendido.
+
+```bash
+# Forjando el enlace simbólico
+sudo ln -s /etc/nginx/sites-available/mi-empresa.com /etc/nginx/sites-enabled/
+
+# El comando VITAL: Nginx revisa tus faltas de ortografía en nano
+sudo nginx -t
+
+# Si el test dice "Syntax OK", recargamos Nginx pacíficamente en caliente
+sudo systemctl reload nginx
+```
+
+Felicidades. Acabas de alojar una web profesional nivel LFCS.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Has editado febrilmente el Virtual Host /etc/nginx/sites-available/banco.com cambiándole el server_name a un dominio más largo. Has guardado el archivo con Nano. A sabiendas de que cualquier falta de espaciado o una falta de punto y coma `;` en su interior reventará Nginx matando a los demás dominios durante el reinicio, y tu jefe está mirando. ¿Qué comando estás forzado y OBLIGADO a ejecutar antes de atreverte a reiniciar los demonios web en Producción?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El Validador Estático: Jamás se reinicia Nginx ciegamente. Ejecutaremos
+       en seco `sudo nginx -t` (Test). Nginx no se reiniciará, pero escaneará la
+       sintaxis de todos los ficheros .conf, verificará que los directorios root
+       existen y, si todo es perfecto, te escupirá un aliviador `syntax is ok /
+       test is successful`, dándote luz verde absoluta al reinicio con garantías
+       de no romper el negocio.
+     </Option>
+     <Option>`sudo systemctl test nginx`</Option>
+     <Option>`sudo ufw status`</Option>
+   </MultipleChoice>
+
+2. Hemos metido una plantilla bellísima corporativa de Bootstrap llena de css e imágenes en el flamante Document Root `/var/www/superempresa/html`. Pero al entrar desde el navegador, en vez de ver la web, obtenemos un gigantesco código HTTP `"403 Forbidden"` (Prohibido el paso). Sabiendo que tú iniciaste sesión como root, creaste la carpeta como root y metiste los archivos por SSH como root... ¿Por qué el motor asincrónico Nginx se opone obstinadamente a leer y despachar al exterior el contenido de esa carpeta al internauta?
+
+   <MultipleChoice>
+     <Option>
+       Porque Nginx requiere que conviertas todos los HTMLs a ejecutables con
+       `chmod +x`.
+     </Option>
+     <Option isCorrect>
+       Colisión de la Política Discrecional (DAC). Tú creaste la carpeta y los
+       htmls, por tanto el dueño de los archivos es `root` o tu usuario
+       personal. PERO el demonio trabajador `nginx` en Debian NO se ejecuta como
+       root (está prohibido), se ejecuta operativamente asumiendo la inofensiva
+       identidad del fantasma `www-data`. Nginx (`www-data`) fue a leer la
+       carpeta de root careciendo de privilegios para leer los ficheros de un
+       usuario superior y fue rechazado. Tienes que regalarle la tutela estricta
+       a Nginx tirando `chown -R www-data:www-data /var/www/superempresa/html`.
+     </Option>
+     <Option>
+       El Firewall UFW te corto la lectura por culpa de no tener la regla ssh
+       activada.
+     </Option>
+   </MultipleChoice>
+
+3. Conoces profundamente la anatomía de Nginx en Debian y su estructura binaria de carpetas en el `/etc/`. Se te ordena "apagar temporalmente" la web principal (pepito.com) porque está en mantenimiento para unos ajustes de 2 horas. Podrías borrar su archivo de configuración con `rm`, pero lo necesitas luego. Para realizar un apagón profesional LFCS en esta arquitectura... ¿Qué archivo (o tipo de archivo) de qué ruta exacta eliminarías procediendo luego a hacer `nginx -t` y un `systemctl reload`?
+   <MultipleChoice>
+     <Option>Borro /etc/nginx/sites-available/pepito.com</Option>
+     <Option>Borro el /var/www/pepito/html/index.html</Option>
+     <Option isCorrect>
+       La purga del Enlace. Cortaré limpiamente el acceso directo suave borrando
+       `rm /etc/nginx/sites-enabled/pepito.com`. Al hacer esto, Nginx desconoce
+       la web en el siguiente reinicio. El archivo maestro original de
+       configuración se mantiene inquebrantable, seguro y almacenado apagado en
+       `sites-available` listo para encenderse de nuevo cuando se le fabrique su
+       enlace simbólico.
+     </Option>
+   </MultipleChoice>

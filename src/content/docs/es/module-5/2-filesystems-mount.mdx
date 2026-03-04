@@ -1,0 +1,159 @@
+---
+title: 5.2 Formateo y Montaje Fijo /etc/fstab
+description: Da vida a tus particiones brutas, asociales al árbol y haz que sobrevivan a los reinicios.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Comprenderás la diferencia entre un bloque bruto y un `Filesystem`. - Sabrás
+  estampar sistemas ext4 y xfs usando la familia de comandos `mkfs`. -
+  Aprenderás a enganchar en caliente discos al árbol con `mount`. - Extraerás el
+  ADN perpetuo del disco (`blkid` + UUID). - Configurarás el montaje perpetuo
+  editando el letal fichero `/etc/fstab`.
+</PreCheck>
+
+En la lección anterior cortamos el disco nuevo y logramos tener un bloque físico llamado `/dev/sdb1`. Pero este bloque está completamente crudo; es un trozo de acero sin indexar. Si intentas guardar un archivo de texto en él, el software no sabe en qué rincón meterlo.
+
+Para organizar los bytes en carpetas legibles, hay que **formatearlo** estampándole un "Sistema de Archivos" (Filesystem).
+
+---
+
+## 1. El Pincel de Formato: Familia `mkfs`
+
+En el ecosistema oficial Linux empresarial existen dos Sistemas de Archivo reyes e indiscutibles. Escojas el que escojas, el comando creador siempre empezará con Make Filesystem (`mkfs`).
+
+- **ext4**: El estándar todoterreno de Debian. Seguro, estable y con un sistema de 'journaling' (diario) que evita que se corrompa si se va la luz de golpe.
+  ```bash
+  sudo mkfs.ext4 /dev/sdb1
+  ```
+- **xfs**: El rey absoluto de RedHat (y muy soportado en Debian). Está diseñado puramente para manejar eficientemente millones de archivos gigantes en paralelo usando cientos de hilos de CPU.
+  ```bash
+  sudo mkfs.xfs /dev/sdb1
+  ```
+
+_(Estos comandos destruirán inmediatamente todos los datos antiguos que existieran en esa partición. No hay advertencia. Hazlo bien)._
+
+---
+
+## 2. El Injerto Mágico: El comando `mount`
+
+En Windows, al formatear, te sale una letra mágica `E:`. Esto no existe en UNIX.
+En Linux solo existe una única raíz omnipotente `/`. Si quieres usar tu nuevo disco `/dev/sdb1`, tienes que construir una carpeta vacía genérica en la raíz, y "enganchar" el disco por detrás tapando esa carpeta. Esto se llama **Montar**.
+
+Imagina un servidor web. El disco principal tiene el sistema operativo, pero tu jefe te compró el disco `sdb1` de 5TB para meter ahí las fotos de Nginx.
+
+```bash
+# 1. Crear la carpeta vacía receptáculo (Punto de Montaje)
+sudo mkdir -p /var/www/fotos
+
+# 2. Pegar/Montar el disco encima del tapete vacío temporalmente en la memoria
+sudo mount /dev/sdb1 /var/www/fotos
+```
+
+En este momento, cualquier cosa que tires a `cp foto.jpg /var/www/fotos/` se está guardando físicamente dentro del metal de `sdb1`.
+
+_(Para desconectarlo en caliente como si fuera un USB extraíble, usa `sudo umount /var/www/fotos`)_.
+
+---
+
+## 3. La Inmortalidad y el Peligro: `/etc/fstab`
+
+El comando `mount` anterior es amnésico. Funciona en RAM. Si el servidor se apaga hoy por la noche y reinicia, amanecerá con la carpeta `/var/www/fotos/` completamente vacía y los clientes web escupirán errores 404.
+El disco sigue ahí, con los datos vivos dentro, pero Linux no se acordó de montarlo automáticamente en la Fase 5 del arranque.
+
+Para inmortalizar la decisión debemos anotarlo en la sagrada **File System Table (`/etc/fstab`)**.
+
+### El Problema de los Nombres `/dev/sdb1` (El ADN)
+
+JAMÁS uses `/dev/sdb1` en el fstab. Si mañana enchufas un USB antes de arrancar, el kernel puede intercambiarse los nombres llamando al servidor `sdc1` y a tu USB `sdb1`, causando que tu servidor intente montar el pendrive como servidor web, fallando miserablemente el arranque y muriendo.
+
+**Solución**: Todo disco formateado recibe un ADN único imborrable llamado **UUID** (Unique Universal IDentifier). Imprímelo:
+
+```bash
+# Block ID (Saca el ADN largo del disco)
+sudo blkid
+```
+
+Copia el larguísimo UUID de tu `sdb1` (ej. `bc92...11f`) en tu portapapeles.
+
+### Editando `/etc/fstab`
+
+```bash
+sudo nano /etc/fstab
+```
+
+Al final de este archivo peliagudo, añade una línea con este formato estricto (separado por espacios o TABs):
+
+| 1. Qué disco (UUID) | 2. Dónde Montar (Punto) | 3. Formato | 4. Opciones Especiales | 5. Dump | 6. Chequeo pass |
+| ------------------- | ----------------------- | ---------- | ---------------------- | ------- | --------------- |
+| `UUID=bc92...11f`   | `/var/www/fotos`        | `ext4`     | `defaults`             | `0`     | `2`             |
+
+- **Opciones especiales (`defaults`)**: Le da permisos de lectura/escritura normales.
+- **Pass (`2`)**: Le dice al kernel "No soy el disco raíz (que sería un 1), pero chequéame matemáticamente en busca de errores la próxima vez que reinicies antes de encenderme".
+
+<Aside type="caution" title="La prueba de fuego (Vital para LFCS)">
+Si te equivocas en la sintaxis de `fstab` (ej. pusiste un espacio de menos, o te faltó una letra del UUID), la próxima vez que reinicies **el Servidor moriría con un Kernel Panic atroz irremediable**.
+
+La prueba que salva carreras: Tras guardar Nano e ignorando si reiniciará bien o no, ejecuta **`sudo mount -a`**. Este comando fuerza a Linux a leer el archivo y montar lo no-montado. Si se ejecuta en silencio sin dar nada de texto ¡Enhorabuena! Has editado fstab sin errores de sintaxis y el disco se enganchará eternamente. Si te da error de línea, corre a abrir `fstab` de nuevo.
+
+</Aside>
+
+---
+
+## Comprueba tus conocimientos
+
+1. Tu superior jerárquico te recrimina por haber añadido explícitamente la línea `/dev/sdb1 /mnt/backup ext4 defaults 0 2` en el flamante `/etc/fstab` de un servidor de datos con 8 bahías de discos calientes. ¿Por qué es estructuralmente nefasto usar esta nomenclatura tradicional si de todas maneras `mount -a` se la está tragando bien y funcionando hoy?
+
+   <MultipleChoice>
+     <Option>
+       Porque falta incluir el parámetro 'rw' para darle opción de escritura.
+     </Option>
+     <Option isCorrect>
+       La nomenclatura física `/dev/sdX` es efímera, posicional y el demonio
+       udev kernel se la asigna por orden de llegada al arrancar. Si mañana se
+       introduce un USB en el puerto 1 o falla un disco intermedio, el Kernel
+       bautizará a otro disco como sdb1. Esto hará que el sistema monte
+       erróneamente un disco desconocido en `/mnt/backup`, perdiendo garantías y
+       bloqueándose. Hay que usar obligatoriamente la huella dactilar `UUID=`
+       extraída del comando `blkid`.
+     </Option>
+     <Option>
+       Porque `ext4` está anticuado y debimos formatearlo con NTFS.
+     </Option>
+   </MultipleChoice>
+
+2. Acabas de alquilar y formatear un volumen enorme remoto en la nube con `sudo mkfs.ext4 /dev/nvme2n1`. Con prisa, creas una carpeta vacía corriendo `mkdir /datos`, editas brutal y velozmente `/etc/fstab` inyectando el UUID correcto hacia `/datos`, y escribes felizmente en consola tu primer documento probatorio: `echo "Confidencial" > /datos/secreto.txt`.
+   A los cinco minutos notas con horror que la carpeta está ahí, el archivo se ha guardado, pero cuando revisas el disco usando una alerta de monitorización web, el disco de la nube dice que está al 0% de uso enteramente inmaculado y vacío de datos. ¿Por qué?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       ¡Porque editar el archivo `/etc/fstab` no acciona temporalmente NADA en
+       la memoria RAM en el momento presente!. Como no ejecutaste el gatillo
+       `sudo mount -a`, el punto de montaje jamás cobró vida real. El archivo
+       `secreto.txt` terminó engañosamente siendo un archivo ordinario devorando
+       espacio dentro del inofensivo disco Raíz (SO) original que se encuentra
+       detrás del tapete de tu carpeta de `/datos`.
+     </Option>
+     <Option>Porque olvidé correr el comando parted antes de ext4.</Option>
+     <Option>
+       Porque el parámetro dump del fstab que especifiqué estaba en '0' e
+       impedía el volcado del búfer.
+     </Option>
+   </MultipleChoice>
+
+3. Existe un parámetro de opciones extra ultra-avanzado en fstab de nombre `defaults`. En configuraciones profundas de LFCS o servidores compartidos hostiles, a veces se exige retirar los defaults e iterar manualmente restricciones brutales. ¿Cual de los siguientes sería un parámetro admitido por fstab para asegurar que ni siquiera el propio Kernel permita a un virus ejecutar programas binarios compilados listados dentro de dicho punto de montaje, forzando y bloqueando la partición para que su naturaleza sea solo de repositorio inerte de archivos?
+   <MultipleChoice>
+     <Option>`noroot`</Option>
+     <Option isCorrect>
+       `noexec` (Se coloca justo donde iría 'defaults' limitando la ejecución
+       flagrante y previniendo brechas colosales de escalada de privilegios en
+       carpetas públicas).
+     </Option>
+     <Option>`readonly-strict`</Option>
+   </MultipleChoice>

@@ -36,16 +36,27 @@ Control total de los procesos vitales y solución de problemas.
 
 ## Clase 5: Gestión de Almacenamiento y LVM (4h)
 Administración de discos duros y volúmenes lógicos dinámicos.
-- *(Archivos MDX planificados para futura expansión)*
+- `src/content/docs/es/module-5/1-disks-partitions.mdx`: MBR vs GPT, `lsblk`, particionado con `fdisk` y `parted`.
+- `src/content/docs/es/module-5/2-filesystems-mount.mdx`: Formateo (`mkfs`), montajes temporales (`mount`) y permanentes (`/etc/fstab` y UUIDs).
+- `src/content/docs/es/module-5/3-lvm-management.mdx`: Virtualización física (`pvcreate`), grupos de volúmenes (`vgcreate`), lógicos (`lvcreate`) y extensiones en caliente (`lvextend` + `resize2fs`).
 
-## Clase 6: Gestión de Software, Paquetes y Tareas Programadas (4h)
-Instalación de utilidades (`apt`/`dpkg`) y automatización cronológica (`cron`/`systemd timers`).
-- *(Archivos MDX planificados para futura expansión)*
+## Clase 6: Gestión de Software y Tareas Automáticas (4h)
+Mantenimiento de paquetería, compilación de fuentes y programación temporal.
+- `src/content/docs/es/module-6/1-package-management.mdx`: Uso profundo de `apt`, `dpkg`, e inspección de repositorios `/etc/apt/sources.list`.
+- `src/content/docs/es/module-6/2-software-compilation.mdx`: Compilar software huérfano (Tarballs, `./configure`, `make`), y rastreo de librerías (`ldd`).
+- `src/content/docs/es/module-6/3-time-synchronization.mdx`: Gestión de zonas horarias con `timedatectl` y el protocolo NTP (`chrony`).
+- `src/content/docs/es/module-6/4-task-scheduling.mdx`: Automatización humana mediante `cron`, `crontab`, `at` y disparadores modernos `systemd-timers`.
 
 ## Clase 7: Seguridad Básica y Cortafuegos de Red (4h)
 Blindaje del servidor mediante filtros de paquetes Netfilter, UFW y seguridad local.
-- *(Archivos MDX planificados para futura expansión)*
+- `src/content/docs/es/module-7/1-security-principles.mdx`: Mínimo privilegio, auditoría de contraseñas de Root y protección del cargador de arranque (GRUB password).
+- `src/content/docs/es/module-7/2-mac-apparmor.mdx`: Introducción al Control de Acceso Obligatorio. Perfiles de confinamiento estricto de demonios usando AppArmor en Debian.
+- `src/content/docs/es/module-7/3-network-ports.mdx`: Análisis forense de red. Descubrir qué demonio está escuchando en qué puerto TCP/UDP usando `ss -tulpn` y `lsof -i`.
+- `src/content/docs/es/module-7/4-firewall-ufw.mdx`: Cerrando las compuertas corporativas. Uso y reglas del Uncomplicated Firewall (`ufw`), permitiendo (`allow`), denegando (`deny`) y limitando (`limit`) ataques por fuerza bruta a SSH.
 
 ## Clase 8: Proyectos LFCS, Repaso Integrador y Servidor Web (4h)
 Integración práctica implementando un Servidor Web full-stack y simulacros de desastres.
-- *(Archivos MDX planificados para final de curso)*
+- `src/content/docs/es/module-8/1-webserver-nginx.mdx`: El anfitrión web. Instalando, habilitando en Systemd y abriendo el puerto 80 en UFW para desplegar el motor Nginx con un "Virtual Host" (`server_name`).
+- `src/content/docs/es/module-8/2-lemp-stack.mdx`: Infraestructura completa. Incorporando bases de datos relacionales (MariaDB) y el motor backend `PHP-FPM`, atando permisos a `www-data`.
+- `src/content/docs/es/module-8/3-lfcs-troubleshooting.mdx`: **El Simulacro del Infierno**. Escenarios reales de examen: El disco raíz en LVM se llenó al 100% matando la BD (resize2fs), el sistema no enciende (rescate GRUB inyectando bash), y los logs de `journalctl` dictan sentencias.
+- `src/content/docs/es/module-8/4-course-conclusion.mdx`: Diferencias certificatorias entre LFCS y el escalón superior LFCE. Fin del trayecto y mentalidad para el mercado laboral sysadmin operativo.

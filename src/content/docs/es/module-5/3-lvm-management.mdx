@@ -1,0 +1,140 @@
+---
+title: 5.3 Volúmenes Lógicos (LVM)
+description: Rompe las barreras físicas. Aprende a crear discos elásticos como si fueran chicle con pvcreate, vgcreate y lvcreate.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás por qué las particiones clásicas son una trampa mortal en servidores de producción.
+  - Dominarás la jerarquía LVM paso a paso: `PV` -> `VG` -> `LV`.
+  - Sabrás extender un disco lleno (`lvextend`) sin perder los datos ni apagar la máquina.
+</PreCheck>
+
+## 1. El Ocaso de las Particiones Clásicas
+
+Imagina que creas un servidor usando el método de la lección anterior: Compras un disco duro de 50GB y lo formateas (`/dev/sda1`). Meses después, la base de datos de usuarios de tu empresa crece a 49GB. Tu jefe compra asustado un disco de 100GB y te lo da para que lo enchufes.
+
+¿Y ahora qué? Tu base de datos solo sabe escribir en una sola carpeta (`/var/lib/mysql`).
+Como ambos discos son trozos de plástico aislados el uno del otro, **no puedes unir el espacio de los dos**. Tendrías que parar el servidor, copiar 49GB de un disco a otro, reconfigurar la base de datos, repasar montajes y rezar para no corromper nada.
+
+**Solución 100% vitalicia:** LVM (Logical Volume Management).
+LVM es una capa de magia por software. LVM toma todos los discos físicos de plástico que tú le metas, los funde en una sola súper-piscina gigante de megabytes, y te permite "recortar" discos imaginarios (Volúmenes Lógicos) de esa piscina. ¿Se te llena la base de datos? Le echas 20GB extra imaginarios sobre la marcha sin pararla.
+
+---
+
+## 2. La Tríada Estricta de LVM
+
+Siempre hay que seguir tres pasos matemáticos incuestionables: Físico, Grupo, y Lógico.
+
+Supongamos que acabas de conectar dos discos duros totalmente vírgenes: `/dev/sdb` (10GB) y `/dev/sdc` (20GB).
+
+### Paso 1: Volúmenes Físicos (PV - Physical Volume)
+
+Tomamos los discos vírgenes y los "marcamos" con el sello de LVM para indicarles que van a ser parte de un ecosistema virtual.
+
+```bash
+sudo pvcreate /dev/sdb /dev/sdc
+
+# Comprobar el trabajo
+sudo pvs
+```
+
+### Paso 2: Grupo de Volúmenes (VG - Volume Group)
+
+Creamos la "Piscina gigante". Vamos a crear una piscina llamada `almacen_datos` y le arrojaremos los dos discos marcados.
+
+```bash
+sudo vgcreate almacen_datos /dev/sdb /dev/sdc
+
+# Comprobar. Si miras el tamaño, verás que la piscina ahora tiene 30GB totales (10+20).
+sudo vgs
+```
+
+### Paso 3: Volúmenes Lógicos (LV - Logical Volume)
+
+Ahora somos dioses. Usamos una espumadera para sacar 15GB de esa piscina (no importa físicamente en qué disco acaben) para crear nuestra partición final invisible que le daremos a la base de datos.
+
+```bash
+# Crear un volumen lógico (-n) llamado BD de tamaño (-L) 15GB desde el grupo almacen_datos.
+sudo lvcreate -n BD -L 15G almacen_datos
+
+# Comprobar
+sudo lvs
+```
+
+¡Listo! Para la fase de la lección anterior (`mkfs` y `mount`), a Linux ya no le importa `sdb`. Actuará como si este chicle virtual fuera un disco sólido llamado: `/dev/almacen_datos/BD`.
+
+---
+
+## 3. Magia Negra Sysadmin: Lvextend
+
+Volvemos al ejemplo: La base de datos, montada sobre el LVM, llega a 14.9 GB de 15 GB. El servidor está punto de estallar de errores.
+
+Miramos con `vgs` si nos sobra algo de líquido mágico en la piscina `almacen_datos`. Vemos que como metimos 30GB originiales y solo gastamos 15GB, nos sobran 15GB. Vamos a inyectarle 5GB de rescate a los discos de la base de datos, **mientras la base de datos inserta facturas y sin desmontar nada**.
+
+```bash
+# Extendemos la frontera del contendor elástico (+5G) a nuestro Volumen Logico
+sudo lvextend -L +5G /dev/almacen_datos/BD
+
+# Magia profunda: LVM ha crecido en plástico a 20GB. PERO el formateador ext4
+# sigue creyendo ciegamente que su casa mide 15GB. Obligamos al Formato a recalcular:
+sudo resize2fs /dev/almacen_datos/BD
+```
+
+_(Si formateaste con XFS, el segundo comando mágico de forzado no es `resize2fs`, es `xfs_growfs`)._
+
+---
+
+## Comprueba tus conocimientos
+
+1. Tu gerente ha comprado una controladora de 8 Discos duros NVMe vírgenes. Te pide que en uno de ellos metas los datos de marketing, y le explicas pacientemente que en el año 2024 un Sysadmin no particiona a pelo algo que vaya a cambiar de tamaño con el tiempo. ¿Cuál de los siguientes es el comando que "bautiza" e infunde la doctrina de virtualización a ese disco duro bruto para declararlo terreno propiedad de LVM antes de poder echarlo a una piscina superior?
+
+<MultipleChoice>
+     <Option>`vgcreate`</Option>
+     <Option>`mount`</Option>
+     <Option isCorrect>
+       El mandato de Creación Física: `sudo pvcreate /dev/nvme0n1`
+     </Option>
+</MultipleChoice>
+
+2. Acabas de crear un flamante "Logical Volume" de 10GB llamado `vol_apache` partiendo de tu Volume Group llamado `vg_servidor`. Inmediatamente te dispones a montarlo usando `mount`, pero Linux te arroja un fallo fatal indicando que el volumen carece de un SuperBloque válido, arruinándote la tarde. ¿Qué has olvidado hacer entre la creación con lvcreate y el subsiguiente intento de mount?
+
+<MultipleChoice>
+     <Option isCorrect>
+       El olvido catastrófico de la lección anterior. Por muy mágico que sea LVM
+       y haya recortado la capacidad... el disco por dentro está crudo, virgen y
+       sin estructura. Se te ha olvidado darle formato estampando un Sistema de
+       Archivos con el comando `sudo mkfs.ext4 /dev/vg_servidor/vol_apache`.
+     </Option>
+     <Option>Haber ejecutado lvextend justo antes.</Option>
+     <Option>
+       Que su archivo debe introducirse primero en /etc/fstab antes del montaje
+       en RAM.
+     </Option>
+</MultipleChoice>
+
+3. Escenario de alto estrés: El Volumen Lógico `storage` montado en `/mnt/archivos` ha llegado al 99% de capacidad. Rápidamente le indicas al LVM que se estire inyectándole 20GB frescos (`sudo lvextend -L +20G /dev/vg_datos/storage`). ¡Todo fue bien! Haces un comprobante `df -h` pero inexplicablemente... Linux te sigue jurando que la carpeta `/mnt/archivos` sigue al 99% y que el tamaño original de GBs no ha variado ni un milímetro. ¿Qué ha fallado en la elasticidad LVM?
+   
+<MultipleChoice>
+     <Option isCorrect>
+       El plástico elástico (LVM) efectivamente creció. Lo que falló es tu
+       Formateador Interno (`ext4` usualmente). Este es estúpido por naturaleza
+       y desconoce que las paredes de su casa se han derribado y movido 20
+       Gigabytes más allá. Te falta encajar la pieza del puzle lanzando en vivo
+       el comando de recalculo matemático de inodos: `sudo resize2fs
+       /dev/vg_datos/storage`.
+     </Option>
+     <Option>
+       El comando blkid ya no reconoce el volumen y hay que reconstruirlo con
+       GRUB.
+     </Option>
+     <Option>
+       LVM no funciona en caliente. Hay que usar `sudo systemctl restart linux`.
+     </Option>
+</MultipleChoice>

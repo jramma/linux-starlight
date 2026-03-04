@@ -1,0 +1,160 @@
+---
+title: 7.4 Cortafuegos (UFW)
+description: Cierra la frontera a cal y canto de manera amigable. Descarta iptables e implementa reglas Limit, Allow y Deny con UFW.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Comprenderás la monstruosa complejidad del cortafuegos base de Linux
+  (`iptables`/`nftables`). - Aprenderás por qué Ubuntu/Debian inventaron el
+  **Uncomplicated FireWall (`ufw`)** como capa salvavidas. - Sabrás habilitar el
+  cortafuegos con una política predeterminada Dictatorial (`deny`). - Aprenderás
+  a abrir fronteras específicas con `allow` y a cazar bots de SSH estirando
+  cuerdas con `limit`.
+</PreCheck>
+
+## 1. El Horror de Iptables vs la Paz de UFW
+
+Como vimos en la lección anterior (`ss -tulpn`), muchos demonios tienden por inercia o defecto a escuchar conexiones dirigidas hacia internet con el peligroso "0.0.0.0".  
+Para evitar que un hacker conecte a esos puertos si el servidor está en producción, Linux posee uno de los subsistemas de Kernel de cortafuegos de red más sofisticados y militarizados de la tierra: **`Netfilter / Iptables`**.
+
+El problema radical corporativo: su sintaxis es imposible de leer y mantener para un humano con prisa. (Tratar de cerrar el puerto web implica comandos infernales estilo `iptables -A INPUT -p tcp --dport 80 -j DROP`).
+
+Si te equivocas en una letra de `iptables`, derribas la conexión de 1000 usuarios de tu empresa en dos segundos. Para simplificar esta monstruosidad universal, Canonical (los dueños de Ubuntu) crearon un sencillo "traductor" de inglés amigable llamado **`ufw`**, el cual se ha instalado como la norma de oro LFCS general.
+
+---
+
+## 2. El Ritual de Activación UFW (¡Peligro de muerte!)
+
+UFW viene apagado de forma nativa. Su primera y principal configuración teórica es la de todo guardabarreras: **"Denegar TODO el tráfico entrante al PC, y Permitir TODO el tráfico saliente desde el PC hacia internet"**.
+
+<Aside type="caution" title="La Sentencia de Muerte del Teletrabajador">
+Vas a aprender el error más legendario (y cómico) que cometen el 100% de los Sysadmins Junior e Intermedios. 
+Estás en casa teletrabajando en pijama conectándote mágicamente por SSH. Tuciendes el cortafuegos mediante `ufw enable`, el cual por defecto corta todas las conexiones entrantes (como decíamos antes).
+
+¿Resultado? Te acabas de cortar tu propio cordón umbilical y tu propia conexión SSH se cae para siempre al ser tu sesión externa rechazada instantáneamente por UFW. Ya no puedes acceder a trabajar hoy sin ir en persona al centro de datos (sufriendo humillación corporativa).
+**La regla de oro: Antes de encender la muralla, asegúrate de perforar un agujero para tu propia cuerda SSH siempre.**
+
+</Aside>
+
+### 1. Perforando la red antes del desastre
+
+```bash
+# Instalamos si no existe en servidor mínimo
+sudo apt install ufw
+
+# Hacemos el súper túnel blindado para no cortarnos el dedo
+sudo ufw allow ssh
+```
+
+### 2. Encendido Activo del Cortafuegos
+
+```bash
+# Encendemos la muralla (se acordará tras cada reinicio también)
+sudo ufw enable
+
+# Vemos nuestro estado actual para confirmar qué túneles existen
+sudo ufw status verbose
+```
+
+---
+
+## 3. Esculpiendo las Defensas de Red (Reglas)
+
+Ahora que nuestra muralla UFW rebotará toda la basura externa de internet, nos toca permitir perforaciones puntuales o agujeros (`allow`) para que la gente de negocios pueda trabajar en los puertos de los Demonios internos.
+
+**Permitir acceso web general (`allow`)**
+Podemos hablarle mediante nombres de servicios conocidos o mediante número de puerto y el protocolo:
+
+```bash
+sudo ufw allow 80/tcp
+# Equivalente a:
+sudo ufw allow http
+```
+
+**Restringir orígenes elitistas a IPs secretas**
+Supón que instalas una Base de Datos (`3306`). Nunca jamás bajo ninguna circunstancia se la abres al público universal con un _allow 3306_ normal. Para esto, creas un agujero láser que _solo se abra_ si la llamada en la puerta procede de la dirección IP de tu servidor web en la IP `10.0.0.5`:
+
+```bash
+# Solo admitimos a nuestro amigo al puerto 3306
+sudo ufw allow from 10.0.0.5 to any port 3306
+```
+
+**Bloqueos Explícitos Selectivos (`deny` o `reject`)**
+Hay un troll atacador en la calle en la máquina concreta `198.51.100.1` que te bombardea la web y quieres echarlo independientemente de la regla permitida:
+
+```bash
+sudo ufw deny from 198.51.100.1
+```
+
+---
+
+## 4. La Trampa Anti-Fuerza Bruta: `limit`
+
+`ufw` trae incorporado un módulo de defensa automática brutal para demonios ultra-sensibles (como SSH en el `22`).
+Si usamos la regla especial de `limit` en vez de `allow` o `deny`, UFW construirá matemáticamente por detrás en Kernel una bolsa contenedora. Si alguien (tú o un botano Chino) intenta loguearse por SSH **6 o más veces fallidas en una diminuta ventana de 30 segundos**, UFW lo catalogará silenciosamente como bot de diccionario y le quemará la IP negándole futuras conexiones en los próximos días.
+
+```bash
+# El comando defensivo supremo de la administración profesional remota
+sudo ufw limit ssh
+```
+
+---
+
+## Comprueba tus conocimientos
+
+1. Examen directo: Como administrador novato entras ilusionado la primera mañana al servidor recién desplegado en la nube de Amazon (`ssh id@cloud-debian`), instalas tu Firewall Uncomplicated e inmediatamente tecleas la orden magna `sudo ufw enable` sintiéndote seguro, seguido de un "Enter". Un segundo después, los caracteres de Putty se congelan extrañamente. Tu teclado no funciona; el servidor nube ya no "responde a pings" ni te dejará volver entrar nunca más ni a la de tres. ¿Qué dictado milenario desobedeciste?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       La humillación corporativa clásica. Acababas de encender una muralla
+       militar y no te procuraste una perforación explícita (agujero en el muro)
+       previa como por ejemplo tirar un `sudo ufw allow ssh` salvavidas ANTES de
+       la activación. El cortafuegos denegó instantáneamente TODO lo externo,
+       incluido tu propio SSH.
+     </Option>
+     <Option>
+       Que ufw en Amazon requiere cambiar temporalmente a SELinux en vez de
+       AppArmor.
+     </Option>
+     <Option>Se me olvidó ejecutar `update-grub` antes del demonio ufw.</Option>
+   </MultipleChoice>
+
+2. Hemos desplegado un ecosistema de monitorización interna exquisito (Nagios) que no tiene contraseñas pero tiene que estar vivo escuchando reportes de equipos internos. Sabemos que un `allow / port` común como se hace con la Web sería catastrófico publicándolo en un router porque cualquiera leería tu infraestructura. ¿Qué cláusula de control milimétrica de UFW exigirás usar al arquitecto de red si sabes que el Nagios debe estar escondido y que SOLO debe dejarse tocar desde la IP directiva corporativa origen `10.8.0.50`?
+
+   <MultipleChoice>
+     <Option>`sudo ufw limit from 10.8.0.50 proto tcp `</Option>
+     <Option>`sudo ufw deny to 10.8.0.50`</Option>
+     <Option isCorrect>
+       La cláusula condicional de apertura por Origen: `sudo ufw allow from
+       10.8.0.50 to any port nagios` (Garantizando que las únicas peticiones TCP
+       entrantes admitidas y validadas a ese socket serán únicamente originarias
+       puras desde la caja 10.8.0.50 y no de internet oscuro universal).
+     </Option>
+   </MultipleChoice>
+
+3. Existen bots especializados zombificados en botnets que rastrean e iluminan rangos de internet diarios. En cuanto detectan que tienes el puerto 22 abierto (`allow ssh`), disparan asombrosamente rápido scripts programados por su creador inyectando listas filtradas de la Deep Web probando típicamente tu puerta SSH hasta `50 palabras` en una ventanilla de `10 míseros segundos`. Acaban colapsándote CPU por culpa de la Criptografía asimétrica o en el peor de los casos adivinando el combo (user/1234). ¿Qué orden impone UFW para disuadir este modelo abismal de ataque matemático sin romper tu acceso vital lícito?
+   <MultipleChoice>
+     <Option isCorrect>
+       Sustituir la cláusula del firewall pasiva `allow` por la defensora
+       proactiva de cuotas: `sudo ufw limit ssh`. (Implementará reglas Iptables
+       "Recent" que dropearán fríamente agresores limitándolos tasadamente a 6
+       intentos legales en cada espacio/tiempo de 30 segundos, aburriendo al
+       autómata chino al milisegundo e inutilizándole la táctica para robar
+       diccionarios pesados).
+     </Option>
+     <Option>
+       Borrar el /etc/shadow del sistema para que no compare el bot remoto las
+       claves fallidas.
+     </Option>
+     <Option>
+       Utilizar la orden `ss -tulpn` para denegarlo en memoria RAM y borrar el
+       disco.
+     </Option>
+   </MultipleChoice>

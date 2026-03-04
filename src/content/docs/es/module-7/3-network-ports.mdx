@@ -1,0 +1,142 @@
+---
+title: 7.3 Auditoría de Puertos
+description: Descubre qué programas están conectados a internet a tus espaldas con SS y LSOF.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás cómo funciona un "Demonio en Escucha" (Sockets, IP, Puertos). -
+  Sabrás utilizar `ss` para examinar todas las conexiones TCP y UDP de la
+  máquina. - Dominarás el legendario `lsof` para descubrir qué proceso humano
+  está usando el puerto 80.
+</PreCheck>
+
+## 1. La Anatomía de los Puertos
+
+Imagina que tu servidor es un edificio corporativo enorme con la Dirección IP `192.168.1.10`.
+Si un ordenador externo intenta enviar un paquete a ese edificio, el paquete llega a la puerta principal y choca contra un muro. ¿A quién iba dirigido el paquete? ¿Al servidor web? ¿Al servidor de correo? ¿Al chat?
+
+Para solucionar esto existen **Los Puertos** (Numerados típicamente del `1` al `65535`). Son como las "extensiones telefónicas" del edificio.
+
+- Todo paquete web llega a la extensión **`80` (HTTP)** o **`443` (HTTPS)**.
+- Todo protocolo de terminal remota llega al **`22` (SSH)**.
+- Todo paquete de correo llega al **`25` (SMTP)**.
+
+Los demonios (servicios como systemd de los que hemos hablado todo el curso), cuando se encienden, se **"Atan" (Bind)** a un puerto, quedándose de brazos cruzados, congelados _"en modo escucha"_ (`LISTEN`), esperando a que alguien les llame.
+
+### La Peligrosa Pregunta LFCS
+
+_¿Cómo sé yo qué demonios están ahora mismo escuchando puertas a mis espaldas y hacia qué redes están abiertos?_
+
+---
+
+## 2. El Radar Moderno (`ss`)
+
+En la antigüedad se usaba el comando `netstat`. Hoy en día (y en tu examen LFCS), está obsoleto por lento y ha sido reemplazado por **Socket Statistics (`ss`)** del paquete de redes que vimos en el módulo 3 (`iproute2`).
+
+`ss` a pelo te lanzaría un millón de líneas con cada conexión interna de red. Los Sysadmins usamos siempre la misma composición de letras inamovibles: **`-tulpn`**
+
+```bash
+sudo ss -tulpn
+```
+
+**¿Qué significan las mágicas `-tulpn`?**
+
+- **-t**: Muestra conexiones TCP (Web, SSH, bases de datos).
+- **-u**: Muestra conexiones UDP (Cosas rápidas sin confirmación de llegada como DNS o Videojuegos).
+- **-l**: _¡VITAL!_ Solo muestra demonios atados en modo `LISTEN` y oculta todo el ruido de conexiones ya establecidas de usuarios.
+- **-p**: _¡VITAL!_ Muestra el nombre humano del Programa PID que es dueño de ese puerto. Si no pones la 'p', solo verás números. (Requiere Sudo).
+- **-n**: Numeric. Evita que Linux intente traducir "22" a la palabra "ssh", mostrándonos los números crudos de los puertos reales.
+
+### Comprendiendo la salida de `ss`
+
+Supongamos que ves esto:
+`tcp   LISTEN 0      128    0.0.0.0:80        0.0.0.0:*      users:(("nginx",pid=1055,fd=6))`
+
+Significa que **Nginx** (pid 1055) tiene adueñado el puerto web `80` por TCP.
+Lo más importante es la parte `0.0.0.0`. Esa es la "Dirección Atada".
+
+- `0.0.0.0` significa: **"Escucho peticiones viniendo desde cualquier parte del universo y de Internet"**. (Peligroso).
+- Si pusiera `127.0.0.1:80` (Localhost) significaría: **"Solo escucho peticiones seguras de otros programas instalados dentro de este mismo ordenador, soy ciego hacia internet"**.
+
+---
+
+## 3. Investigador Privado (`lsof`)
+
+Si `ss` es la visión general del país, _List Open Files (`lsof`)_ es el láser milimétrico enfocado a una sola ciudad.
+
+<Aside type="tip" title="El estándar Unix">
+  Recuerda que en Linux *todo es un archivo*. Si Chrome abre una conexión red a
+  internet hacia un vídeo de youtube, para el Kernel, esa conexión viva de red
+  es un archivo abierto más como si fuera un .txt
+</Aside>
+
+Si instalas el servidor Apache, e intentas encenderlo con `systemctl start apache2`, a veces revienta arrojando el error `Port 80 is already in use` (El puerto 80 ya está en uso).
+¿Qué otro demonio te robó el puerto a tus espaldas antes de encender tú Apache? `ss` podría mostrártelo, pero `lsof` es explícitamente divino para esto:
+
+```bash
+# ¿Quién demonios (-i internet) está agarrando mi puerto de dos puntos (:80)?
+sudo lsof -i :80
+```
+
+Ese simple comando volcará al culpable (por ejemplo, tal vez dejaste un Nginx viejo encendido por error) listando al usuario exacto (`root`, `www-data...`) para que vayas y detengas el conflicto matando su PID con `kill -9 1055` o deteniendo el servicio con `systemctl stop nginx`.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Es tu segundo día como sysadmin junior y estás configurando tu primer servidor de base de datos MySQL en Debian 12. Al iniciar MySQL y asegurarte de que está corriendo mediante systemctl, decides auditar tu exposición abriendo tu radar y tecleando el imperativo mandato `sudo ss -tulpn`. Observas la siguiente línea atando el puerto oficial 3306 de bases de datos: `tcp LISTEN 127.0.0.1:3306 users:(("mysqld"...))`. Teniendo en cuenta la dirección de atado local, ¿A qué nivel estás expuesto al universo de internet en este instante concreto?
+
+   <MultipleChoice>
+     <Option>
+       Expuesto masivamente a toda subred externa, siendo `127.0.0.1` la puerta
+       de enlace genérica global de TCP/IP.
+     </Option>
+     <Option isCorrect>
+       Seguridad 100% Hermética y blindada contra el exterior. El demonio de la
+       base de datos se ató al bucle interno (Localhost / `127.0.0.1`), lo cual
+       declara tajantemente a nivel Kernel que el puerto de base de datos SOLO
+       aceptará conexiones procedentes de programas corriendo internamente
+       dentro de esa misma caja física servidor (como por ejemplo, el backend
+       Apache local), e ignorará e invisibilizará universalmente cualquier
+       acceso que golpee su tarjeta de red física desde un portátil en la ofina
+       exterior.
+     </Option>
+     <Option>
+       Seguro porque UDP no admite escuchas pasivas con Localhost de serie.
+     </Option>
+   </MultipleChoice>
+
+2. Hemos aprendido durante el Módulo 3 que los Hackers chinos dedican sus vidas a rastrear IPs públicas y mandar diccionarios infinitos intentando adivinar contraseñas al protocolo rey de comunicación en el **famoso puerto 22**. ¿Qué programa residente y dueño (`users:((..))`) te arrojará el comando de radiografía `ss -tulpn` si buscas el que está atado crónicamente como proceso padre esuchando el mencionado puerto 22?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El viejo y rocoso Secure Shell Daemon: `sshd` (Con la 'd' de demonio
+       residente final para diferenciarlo del comando cliente 'ssh' a secas).
+     </Option>
+     <Option>El manipulador de kernel `grub-daemon`</Option>
+     <Option>La aplicación de reloj atómimo global `chronyd`</Option>
+   </MultipleChoice>
+
+3. Te quejas de que tu aplicación en Java recién programada revienta mortalmente al arrancarla en el servidor de pruebas soltando excepciones del estilo `Bind Exception Address Already In Use: 8080`. Se te exige saber el PID exacto y el nombre de línea de comandos del intruso que esté consumiendo ese preciso socket de internet en solitario de un plumazo. Sabiendo que `ss` puede abrumarte, ¿cuál usarías como un láser forense quirúrgico y directo a la herida?
+   <MultipleChoice>
+     <Option isCorrect>
+       Preguntar al inmenso y legendario Listador de Ficheros Abiertos la
+       cláusula de internet: `sudo lsof -i :8080` devolviéndome instantáneamente
+       el ejecutable adueñado sin rodeos ni líneas extrañas.
+     </Option>
+     <Option>
+       Pedir a Systemd un chequeo temporal cronificado usando `journalctl -p
+       err` para el año en curso.
+     </Option>
+     <Option>
+       Volcar un archivo .tar.gz de kernel y auditarlo luego con gcc
+       build-essentials.
+     </Option>
+   </MultipleChoice>

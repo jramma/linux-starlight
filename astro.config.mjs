@@ -39,52 +39,68 @@ export default defineConfig({
           },
           items: [
             {
-              label: "1: Introducción",
+              label: "1: Instalación",
               translations: {
-                en: "Module 1: Introduction",
-                ca: "Mòdul 1: Introducció",
+                en: "1: Installation",
+                ca: "1: Instal·lació",
               },
               autogenerate: { directory: "module-1" },
             },
             {
-              label: "2: Comandos",
+              label: "2: Comandos Básicos",
               translations: {
-                en: "Module 2: Commands",
-                ca: "Mòdul 2: Comandaments",
+                en: "2: Basic Commands",
+                ca: "2: Comandaments Básics",
               },
               autogenerate: { directory: "module-2" },
             },
             {
-              label: "3: Administración",
+              label: "3: Usuarios y Red",
               translations: {
-                en: "Module 3: Administration",
-                ca: "Mòdul 3: Administració",
+                en: "3: Users & Network",
+                ca: "3: Usuaris i Xarxa",
               },
               autogenerate: { directory: "module-3" },
             },
             {
-              label: "4: Almacenamiento",
+              label: "4: Arranque y Servicios",
               translations: {
-                en: "Module 4: Storage",
-                ca: "Mòdul 4: Emmagatzematge",
+                en: "4: Boot & Services",
+                ca: "4: Arrencada i Serveis",
               },
               autogenerate: { directory: "module-4" },
             },
             {
-              label: "5: Redes y Seguridad",
+              label: "5: Almacenamiento",
               translations: {
-                en: "Module 5: Networking & Security",
-                ca: "Mòdul 5: Xarxes i Seguretat",
+                en: "5: Storage & LVM",
+                ca: "5: Emmagatzematge i LVM",
               },
               autogenerate: { directory: "module-5" },
             },
             {
-              label: "6: Automatización",
+              label: "6: Software y Tareas",
               translations: {
-                en: "Module 6: Automation",
-                ca: "Mòdul 6: Automatització",
+                en: "6: Software & Tasks",
+                ca: "6: Programari i Tasques",
               },
               autogenerate: { directory: "module-6" },
+            },
+            {
+              label: "7: Seguridad y Cortafuegos",
+              translations: {
+                en: "7: Security & Firewall",
+                ca: "7: Seguretat i Tallafocs",
+              },
+              autogenerate: { directory: "module-7" },
+            },
+            {
+              label: "8: Servidor Web Final",
+              translations: {
+                en: "8: Final Web Server",
+                ca: "8: Servidor Web Final",
+              },
+              autogenerate: { directory: "module-8" },
             },
           ],
         },

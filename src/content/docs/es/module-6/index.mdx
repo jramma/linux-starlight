@@ -1,0 +1,47 @@
+---
+title: Módulo 6. Gestión de Software y Tareas
+description: Clase 6 - Domina los repositorios de Debian, compila desde cero y pon a los demonios a trabajar de noche.
+sidebar:
+  order: 1
+---
+
+---
+
+## **Duración Estimada**: 4 horas (Clase 6)
+
+Un servidor Linux desnudo que solo encienda no sirve para nada; su objetivo en la vida es ejecutar **Software**. Pero en UNIX no vas por internet descargando archivos `.exe` al azar. Todo pasa por el filtro estricto de los Repositorios y los Gestores de Paquetes.
+
+Además de aprender a instalar software, a rastrear dependencias rotas y a compilar código huérfano desde su código fuente nativo, esta Clase 6 (alcanzando 24 horas técnicas completadas) te equipará con el superpoder de los administradores: **Dormir por la noche**. Si dominas la sincronización del tiempo con el globo terráqueo y le ordenas a Linux que ejecute tus scripts de copia de seguridad automáticamente todos los domingos a las 3:00 am, habrás automatizado tu empleo.
+
+## Mentalidad LFCS para este módulo
+
+- Odiarás descargar software por internet. El sagrado mandato Sysadmin dicta que si un paquete está en el repositorio de la distribución (`apt`), es 100% confiable y estable. Todo lo externo debe tratarse como potencialmente radioactivo.
+- Tu servidor se atrasa por los mili-retrasos lentos de las placas base. Sin el demonio Network Time Protocol (`chrony`), los certificados encriptados entre servidores del clúster fallarán porque asumirán ataques de hombre en el medio. El tiempo lo es todo en los Logs.
+
+---
+
+## Temas de la Clase 6
+
+### [6.1 Repositorios y APT](/es/module-6/1-package-management/)
+
+- Diferencia de bajo nivel entre la herramienta purista `dpkg` (archivos sueltos) y el buscador inteligente de alto nivel `apt`.
+- Cirugía avanzada: editar a mano las fuentes de vida `/etc/apt/sources.list`.
+- Buscar dependencias perdidas y reinstalaciones en masa.
+
+### [6.2 Compilación Artesanal](/es/module-6/2-software-compilation/)
+
+- Bajar desde repositorios GitHub oscuros comprimidos en pelotas (`.tar.gz`).
+- El ciclo profano de GNU: `./configure`, `make` y `make install`.
+- Desempolvar librerías rotas de lenguajes usando Localizador Dinámico de Dependencias (`ldd`).
+
+### [6.3 La Dimensión del Tiempo (NTP)](/es/module-6/3-time-synchronization/)
+
+- Conocer la hora real de tú servidor frente a la BIOS (hardware clock vs system clock).
+- Editar zonas horarias con `timedatectl`.
+- Forzar la sincronía internacional al milisegundo instalando y configurando `chrony` o `systemd-timesyncd`.
+
+### [6.4 El Reloj Esclavo: Cron y Timers](/es/module-6/4-task-scheduling/)
+
+- La sintaxis de los 5 asteriscos `* * * * *`. Editar tareas para diferentes usuarios con `crontab -e`.
+- Tareas únicas diferidas con `at`.
+- La modernidad y persistencia frente a los reboots: Las monstruosas y detalladas unidades `systemd-timers` como reemplazo contemporáneo al anciano Cron.

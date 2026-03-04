@@ -1,0 +1,148 @@
+---
+title: 6.4 Automatización de Tareas (Cron)
+description: Deja de trabajar de madrugada. Usa cron, crontab y systemd-timers para ordenar ejecuciones automáticas repetitivas.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás los legendarios "**5 Asteriscos**" de Cron. - Aprenderás a
+  orquestar el fichero individual de usuario editando `crontab -e`. -
+  Diferenciarás el uso aplazado de `at` para bombazos de una sola vez. - Oirás
+  hablar del estándar de titanio contemporáneo: los `systemd-timers`.
+</PreCheck>
+
+## 1. El Demonio Infatigable: `cron`
+
+Imagina que necesitas comprimir todos los archivos importantes de la carpeta `/etc/` cada domingo a las 3:00 de la madrugada y mandarlos al disco de Backup, cuando nadie usa el servidor. ¿Vas a programar tu despertador, levantararte de la cama a las 2:55 am, acceder por SSH al servidor y teclear tú mismo el comando `tar`?.
+En UNIX existe un demonio silencioso llamado **Cron** que lee un fichero maestro cada minuto y, si la hora en el reloj coincide con una regla apuntada en su cuaderno, lanza scripts por ti para siempre.
+
+### Modificando tus reglas con `crontab`
+
+Para crear reglas vinculadas a TI o al usuario ROOT, NO debes editar ningún fichero de texto con Nano directamente por temas de sintaxis y seguridad.
+**Debes usar siempre el comando de edición oficial**:
+
+```bash
+# Abrir el cuaderno de órdenes automático de tu usuario actual
+crontab -e
+
+# Listar las tareas activas programadas actualmente
+crontab -l
+```
+
+---
+
+## 2. La Sagrada Sintaxis de los 5 Asteriscos
+
+Dentro de la pantalla de edición, cada TAREA a automatizar requiere ocupar solamente una larga línea de texto.
+La sintaxis matemática se divide en el control estricto de **cinco columnas temporales** seguidas del comando que deseas que el PC dispare.
+
+`[Minuto]  [Hora]  [Día del Mes]  [Mes]  [Día Semana]    COMANDO A EJECUTAR`
+
+El `*` significa "CUALQUIERA" / "CADA".
+
+**Ejemplos Reales:**
+
+- **Cada hora en punto todo el año**:
+  `0 * * * *    /bin/echo "Ha pasado una hora"`
+  _(Corre en el min. 0, de cada hora `_`, cada día `_`, cada mes `_`, cada día de la semana `_`)._
+
+- **Todos los días de la vida a las 3:30 AM (Madrugada para backups)**:
+  `30 3 * * *   /usr/bin/tar -czf /backup/seguridad.tar.gz /etc`
+
+- **Todos los domingos a medianoche**:
+  `0 0 * * 0    /usr/local/bin/limpiador_log.sh`
+  _(El día de la semana es numérico: 0 es Domingo)._
+
+<Aside type="caution" title="Precaución con la ceguera de comandos">
+  Cuando Cron ejecuta comandos por las noches, **no sabe dónde están guardadas
+  las herramientas**. No deberías poner simplemente `tar`, deberías decirle el
+  camino milimétrico y paranoico a su binario `tar`, es decir `/usr/bin/tar` o
+  `/usr/local/bin/mi_script.sh`. O mejor aún, declarar la variable dinámica
+  `PATH` en las primeras líneas del propio fichero cron.
+</Aside>
+
+---
+
+## 3. Disparos Únicos Diferidos (`at`)
+
+`cron` es fantástico para bucles infinitos y repeticiones. ¿Pero qué pasa si quieres que algo se ejecute **sólo UNA vez** y después se muera la regla, como por ejemplo un reinicio especial dentro de 40 minutos? Usamos `at`.
+
+```bash
+# Instalamos la utilidad que no suele venir por defecto
+sudo apt install at
+
+# Programar un reinicio para dentro de 40 minutos
+echo "reboot" | at now + 40 minutes
+
+# Ver toda la cola de comandos bomba programados
+atq
+```
+
+---
+
+## 4. El Sucesor de Titanio (`systemd timers`)
+
+Aunque `cron` se pide en todos los exámenes, la realidad moderna lo está abandonando (debido a que Cron era un caos registrando en los logs).
+Su legítimo y sofisticado sucesor en Debian Mismo y Linux Corporativo en general se ha transformado en los **Timer Units** de Systemd (`systemctl`).
+
+En lugar de escribir ilegibles líneas con asteriscos arcaicos (`30 3 * * *`), creamos un archivo oficial `.timer` gestionable individualmente y dotado de sintaxis explícita humana y clara como la luz del día al estilo: `OnCalendar=Sun *-*-* 03:00:00`. Adicionalmente, todo fallo de su ejecución nocturna se indexa perfectamente en `journalctl`, resolviendo el gran defecto de la arquitectura primitiva del Cron.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Examen práctico real de Cron: Tu superior quiere que los servidores generen y procesen un recibo matemático y que **solo y exclusivamente corra todos los días laborales (De Lunes a Viernes) a las 08:15 AM de la mañana.** ¿Cuál es la sintaxis ruda y milimétrica que debes meter en el `crontab -e` oficial de Root para lograr esto?
+
+   <MultipleChoice>
+     <Option>`8 15 * * 1-5 /opt/generar_recibo.sh`</Option>
+     <Option isCorrect>
+       La cadencia exacta es `15 08 * * 1-5 /opt/generar_recibo.sh` (15
+       pertenece al minuto, 08 pertenece a la hora. El rango 1-5 en el quinto
+       asterisco infiere de lunes(1) a viernes(5)).
+     </Option>
+     <Option>`* * 15 08 1-5 /opt/generar_recibo.sh`</Option>
+   </MultipleChoice>
+
+2. Acabas de cometer un error desastroso en un switch de red de una sucursal en Francia dejándola aislada de tu nube porque le cambiaste la IP. Recuerdas, sudando una lágrima de sudor frío, que esto te pasaría y hace 10 minutos (antes del fallo) creaste la orden aplazada mágica `echo "/sbin/reboot" | at now + 30 minutes`. Acabas de cortarte las manos pero todavía puedes esperar. ¿Qué sucederá gracias al comando `at` en 20 frenéticos y largos minutos?
+
+   <MultipleChoice>
+     <Option>
+       Nada. `at` ha muerto porque al caer la red el demonio muere
+       instantaneamente por rotura del pipe.
+     </Option>
+     <Option isCorrect>
+       El servidor francés, por sí solo de fondo, contará ciegamente el tiempo y
+       ejecutará pasmosa e inapelablemente el reinicio (`reboot`) tras la media
+       hora. Al arrancar de cero, el Switch tirará sus rutas rotas de la RAM,
+       cargando la configuración base funcional y devolviéndote valiosísimamente
+       la conexión remota. Por eso lanzar reinicios diferidos con `at` antes de
+       tocar fuego vivo es una práctica élite LFCS.
+     </Option>
+     <Option>
+       Que se apagará pero no podrá avisarte con Systemd Logging Daemon porque
+       estabas incomunicado.
+     </Option>
+   </MultipleChoice>
+
+3. Un empleado Junior de tu equipo se queja histérico diciendo: _"Programé perfectamente el script en /home/junior/bash.sh en el root de Cron tirando `crontab -e`. Le puse los 5 asteriscos así que sé que se corre cada minuto. El script echa humo a mano borrando /tmp/ basuras, pero por CRON la carpeta /tmp se me llena por las noches!"_. Chequeas su sintaxis de ejecución escrita al final del asterisco y descubres un error mortal común Sysadmin. ¿Qué fallo arruinó al Junior?
+   <MultipleChoice>
+     <Option isCorrect>
+       Seguramente el Junior confió ciegamente en el "Path" ambiental de UNIX
+       usando simples nombres como comando en lugar de usar RUTAS ABSOLUTAS.
+       Cuando Cron despierta y llama al script de noche, no carga todas las
+       variables de entorno ricas ambientales (como las relativas), resultando
+       en su script fallando en su primer comando interno sin que se entere. Las
+       ordenes relativas bajo Cron causan el 90% de los infartos programáticos.
+     </Option>
+     <Option>Que no usó el comando at diferido.</Option>
+     <Option>
+       Que Systemd ha superpuesto su systemd-timers destruyendo los 5 asteriscos
+       que te enseñaron.
+     </Option>
+   </MultipleChoice>

@@ -1,0 +1,149 @@
+---
+title: 6.2 Compilación de Software
+description: Cómo sobrevivir cuando APT te abandona. Compilar binarios desde el código fuente nativo usando Tarballs, Configure y Make.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás por qué compilar a pelo es la última (y peligrosa) frontera del
+  Sysadmin. - Sabrás cómo extraer los infames "Tarball" fuente (`.tar.gz` o
+  `.tar.bz2`). - Seguirás la Santísima Trinidad de GNU: `./configure`, `make`,
+  `make install`. - Sabrás utilizar `ldd` para hacer autopsias a ejecutables
+  descubriendo qué `.dll`s / `.so` les faltan.
+</PreCheck>
+
+Te contratan en una empresa que utiliza un software matemático propietario diseñado en 1999. Es la espina dorsal del negocio, pero el software es tan antiguo u oscuro que **nunca ha existido en un repositorio de Debian**.
+Si ejecutas `apt search mi-software-raro`, te devolverá cero resultados. Estás solo.
+
+El creador solo te proporciona un archivo comprimido que contiene texto puro: el código fuente (generalmente escrito en lenguaje `C`).  
+Para que el procesador lo entienda y Linux gane un `comando` nuevo, serás tú el responsable absoluto de **construir y ensamblar los engranajes** transformando textos legibles en binarios mecánicos. Eso es compilar.
+
+---
+
+## 1. Desempaquetar el Tarball
+
+El código fuente suele venir empaquetado y ultra-comprimido en lo que los informáticos más maduros denominan "Tarball" (pelota de alquitrán, usualmente `.tar.gz`).
+Debemos descomprimir la carpeta fuente a nuestro disco duro de trabajo (suele ser `/usr/local/src` o `/opt`).
+
+```bash
+# Entrar a la zona de extracciones locales
+cd /usr/local/src
+
+# Desempaquetar extrayendo (eXtract) e imprimiendo la Verbosa (V) vista de Archivos (F)
+sudo tar -xvf software_oscuro-1.0.tar.gz
+
+# Entramos en la carpeta que acaba de dar a luz
+cd software_oscuro-1.0/
+```
+
+Dentro, normalmente verás decenas de ficheros crudos como `main.c`, `header.h`, y un par de archivos sagrados de texto que SIEMPRE debes leer primero: el `README` y el `INSTALL`.
+
+---
+
+## 2. La Santísima Trinidad (GNU Build System)
+
+Salvo que el README indique instrucciones raras, el 90% del código en `C/C++` de la historia de Unix se compila ejecutando secuencialmente estos tres pasos inexcusables dentro de la carpeta fuente:
+
+### El Arquitecto (`./configure`)
+
+El código fuente no está listo para tu PC exacto.
+Al ejecutar este pequeño script que viene en la carpeta, el Arquitecto escaneará tu sistema buscando qué compilador tienes, cuánta RAM y qué procesador Intel o AMD usas.
+
+```bash
+./configure
+```
+
+- ¿Qué suele fallar aquí?: Suele morir en el minuto 1 escupiendo `error: gcc compiler not found`. Tendrías que ir corriendo a `apt` a instalar el paquete `build-essential`. O puede gritar `error: missing libssl`. Lo cual te obligará a buscar la librería OpenSSL y volver a lanzar el configure.
+- Al terminar, construirá los planos hiperprecisos en un archivo llamado `Makefile`.
+
+### Los Obreros Ciegos (`make`)
+
+Ahora que tenemos los planos, le mandamos a las herramientas constructoras genuinas que empiecen a forjar el acero usando el código. Construirán el ejecutable binario, lo cual dependiendo del tamaño del software podría tardar **segundos o catorce horas**.
+
+```bash
+# Levantar el ejecutable (Si quieres que use los 4 núcleos de tu cpu usa make -j4)
+make
+```
+
+### El Instalador Oficial (`make install`)
+
+El paso 2 forjó exitosamente el programa, pero el programa está secuestrado dentro de su carpeta actual en `/usr/local/src/`.
+Debemos darle la orden de despiojar sus ejecutables finalizados y mandarlos estandarizadamente a la carpeta genuina del sistema donde Linux busca todos los comandos (usualmente de `local` a `/usr/local/bin`). Como esto toca el corazón del sistema, requiere credenciales divinas.
+
+```bash
+sudo make install
+```
+
+¡Felicidades! Ahora podrás teclear `software_oscuro` en cualquier parte tu terminal y funcionará, escapando para siempre de la ignorancia de `apt`.
+
+---
+
+## 3. Autopsia Dinámica de Librerías (`ldd`)
+
+El software compilado ha funcionado meses... pero de repente el servidor se actualiza con `apt upgrade` ayer, y hoy programas oscuros caseros lanzan este horror:
+`error while loading shared libraries: libcrypto.so.1.1: cannot open shared object file`
+
+En Linux, los binarios no siempre vienen con todo incluido. Toman "prestado" de otras librerías del sistema en caliente. (Lo que en Windows se llamaría `.dll`, en Linux se llama ficheros `.so` de _Shared Object_).
+
+Si un programa compilado u oscuro no arranca sin explicar claramente qué le falta, utiliza tu bisturí **List Dynamic Dependencies (`ldd`)** sobre el binario enfermo para examinar sus enlaces rotos:
+
+```bash
+ldd /usr/local/bin/software_oscuro
+```
+
+Esto arrojará un árbol de todas las librerías a las que se conecta. Aquellas que tu software ya no encuentra porque alguien, o algo, las borró o las actualizó agresivamente por detrás en otra versión, saldrán brillantemente listadas con el sello letal: `=> not found`. Tu misión LFCS consistirá en viajar al Repositorio o internet e instalar específicamente el `.so` faltante que pide esa autopsia.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Estás ante el proceso de instalación manual más duro GNU y estás harto de estar adivinando. Has tirado `./configure` pero el programa acaba su ciclo emitiendo un terrorífico mensaje: `Configure Error: C compiler cannot create executables`. Sin un compilador universal, no puedes avanzar al paso `make` porque no hay nadie forjando el acero de 'C'. ¿Qué mega-paquete legendario del repositorio de Debian se exige a todo Sysadmin tener preparado instalado por defecto precisamente para solventar estos dolores en entornos crudos sin compilador habilitado?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El armamento pesado fundacional: `sudo apt install build-essential`.
+       (Otorga de un plumazo de `gcc`, `g++`, librerías clásicas base de libc6 y
+       precisamente el comando ansiado `make`).
+     </Option>
+     <Option>`sudo apt install cmake`</Option>
+     <Option>
+       El administrador de paquetes `dpkg` ya tiene este compilador C embebido
+       nativo adentro de su núcleo.
+     </Option>
+   </MultipleChoice>
+
+2. Acabas de entrar a tu flamante directorio fuente descargado `/opt/utilidad-v5.0/`. Como estás furioso tiras directamente `make` esperando que los obreros fundan el ejecutable. Pero obtienes instantáneamente el rechazo colosal de bash: `make: *** No targets specified and no makefile found. Stop.`. ¿A qué se debe esto estructuralmente en el formato GNU?
+
+   <MultipleChoice>
+     <Option>Porque debes tirarlo siempre siendo root (`sudo make`).</Option>
+     <Option>
+       Porque los obreros necesitan un sistema X11 gráfico presente.
+     </Option>
+     <Option isCorrect>
+       Saltaste la fase arquitectónica preparativa 1. El programa constructor
+       Make es estúpido, depende del archivo receta textual llamado `Makefile`
+       creado siempre dinámicamente según tu PC por la orden `./configure` que
+       omitiste ejecutar antes. Sin el Makefile local y dinámicamente perfilado
+       para existir en la carpeta fuente, Make no puede teóricamente ni empezar
+       a atar cables.
+     </Option>
+   </MultipleChoice>
+
+3. Un desarrollador de tu backend te envía un software mágico autocompilado `.exe` de UNIX. Lo pones en `/usr/bin/miscript` e intentas ejecutarlo tirando en el shell `./miscript`. Obtienes un lacónico error invisible de "Archvios u Objetos Compartidos no Encontrados". Necesitáis hacerle una radiografía a esa caja negra empaquetada binaria hoy mismo para deducir ciegamente a qué librerías está queriendo enlazar dentro de tu servidor y cuáles están faltantes. ¿Cuál de estos es un paso estándar para este fin?
+   <MultipleChoice>
+  <Option isCorrect>
+    El radar autopsia dinámico: Corriendo `ldd /usr/bin/miscript` examinará limpiamente y volcará el grafo topológico resolviendo los links libreros *.so compartidos y sacará a relucir si falta alguno mediante flag '*=> not found*'.
+  </Option>
+  <Option>
+    `cat /usr/bin/miscript | grep error`
+  </Option>
+  <Option>
+    Desensamblándolo en RAM con Systemd Coredump.
+  </Option>
+</MultipleChoice>

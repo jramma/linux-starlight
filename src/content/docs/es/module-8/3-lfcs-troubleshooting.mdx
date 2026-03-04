@@ -1,0 +1,169 @@
+---
+title: 8.3 Simulacro LFCS (Troubleshooting)
+description: Examen práctico final. Te enfrentas a tres escenarios destructivos donde el servidor está roto y tú eres la única salvación.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Pondrás a prueba tus conocimientos de los 7 módulos anteriores. - Sabrás
+  auditar caídas de red deduciendo culpables invisibles con `journalctl` o `ss`.
+  - Sabrás cómo rescatar servidores que no quieren arrancar. - Dominarás el
+  pánico ensanchando discos en caliente sin apagar la Base de Datos.
+</PreCheck>
+
+## 1. Bienvenidos al Infierno (Filosofía LFCS)
+
+En la certificación LFCS (y en el mundo empresarial real), casi **nunca te piden instalar cosas nuevas**. Los servidores ya están instalados por otra persona que se despidió hace tres meses.
+Tu examen consistirá en acceder por consola a 15 servidores distintos, todos con un problema catastrófico subyacente diferente que provoca que la aplicación no funcione, y te darán 2 horas de reloj de arena para arreglarlos todos.
+
+No hay internet para buscar en Google. No hay apuntes. Estás tú frente al Kernel.
+
+Aquí tienes tres de los escenarios más temidos y clásicos.
+
+---
+
+## 2. Escenario 1: El Servidor de Base de Datos está Tumbado
+
+Recibes una alerta a las 4:00 AM. La página web arroja un terrorífico _"Error Establishing a Database Connection"_. Entras por SSH al servidor de base de datos y compruebas que el demonio MariaDB ha muerto. Intentas arrancarlo tirando `sudo systemctl start mariadb` y falla.
+
+**¿Qué harías?**
+
+<Aside type="caution" title="El instinto de supervivencia LFCS">
+  Un novato intentaría desinstalar y reinstalar la base de datos `apt remove
+  mariadb` destruyendo la empresa entera. El LFCS acude al **Diario de Abordo
+  (Módulo 4)** purificando por prioridad de error crítico: `journalctl -u
+  mariadb -p err -n 10`
+</Aside>
+
+En ese preciso instante, el log te revela el asesino real:
+_"Fatal error: Can't create/write to file '/var/log/mysql/... (Errcode 28: No space left on device)"_.
+
+¡La base de datos se ha apagado para protegerse porque el disco duro está físicamente lleno al 100%!
+
+### La Solución LFCS (LVM al rescate - Módulo 5)
+
+Como somos previsores, el servidor se forjó usando la virtualización de almacenamiento LVM.
+
+1. Ejecutamos `vgs` (Volume Group Status) y comprobamos que en la "piscina" mágica global sobran 50 Gigabytes sin usar.
+2. Inyectamos 10 Gigas al disco virtual root en caliente forzando el redimensionamiento del file system ext4 simultáneamente:
+   ```bash
+   # Módulo 5 puro: lvextend inyecta el plástico, -r lo moldea.
+   lvextend -L +10G -r /dev/mapper/debian-vg-root
+   ```
+3. Volvemos a levantar el servicio `sudo systemctl start mariadb`. Saneado espectacularmente en 20 segundos sin reiniciar.
+
+---
+
+## 3. Escenario 2: El Secuestro Ciego del Puerto web
+
+Llegas a una empresa nueva en tu primer día de trabajo. Te dicen que reinicies Nginx en el servidor central. Lo apagas con `systemctl stop nginx` y cuando vas a encenderlo con `systemctl start nginx` te escupe el infame fallo `[emerg] bind() to 0.0.0.0:80 failed (98: Address already in use)`.
+
+Alguien (o algo) ha encendido otro programa a tus espaldas en los últimos 5 segundos que te ha robado la extensión telefónica del puerto 80 impidiendo que Nginx pueda existir. Te sudan las manos porque la página web principal de la empresa está caída.
+
+### La Solución LFCS (SS y lsof - Módulo 7)
+
+Tú no te pones a buscar archivos lógicos. Tú sacas los rayos X del Módulo 7.
+
+1. Usas el escáner láser inamovible buscando a la mosca directamente en ese socket de internet específico:
+   ```bash
+   sudo lsof -i :80
+   ```
+2. El comando devela brutalmente que el programa invasor es el viejo contenedor `apache2` y que se le ha asignado el PID diabólico `4591`.
+3. Lo erradicas sin piedad del mapa de procesadores con la señal 9 de asesinato indiscutible (Módulo 2).
+   ```bash
+   sudo kill -9 4591
+   # Alternativa civilizada: sudo systemctl stop apache2
+   ```
+4. Gritas libre y resucitas la máquina web con `sudo systemctl start nginx`.
+
+---
+
+## 4. Escenario 3: "Olvidé mi contraseña" (Ataque físico)
+
+Escenario final del examen LFCS. Te tiran a un terminal negro de un servidor y ni siquiera te dan la clave de inicio de sesión de ROOT ni de tu usuario. Quieren que les demuestres que sabes cómo bypasear sus defensas si tienes acceso al metal físico de la máquina.
+
+### La Solución LFCS (El Hackeo de GRUB - Módulo 4)
+
+1. Fuerza un reseteo de la máquina virtual apagándola a machete.
+2. En los dos únicos segundos que dura la pantalla luminosa del menú del cargador de arranque GRUB, pulsa frenético la flecha hacia abajo deteniendo la cuenta atrás y ponte sobre la palabra **"Debian GNU/Linux"**.
+3. Presiona la terrorífica tecla inyectora `e` (Edit).
+4. Busca con las flechitas la densa línea kilométrica que empieza por la palabra clave `linux`. Baja hasta el puro final de esa misma línea de mierda, y colócale separándolo temporalmente el bypass del Kernel pasmoso:
+   `init=/bin/bash`
+5. Pulsa `Ctrl + X` (o `F10`) para forzar un arranque mágico desoyendo los sellos divinos. El PC encenderá otorgándote un prompt frío `#` cediéndote el trono Root puro pero con el disco duro congelado en modo "Solo lectura".
+6. Derrite el hielo montando por encima el disco local con capacidades re-escritoras de modificación y cambiala:
+   ```bash
+   mount -o remount,rw /
+   passwd root
+   ```
+7. Pones la nueva clave "1234", das la orden de recongelamiento pacífico (`exec /sbin/init`) y apruebas el rescate logueandote en paz con tu clave nueva.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Examen final: Un servidor arranca. Todo parece bien. Tiras un `ping google.com` y revienta devolviéndote _"Temporary failure in name resolution"_" (Fallo de salto de nombres DNS). Sabiendo que tienes IP en rango gracias a un cable Ethernet conectado, configuras un Firewall UFW permitiendo salida universal, y el Gateway (router) de la empresa está respondiendo tus petos IP internos pero sigues sin poder resolver letras de dominios. El examen LFCS se ríe de ti. ¿Qué documento nuclear primitivo debes abrir o forzar en debian para inyectarle el servidor satelital global (Ej: Un `nameserver 1.1.1.1` u `8.8.8.8`) para parchear este envenenamiento resolutivo?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El pilar resolutivo local histórico innegociable editando:
+       `/etc/resolv.conf` (O re-configurándolo indirectamente a través del
+       diablo `systemd-resolved`). Si este fichero contiene IPs caducadas, DNS
+       locales muertos o lo han vaciado con un `rm`, el cerebro de Linux se
+       volverá loco y será ciego incapaz universalmente de vincular palabras
+       hermosas a números IP por muy excelente ruteado local que haya.
+     </Option>
+     <Option>
+       El pilar UFW insertando la regla DNS: `sudo ufw block resolv 53`
+     </Option>
+     <Option>
+       Corriendo el gestor de paquetes de bajo nivel `dpkg -i fix-dns.deb`.
+     </Option>
+   </MultipleChoice>
+
+2. El colapso del Sysadmin novato de Examen: Recibes este enunciado "Despliega un virtual host NGINX operativo accesible desde el puerto oficial HTTPS cifrado para la dirección ip de host, con el dominio empresa.local, utilizando la partición X en 5 minutos de tiempo". Haces todo gloriosamente. Copias tu fichero perfecto sin fallos con nano en `/etc/nginx/sites-available`. Tiras de instinto asombroso la sintaxis comprobatoria `sudo nginx -t` pero la terminal vomita un repugnante `nginx: [emerg] open() "/etc/nginx/sites-enabled/empresa.local" failed (2: No such file or directory)`. Empiezas a gritar ¿Qué se te olvidó construir estructuralmente en el diseño de Debian?
+
+   <MultipleChoice>
+     <Option>
+       Olvidó darle al usuario root y a www-data permisos puros (777) en esa
+       subcarpeta.
+     </Option>
+     <Option>
+       Ningún Nginx funciona si no reinicias físicamente el servidor primero
+       usando systemctl reboot.
+     </Option>
+     <Option isCorrect>
+       El Vínculo Indivisible (Symlink): Te saltaste la orden suprema final para
+       el sistema base. En Debian, las recetas disponibles en `available` son
+       invisibles hasta que se vinculan atómicamente a la raíz encendida
+       dictando explícitamente `sudo ln -s
+       /etc/nginx/sites-available/empresa.local /etc/nginx/sites-enabled/`. Solo
+       tras forjar ese puente duro el validador estático (-t) sabrá que la orden
+       está activada en vivo.
+     </Option>
+   </MultipleChoice>
+
+3. Te dicen que ha caído tu base de datos vital. Te pones paranoico conectándote. Escribes veloz el test de log en memoria de kernel tirando de manual aprendidísimo: `journalctl -u mariadb -p err -n 50 --no-pager`. Al volcar la terminal el output, no ves nada, el diario arroja vacío (No entries). Confuso de si Mariadb está instalado si quiera, tiras nerviosamente el escaneador quirúrgico de puertos libres: `sudo ss -tulpn | grep 3306`, obteniendo otro desolador e inhumano "Vacío". Nada escucha en el puerto de Base de Datos y el log está limpio. Si la Base de datos MySQL está parada, el log no canta fallos y el puerto ni existe, ¿cuál es tú resolución médica como LFCS sobre la salud del equipo tras deducir lógicamente el error baste en estas pautas universales Unix?
+   <MultipleChoice>
+     <Option>
+       Que han desinstalado la capa MBR y borrado GRUB mediante inyección.
+     </Option>
+     <Option isCorrect>
+       Alabada sea la navaja Sysadmin. Que ¡NUNCA ARRANCASTE EL DEMONIO TÚ! Si
+       `ss` no muestra demonios atados, el programa no está corriendo. Si
+       `journalctl` no guarda errores, es que NO ha reventado porque ni siquiera
+       se ha encendido y muerto. Se me olvidó dictar explícitamente `sudo
+       systemctl start mariadb` procedimentalmente hoy o ayer, o olvidé usar en
+       el pasado un `--now / enable` que garantizara su autoejecución tras el
+       último apagón estático del servidor.
+     </Option>
+     <Option>
+       Alguien inyectó a través de UFW un Límite de SSH provocando silencio
+       terminal (-n 50).
+     </Option>
+   </MultipleChoice>

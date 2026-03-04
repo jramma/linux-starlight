@@ -1,0 +1,140 @@
+---
+title: 7.2 Confinamiento y MAC (AppArmor)
+description: Cuando chmod 777 no basta. Aísla procesos vulnerables usando el Control de Acceso Obligatorio.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Diferenciarás DAC (Permisos Normales) frente a MAC (Protocolo Obligatorio de
+  Kernel). - Sabrás utilizar las órdenes binarias de AppArmor para ver qué
+  programas de tu equipo están encapsulados herméticamente. - Distinguirás entre
+  el modo "soplón" (`complain`) y el modo dictador (`enforce`).
+</PreCheck>
+
+## 1. El Fracaso de los Permisos Clásicos (DAC)
+
+En el Módulo 2 de este curso, invertimos horas aprendiendo cómo usar `chmod` y `chown` para establecer permisos "rwx" (Lectura, Escritura, Ejecución) en archivos. Todo este sistema arcaico mundialmente utilizado se denomina **DAC (Discretionary Access Control o Control Discrecional)**.
+
+Se llama "Discrecional" porque la seguridad queda a **discreción de los usuarios**.
+_Imagina que eres un cajero de banco normal. Tienes permiso de Lectura para ver una caja fuerte secreta. Usando los sistemas DAC habituales, como tú "posees" el archivo, podrías decidir discretamente darle permiso a todo el universo (`chmod 777`) para que cualquier persona en internet pudiera acceder a la caja fuerte del banco._
+
+### El Riesgo con los Demonios (Servicios Hackeados)
+
+Si ejecutas un servidor web como Nginx bajo el usuario raíz de sistema `root` y un hacker ruso en internet averigua un error en la programación de Nginx para romper la página web e inyectar su propio código... Nginx ejecutará el código del Ruso de buena fe con el poder infinito de los permisos `root`, controlando absolutamente toda la CPU y destruyéndote.
+
+Para frenar a los programas desbocados o a los propios usuarios que se dan permisos peligrosos, en alta seguridad corporativa usamos **MAC**.
+
+---
+
+## 2. El Dictador de Kernel: MAC y AppArmor
+
+**MAC (Mandatory Access Control o Control Obligatorio)** desecha la opinión de los usuarios. Aquí define las reglas un dictador inquebrantable desde lo más hondo del propio Kernel Linux.
+
+En Debian (y Ubuntu), este dictador se llama **AppArmor** (En RedHat se llama SELinux).
+
+Bajo MAC/AppArmor, a los programas se les pone una "Camisa de Fuerza" especial matemática en forma de archivo de texto llamada **Perfil**.
+Si el kernel de Debian tiene cargado un "Perfil de Apparmor" especial para Nginx que dice _"Nginx JAMÁS bajo ninguna circunstancia puede usar herramientas del grupo Bash"_, da igual que configures el programa con permisos Root, da igual que metas a Nginx a usar herramientas de administración, y da igual que lo hackeen: en el momento en que Nginx intente ejecutar algo prohibido en el Perfil, AppArmor invocará el martillo de Thor bloqueando la acción a nivel Cero y enviándote una alerta silenciosa.
+
+---
+
+## 3. Comandos vitales como Auditor LFCS
+
+AppArmor ya viene instalado en sistemas comerciales en la actualidad y trae "Perfiles prefabricados" de camisa de fuerza listos y activos en RAM para encapsular al 90% del software crítico instalable de Debian.
+
+Los binarios de auditoría empiezan por `aa-` (App Armor).
+
+### Ver los encerramientos activos
+
+La primera tarea de un sysadmin por la mañana:
+
+```bash
+sudo aa-status
+```
+
+Esto arrojará dos listas muy diferenciadas:
+
+1. **Perfiles cargados en modo `Enforce`**: Su camisa de fuerza obliga físicamente. Si un programa de esta lista pisa lo prohibido, será aniquilado instantáneamente.
+2. **Perfiles cargados en modo `Complain`**: Están siendo vigilados. Si cruzan la línea, el perfil te apuntará silenciosamente "Oye, este programa acaba de hacer cosas raras en tu carpeta home", pero **NO detendrá su ejecución**. (Generalmente usado por programadores para diagnosticar sus propios programas durante 1 semana antes de poner su camisa local de fábrica en Enforce).
+
+### Administrar los Modos de los Archivos
+
+Si quieres enmudecer las reglas letales de un programa de bases de datos `mysqld` porque no para de tirarse y crees que un falso positivo rompió algo tras una actualización, puedes empujarlo temporal y calmadamente a modo "quejidos" (Complain).
+
+```bash
+# Empujando al modo Soplón/Quejido pacífico
+sudo aa-complain /usr/sbin/mysqld
+
+# Volviendo a restablecer la dictadura marcial castrense
+sudo aa-enforce /usr/sbin/mysqld
+```
+
+\*_(NOTA: Los perfiles completos, escritos con sintaxis arcana, suelen alojarse todos juntos estáticos en la caja fuerte local en `/etc/apparmor.d/`)_.\*
+
+---
+
+## Comprueba tus conocimientos
+
+1. Tu equipo ha subido un software anticuado para renderizar PDF en un clúster empresarial. Sabéis que el software tiene muchos bugs sin parchear y es un riesgo. Uno de tus colegas sugiere: "Instálalo normalmente y asóciale como usuario un grupo local rancio mediante DAC convencional, y configúralos con ugo=rw. Con eso ya lo controlas para que nadie lo pueda usar a nivel root". Como profesional LFCS, ¿qué crítica argumentada le refutas con el protocolo MAC moderno?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Usar Seguridad Discrecional DAC (`chmod/chown`) resulta asombrosamente
+       inútil para atajar vectores si este propio software renderizador de PDF
+       es vulnerado desde la misma red externa y logran un rebose de búfer
+       (Buffer Overflow), obteniendo acceso dinámico interno. Necesitamos atarle
+       una camisa de fuerza Obligatoria (MAC) perfilándolo explícitamente sin
+       importar quién es el usuario dueño a ojos del fichero.
+     </Option>
+     <Option>
+       Que hay que instalarle un Firewall UFW local primero mediante DROP
+       universal.
+     </Option>
+     <Option>
+       Enseñarle que el comando visudo hace exactamente eso mismo.
+     </Option>
+   </MultipleChoice>
+
+2. Acabas de encender la última versión estable de Debian e instalaste un paquete extraño llamado "supervisor". Tiras para investigar tus perfiles cargados ejecutando valerosamente en consola: `sudo aa-status`. El listado es claro y ves 45 perfiles activados, de los cuáles adviertes que tu "supervisor" está encasillado en un contenedor categorizado textualmente como listado en modo `Complain`. A altas horas de la noche, un atacante iraní compromete "supervisor" e intenta borrar tus certificados con él. ¿Actuará el martillo férreo de Thor de AppArmor de Debian salvándote de la desgracia atajando ese perjudicial comportamiento?
+
+   <MultipleChoice>
+     <Option>
+       Sí, destrozará la ejecución porque las camisas MAC nunca fallan en modo
+       quejido (Complain) y se anteponen agresivamente.
+     </Option>
+     <Option>
+       Para salvarte hay que ejecutar un reload usando el comando aa-enforce 3
+       veces localmente.
+     </Option>
+     <Option isCorrect>
+       ¡No te salvará de ninguna manera! Estás vendido. Los perfiles en modo
+       listado como `complain` loguean profusamente "Quejas Administrativas" al
+       gestor diario de logs avisando que el software violó perfiles,
+       comportándose como un Chivato/Soplón. PERO no intervien ni ejercen fuerza
+       detenedora sobre la acción destructora hostil. Exige intervención
+       `enforce`.
+     </Option>
+   </MultipleChoice>
+
+3. Existe un demonio crítico de control satelital gestionado por la Fuerza Aérea que os tira constantemente caídas fatales e incomprensibles y corrupciones misteriosas durante el procesamiento. Tus logs forenses de Kernel arrojan líneas como: `audit: type=1400 apparmor="DENIED" operation="open"`. Estás en medio de una auditoría y tienes que rebajar temporalmente a nivel 0 el impacto blindador para ver tranquilamente qué está intentando hacer ese demonio y recolectar indicios antes de aislarlo en el firewall ¿Qué comando es el apropiado para empujar este binario (`/usr/bin/satelite_server`) a estado inofensivo monitorizado?
+   <MultipleChoice>
+     <Option isCorrect>
+       Instruiremos la orden administrativa: `sudo aa-complain
+       /usr/bin/satelite_server`. Con eso cesarán los bloqueos físicos
+       inyectando puramente registros valiosos de lectura en los registros
+       kernel logs sin quebrar de nuevo.
+     </Option>
+     <Option>
+       Hay que editar el `/etc/apt/sources.list` inyectando un parche no libre
+       en main contrib.
+     </Option>
+     <Option>
+       Lo empujaremos silenciándolo ejecutando `sudo aa-disable
+       /usr/bin/satelite_server`.
+     </Option>
+   </MultipleChoice>
