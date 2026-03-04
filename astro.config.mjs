@@ -39,7 +39,7 @@ export default defineConfig({
           },
           items: [
             {
-              label: "Módulo 1: Introducción",
+              label: "1: Introducción",
               translations: {
                 en: "Module 1: Introduction",
                 ca: "Mòdul 1: Introducció",
@@ -47,7 +47,7 @@ export default defineConfig({
               autogenerate: { directory: "module-1" },
             },
             {
-              label: "Módulo 2: Comandos",
+              label: "2: Comandos",
               translations: {
                 en: "Module 2: Commands",
                 ca: "Mòdul 2: Comandaments",
@@ -55,7 +55,7 @@ export default defineConfig({
               autogenerate: { directory: "module-2" },
             },
             {
-              label: "Módulo 3: Administración",
+              label: "3: Administración",
               translations: {
                 en: "Module 3: Administration",
                 ca: "Mòdul 3: Administració",
@@ -63,7 +63,7 @@ export default defineConfig({
               autogenerate: { directory: "module-3" },
             },
             {
-              label: "Módulo 4: Almacenamiento",
+              label: "4: Almacenamiento",
               translations: {
                 en: "Module 4: Storage",
                 ca: "Mòdul 4: Emmagatzematge",
@@ -71,7 +71,7 @@ export default defineConfig({
               autogenerate: { directory: "module-4" },
             },
             {
-              label: "Módulo 5: Redes y Seguridad",
+              label: "5: Redes y Seguridad",
               translations: {
                 en: "Module 5: Networking & Security",
                 ca: "Mòdul 5: Xarxes i Seguretat",
@@ -79,7 +79,7 @@ export default defineConfig({
               autogenerate: { directory: "module-5" },
             },
             {
-              label: "Módulo 6: Automatización",
+              label: "6: Automatización",
               translations: {
                 en: "Module 6: Automation",
                 ca: "Mòdul 6: Automatització",

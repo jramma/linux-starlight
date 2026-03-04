@@ -1,0 +1,120 @@
+---
+title: 4.2 GRUB y Módulos del Kernel
+description: Cómo arreglar un servidor inarrancable editando sus opciones de arranque y sus drivers.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprenderás a editar la configuración permanente de GRUB en
+  `/etc/default/grub`. - Sabrás utilizar `update-grub` para compilar los
+  cambios. - Dominarás el truco LFCS para **resetear la contraseña de Root
+  perdida** desde el menú de arranque. - Aprenderás a ver e inyectar drivers
+  (módulos) en caliente al Kernel (`lsmod`, `modprobe`).
+</PreCheck>
+
+## 1. Configurar GRUB de forma permanente
+
+Si quieres que tu servidor siempre arranque enseñando más mensajes de depuración en pantalla, o que la cuenta atrás de encendido pase de 5 segundos a 1, no puedes editar la pantalla negra que sale al encender. Tienes que arrancar Debian, entrar a tus archivos y editar el fichero maestro de GRUB.
+
+```bash
+sudo nano /etc/default/grub
+```
+
+Dentro, te toparás con un par de variables importantes:
+
+- `GRUB_TIMEOUT=5`: El tiempo en segundos que el servidor espera en la pantalla del menú antes de elegir la primera opción automáticamente y arrancar.
+- `GRUB_CMDLINE_LINUX_DEFAULT="quiet"`: Los parámetros que se le pasan al Kernel. `quiet` silencia todo para que el arranque sea estético. Si un día tu sistema falla y necesitas ver en qué línea exacta de texto ocurre el fallo de carga, deberías **borrar** la palabra `quiet`.
+
+<Aside type="caution" title="La regla de oro de GRUB">
+  Editar `/etc/default/grub` **NO** aplica los cambios. Ese fichero es solo una
+  plantilla base pensada para humanos. Para que el Gestor de arranque real del
+  disco duro recoja los cambios, tras guardar el archivo siempre debes ejecutar
+  religiosamente el comando: `sudo update-grub`
+</Aside>
+
+---
+
+## 2. Salvar el Servidor (Romper GRUB en caliente)
+
+Imagina este escenario de examen LFCS o vida real: Heredas un servidor físico de un antiguo empleado que fue despedido. Nadie sabe la contraseña de Root ni de ningún usuario. Estás totalmente bloqueado.
+En Linux, si tienes acceso físico al teclado del servidor, **puedes hackear tu propio administrador rompiendo el proceso de arranque**.
+
+1. Reinicias el PC. Cuando salga la pantalla de GRUB listando a Debian, en lugar de darle a `Enter`, pulsas la tecla minúscula **`e` (Edit)**.
+2. Esto abre en la pantalla pre-encendido un editor rudimentario. Debes buscar la línea larga de texto que empieza por la palabra `linux` o `linuxefi`.
+3. Te vas al absoluto **final de esa línea** usando las flechas direccionales del teclado, pones un espacio, y escribes esta poción mágica:
+   `init=/bin/bash`
+4. Presionas `Ctrl + X` para arrancar.
+
+**¿Qué acabas de hacer?**
+Has interrumpido la Fase 5 del arranque normal. Le has dicho al Kernel: _"Ignora a Systemd y no me pidas ninguna contraseña. En lugar de eso, inyectame directamente a tu cerebro una terminal desnuda de tipo bash"_.
+Aparecerá un cursor visual. Ejecutas el comando `passwd`, escribes tu cuenta nueva de administrador, y reinicias. Has recuperado la empresa.
+
+---
+
+## 3. Módulos del Kernel (Drivers)
+
+En Windows se instalan "Drivers". En Linux, el Kernel es tan gigantesco que todos los drivers del mundo, desde antenas Wi-Fi hasta joysticks, ya vienen dentro de él o se bajan del repositorio.
+Sin embargo, para no consumir toda la RAM del servidor encendiendo un millón de drivers que no usas, estos se cargan y descargan "Módulos dinámicos".
+
+### Ver lo que está encendido (`lsmod`)
+
+Listar Modules. Muestra una tabla con todos los drivers que el Kernel está usando ahora mismo en RAM.
+
+```bash
+lsmod
+```
+
+### Inyectar un Modulo (`modprobe`)
+
+Si conectas un dispositivo extraño por USB y Linux no lo pilla, puedes forzar al Kernel a inyectarse ese driver en nombre y alma a su RAM.
+
+```bash
+# Force-load driver genérico de Bluetooth
+sudo modprobe bluetooth
+```
+
+_(Si quisieras quitarle el módulo, como quien le saca un cable, usarías `modprobe -r`)_.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Editas el archivo `/etc/default/grub` usando `nano`, cambias el timeout a 10 segundos, guardas el archivo (`Ctrl+O`) y usas el comando `reboot` para reiniciar el PC. Para tu sorpresa, el menú de GRUB sigue durando solo 5 segundos en pantalla. ¿Qué omitiste de hacer?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Editar el archivo de texto no reconstruye el verdadero gestor binario de
+       arranque del disco (alojado en /boot). Debía ejecutar el comando compilar
+       `sudo update-grub` antes de reiniciar.
+     </Option>
+     <Option>Se me olvidó ejecutar `sudo systemctl restart grub`.</Option>
+     <Option>Escribir `GRUB_TIMEOUT` en minúsculas.</Option>
+   </MultipleChoice>
+
+2. Acabas de pulsar la tecla `e` en la pantalla de GRUB y encontraste la línea mágica que empieza por `linux /boot/vmlinuz-...`. Estás en medio de un ataque cardíaco porque la contraseña del servidor está perdida. ¿Qué texto debes inyectar religiosamente al final absoluto de esa fila, tras un hueco de espacio, antes de presionar `Ctrl+X`?
+
+   <MultipleChoice>
+     <Option>`PasswordAuthentication no`</Option>
+     <Option>`systemd.unit=rescue.target`</Option>
+     <Option isCorrect>
+       `init=/bin/bash` (Para indicarle al Kernel recién cargado que invoque una
+       terminal interactiva desnuda incrustada como proceso 1, saltándose el
+       cargador tradicional que pediría passwords).
+     </Option>
+   </MultipleChoice>
+
+3. Insertas una tarjeta capturadora de vídeo un poco antigua en el PCI del servidor. Sabes en foros que requiere un driver específico del kernel llamado "bttv" para que empiece a funcionar y detecte la cámara. ¿Cuál es el proceso LFCS oficial para mandar llamar a este driver en vivo desde tu terminal sin reiniciar?
+   <MultipleChoice>
+     <Option>`apt install bttv`</Option>
+     <Option>`lsmod bttv`</Option>
+     <Option isCorrect>
+       Ejecutar el sondeador de módulos con la orden de inserción: `sudo
+       modprobe bttv`
+     </Option>
+   </MultipleChoice>

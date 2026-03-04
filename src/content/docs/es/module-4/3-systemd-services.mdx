@@ -1,0 +1,138 @@
+---
+title: 4.3 Servicios y Systemd
+description: Cómo dominar absolutamente todo lo que corre de fondo en tu servidor con systemctl.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás el concepto de `Daemon` (Demonio). - Sabrás utilizar `systemctl`
+  para ver el estado, reiniciar y parar servicios como Apache o SSH. -
+  Aprenderás la vital diferencia para la producción entre `restart` y `reload`.
+  - Aprenderás a enganchar servicios para que inicien automáticamente
+  (`enable`).
+</PreCheck>
+
+Habrás notado que al encender Linux, la red funciona, el servidor SSH te deja entrar, y el servidor Web funciona. Pero tú no iniciaste esos programas a mano ejecutando aplicaciones.
+
+Esos programas se llaman **Demonios** (Daemons, que suele abreviarse con una 'd' al final, como `sshd` o `systemd`). Son programas invisibles y sin interfaz que viven de fondo en la memoria RAM. Al capataz total de todos estos programas que decide quién nace, quién muere y quién reinicia se le llama **Systemd**.
+
+Y a menos que instales Linux desde 0 en tu smartwatch, usarás su comando principal: `systemctl`.
+
+---
+
+## 1. El Control de Mando: `systemctl`
+
+El comando Control de Systemd (`systemctl`) espera una orden y el nombre de una Unidad (generalmente finalizada en `.service`).
+Usemos de ejemplo el servidor web de Debian (`nginx` o `apache2`).
+
+### Ver la Salud del Sistema (Status)
+
+```bash
+systemctl status nginx
+```
+
+Esto te imprimirá un cuadro vital inestimable. De un solo vistazo verás:
+
+- Si está en verde (**active (running)**) o rojo (**failed**).
+- Si ha colapsado, imprimirá textualmente las 10 últimas líneas del fichero de error explicándote _por qué_.
+
+### Apagar y Encender (Start / Stop)
+
+Para hacer la modificación en caliente de la memoria RAM.
+
+```bash
+sudo systemctl stop nginx
+sudo systemctl start nginx
+```
+
+### El Arte de Reiniciar vs Recargar
+
+Si cambias un archivo de configuración de Nginx (por ejemplo, añades una página web nueva), el Demonio que reside en memoria RAM no se entera porque no está leyendo el archivo de texto a cada segundo. Debes forzar a que lo lea. Tienes dos enfoques:
+
+- **La Ruleta Rusa (`restart`)**:
+
+  ```bash
+  sudo systemctl restart nginx
+  ```
+
+  Esto mata instantáneamente el proceso, tira la conexión de todos los clientes bajándose descargas de tu web, y enciende un proceso nuevo. Es una animalada en Producción si no hay un error grave.
+
+- **El Toque Cuidudoso (`reload`)**:
+  ```bash
+  sudo systemctl reload nginx
+  ```
+  Le envía una señal elegante al Demonio: _"Oye, cuando termines de atender a las descargas que tienes a medias, reléete el archivo de configuración a ver si ha habido cambios "_. Cero micro-cortes, máxima profesionalidad.
+
+---
+
+## 2. Inmortalizar un Servicio (Enable / Disable)
+
+Que tú des `start` a un servicio web ahora mismo, no asegura de ninguna manera que si el servidor sufre un corte eléctrico y reinicia, el servicio vaya a auto-arrancar.
+
+Para enganchar profundamente un Demonio al ciclo de encendido de la Fase 5 del Sistema, y garantizar su ejecución automática tras reiniciar, debemos **Habilitarlo**:
+
+```bash
+# Enganchar el arranque automático ("Crear Symlink")
+sudo systemctl enable nginx
+
+# Retirarlo del arranque automático (Eliminar Symlink)
+sudo systemctl disable nginx
+
+# Si quieres que encienda AHORA MISMO y además engancharlo al futuro
+# (Truco LFCS con el modificador --now)
+sudo systemctl enable --now nginx
+```
+
+---
+
+## Comprueba tus conocimientos
+
+1. Has editado el archivo `/etc/ssh/sshd_config` tal y como aprendimos en la Clase 3 para desactivar los reseteos de contraseña. Actualmente hay otros 5 sysadmins de tu empresa conectados al servidor simultáneamente transfiriendo grandes configuraciones críticas y no quieres desconectarlos de golpe. ¿Cómo recomunidas al demonio SSH que acate tus cambios en la configuración reduciendo la fricción a cero?
+
+   <MultipleChoice>
+     <Option>`sudo systemctl restart ssh`</Option>
+     <Option>
+       `sudo systemctl stop ssh` y esperar hasta la hora de la cena para tirar
+       `start`.
+     </Option>
+     <Option isCorrect>
+       `sudo systemctl reload ssh` (Recarga "grácilmente" las líneas modificadas
+       del archivo de configuración sin tirar (restart) o detener los hilos de
+       red establecidos).
+     </Option>
+   </MultipleChoice>
+
+2. Acabas de instalar el gestor de bases de datos MariaDB (`apt install mariadb-server`). Tu plan es migrar bases de datos todo este mes, pero aún no quieres que la base de datos se ponga a iniciarse automáticamente devorando 2GB de RAM cada vez que reinicias la máquina. ¿Cómo detienes el inicio automático desenganchando la orden de auto-reinicio?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       `sudo systemctl disable mariadb` (Deshabilita el enlace simbólico de
+       arranque automático de Systemd. La BD podrá seguir encendiéndose y
+       apagándose manualmente usando start/stop).
+     </Option>
+     <Option>
+       `sudo systemctl stop mariadb` (Solo lo para hoy en memoria, pero si
+       reinicias puede que arranque si está activado el 'enable').
+     </Option>
+     <Option>Borrando el alias de initramfs.</Option>
+   </MultipleChoice>
+
+3. Te quejas de que tu pequeña web no carga. Ejecutas `systemctl status apache2` y el CLI retorna texto diciendo: `Loaded: loaded (/lib/systemd/system/apache2.service; disabled; vendor preset: enabled)` y `Active: inactive (dead)`. Analizando forensemente el mensaje, ¿Qué deducción sacamos?
+   <MultipleChoice>
+     <Option>
+       A apache2 le falta memoria libre en el kernel para ejecutarse.
+     </Option>
+     <Option isCorrect>
+       Apache2 no corre porque está inactivo (muerto en RAM), y lo más probable
+       es que cuando el servidor fue apagado no encendió solo hoy porque
+       adicionalmente se encuentra explícitamente `disabled` para autoarrancar
+       por Systemd.
+     </Option>
+     <Option>El servicio no está instalado en este servidor Debian.</Option>
+   </MultipleChoice>

@@ -1,0 +1,138 @@
+---
+title: 2.4 Gestión de Permisos y Propiedad
+description: Cómo funciona la seguridad base de Linux (rwx), el sistema Octal y la gestión de dueños.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprenderás a leer la matriz de permisos `rwxr-xr-x` en la salida de `ls -l`.
+  - Dominarás el Modo Octal (números) para configurar permisos a la velocidad de
+  la luz. - Conocerás cómo cambiar el dueño de un archivo usando `chown` como
+  superusuario. - Entenderás por qué el permiso `777` es el mayor pecado de un
+  Sysadmin.
+</PreCheck>
+
+En Linux, todo archivo y directorio es propiedad absoluta de un **Usuario** específico y pertenece a un **Grupo**. El núcleo del sistema decide quién puede ver, modificar o ejecutar un archivo evaluando tres niveles de acceso: **Usuario (Propietario)**, **Grupo** y **Otros (El resto del mundo)**.
+
+---
+
+## 1. La Matriz de Permisos (`ls -l`)
+
+Cuando ejecutas el comando `ls -l`, la primera columna que ves es una cadena de 10 caracteres aparentemente críptica, como `-rwxr-xr--` o `drwxrwxr-x`.
+
+Desgranemos `-rwxr-xr--` (10 caracteres):
+
+- **El 1º caracter (Tipo):** Indica qué es. Un guion `-` significa que es un archivo regular. Una `d` significa que es un directorio. Un `l` significa que es un enlace simbólico.
+- **Los siguientes 3 (`rwx`):** Permisos del **Usuario Propietario** (User / `u`). En este caso, puede Leer (Read = `r`), Escribir/Modificar (Write = `w`), y Ejecutar como programa (eXecute = `x`).
+- **Los siguientes 3 (`r-x`):** Permisos del **Grupo** (Group / `g`). Pueden Leer, NO pueden escribir (marcado con `-`), y sí pueden Ejecutar.
+- **Los últimos 3 (`r--`):** Permisos de **Otros** (Others / `o`). El resto de usuarios del sistema solo pueden Leer.
+
+## 2. Cambiando Permisos (`chmod`)
+
+El comando **ch**ange **mod**e altera los permisos. Existen dos formas de hacerlo: la simbólica (amigable) y la octal (profesional).
+
+### Modo Simbólico (Letras)
+
+Usas matemáticas simples sumando (`+`), restando (`-`) o igualando (`=`) permisos a las categorías `u`, `g`, `o`, o `a` (All/Todos).
+
+```bash
+# Darle permiso de ejecución al dueño (Usuario)
+chmod u+x script.sh
+
+# Quitarle permiso de escritura a los Otros
+chmod o-w archivo_secreto.txt
+
+# Forzar que el Grupo solo tenga permiso de Lectura (eliminando w o x si los tuviera)
+chmod g=r documento.pdf
+```
+
+### Modo Octal (El Atajo Sysadmin)
+
+Sumas el valor de los permisos que quieres asignar.
+
+- **Lectura (`r`) = 4**
+- **Escritura (`w`) = 2**
+- **Ejecución (`x`) = 1**
+
+Para cada bloque (Usuario, Grupo, Otros), sumas los valores:
+
+- Permiso `rwx` (Lectura+Escritura+Ejecución): 4 + 2 + 1 = **7**
+- Permiso `rw-` (Lectura+Escritura): 4 + 2 + 0 = **6**
+- Permiso `r-x` (Lectura+Ejecución): 4 + 0 + 1 = **5**
+- Permiso `r--` (Solo Lectura): 4 + 0 + 0 = **4**
+- Sin permiso `---`: **0**
+
+**Ejemplos Míticos:**
+
+- `chmod 755 script.sh` -> El dueño tiene `7` (Lectura, Escritura, Ejecución). El Grupo y Otros tienen `5` (Lectura y Ejecución). Es el estándar absoluto para programas y scripts web.
+- `chmod 644 archivo.txt` -> Dueño `6` (Lectura, Escritura). Resto `4` (Solo lectura). El estándar para cualquier texto o configuración.
+- `chmod 600 llave.pem` -> Dueño `6`. Resto `0`. Máxima privacidad, estándar para claves privadas SSH.
+- `chmod 777 publico` -> **PELIGRO**. Todo el mundo (`7`,`7`,`7`) puede alterar, borrar y ejecutar archivos. Jamás uses esto en producción para "arreglar un problema que no te deja guardar".
+
+---
+
+## 3. Cambiando de Dueño (`chown`)
+
+El comando **ch**ange **own**er cambia el propietario y/o grupo de un archivo. Por motivos evidentes de seguridad, **solo el superusuario (`root`) puede regalar la propiedad de un archivo a otro**, por lo que siempre tendrás que usar `sudo`.
+
+```bash
+# Cambiar solo el propietario al usuario 'juan'
+sudo chown juan archivo.txt
+
+# Cambiar el propietario a 'juan' y el grupo a 'desarrolladores' (usando dos puntos :)
+sudo chown juan:desarrolladores archivo.txt
+
+# Cambiar TODO el contenido de una carpeta entera remotamente (Recursivo -R)
+sudo chown -R www-data:www-data /var/www/html/
+```
+
+<Aside type="caution" title="Carpetas vs Archivos">
+  El permiso de Ejecución (`x`) en un archivo permite correrlo como programa.
+  ¡Pero en un Directorio, la `x` significa **"Permiso para Entrar/Atravesar"**
+  (`cd`)!. Si le quitas la `x` a una carpeta con `chmod -x`, nadie podrá entrar
+  en ella ni listar su contenido por dentro, aunque tenga la `r`.
+</Aside>
+
+---
+
+## Comprueba tus conocimientos
+
+1. Si utilizas el comando `ls -l` y observas que un archivo tiene los permisos `-rw-r--r--`, ¿Cuál es su equivalente exacto usando la notación numérica Octal?
+
+   <MultipleChoice>
+     <Option>
+       `755` (Usuario Lee, Escribe, Ejecuta. Resto Lee y Ejecuta).
+     </Option>
+     <Option isCorrect>`644` (Usuario 4+2=6. Grupo 4. Otros 4).</Option>
+     <Option>`777` (Modo acceso total).</Option>
+   </MultipleChoice>
+
+2. Acabas de crear un script en Bash maravilloso llamado `limpiar.sh`. Eres su creador, por lo que tienes permisos de lectura y escritura (`rw-`), pero al internar correrlo te dice "Permiso Denegado". ¿Cuál de estos comandos soluciona el problema de la forma más segura usando el Modo Simbólico?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       `chmod u+x limpiar.sh` (Añadir a mi Usuario el permiso eXecute).
+     </Option>
+     <Option>
+       `chmod 777 limpiar.sh` (Dar permisos de ejecución a todo el mundo).
+     </Option>
+     <Option>
+       `chown root limpiar.sh` (Darle el script al administrador).
+     </Option>
+   </MultipleChoice>
+
+3. Has montado un servidor Web Apache en Debian. El usuario que ejecuta el servidor web se llama `www-data`. Sin embargo, subiste los archivos de la página web usando tu cuenta personal `juan`. El servidor lanza error 403 Forbidden porque no es dueño de los archivos de la web. ¿Qué comando arregla toda la web de golpe?
+   <MultipleChoice>
+     <Option>`chmod -R 777 /var/www/html`</Option>
+     <Option>`sudo chmod www-data /var/www/html`</Option>
+     <Option isCorrect>
+       `sudo chown -R www-data:www-data /var/www/html` (Cambiar Dueño y Grupo
+       Recursivamente).
+     </Option>
+   </MultipleChoice>

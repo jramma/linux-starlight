@@ -43,5 +43,6 @@
   "checklist.or": "o",
   "multipleChoice.defaultCorrect": "¡Correcto!",
   "multipleChoice.defaultIncorrect": "Inténtalo de nuevo.",
-  "multipleChoice.submitLabel": "Enviar respuesta"
+  "multipleChoice.submitLabel": "Enviar respuesta",
+  "tutorial.getReady": "¡Prepárate!"
 }

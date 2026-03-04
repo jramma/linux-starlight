@@ -5,8 +5,17 @@ sidebar:
   order: 1
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
 
+<PreCheck>
+  - Entenderás la diferencia crítica entre rutas absolutas y relativas. -
+  Dominarás el listado de archivos avanzados y comodines (`ls`, `*`). -
+  Aprenderás el kit de supervivencia para manipular archivos (`cp`, `mv`, `rm`).
+  - Conocerás cómo encontrar cualquier archivo perdido con `find`.
+</PreCheck>
 
 ## Jerarquía
 
@@ -15,22 +24,25 @@ Recuerda que todo comienza en `/`.
 ### Conceptos de rutas (path)
 
 - **Ruta absoluta**: Comienza con `/`. Siempre funciona, sin importar dónde estés. (ej.: `/home/user/docs/file.txt`).
-- **Ruta relativa**: *No* comienza con `/`. Depende de tu ubicación actual. (ej.: `docs/file.txt` o `../file.txt`).
+- **Ruta relativa**: _No_ comienza con `/`. Depende de tu ubicación actual. (ej.: `docs/file.txt` o `../file.txt`).
 
 <Aside type="note">
-No confundas las **rutas de archivos** con la variable de entorno **`$PATH`**. Las rutas describen dónde están los archivos en el sistema; `$PATH` es la lista de directorios donde el shell busca ejecutables cuando escribes una orden. Puedes verlo con `echo $PATH`.
+  No confundas las **rutas de archivos** con la variable de entorno **`$PATH`**.
+  Las rutas describen dónde están los archivos en el sistema; `$PATH` es la
+  lista de directorios donde el shell busca ejecutables cuando escribes una
+  orden. Puedes verlo con `echo $PATH`.
 </Aside>
 
 ## Comandos de navegación
 
-| Comando | Nombre | Función |
-| :--- | :--- | :--- |
-| `pwd` | Print Working Directory | Te dice dónde estás ahora mismo. |
-| `cd` | Change Directory | Te mueve a una nueva carpeta. |
-| `cd ..` | | Sube un nivel. |
-| `cd ~` | | Va a tu directorio personal (home). |
-| `cd -` | | Vuelve al directorio anterior. |
-| `ls` | List | Muestra los archivos en el directorio actual. |
+| Comando | Nombre                  | Función                                       |
+| :------ | :---------------------- | :-------------------------------------------- |
+| `pwd`   | Print Working Directory | Te dice dónde estás ahora mismo.              |
+| `cd`    | Change Directory        | Te mueve a una nueva carpeta.                 |
+| `cd ..` |                         | Sube un nivel.                                |
+| `cd ~`  |                         | Va a tu directorio personal (home).           |
+| `cd -`  |                         | Vuelve al directorio anterior.                |
+| `ls`    | List                    | Muestra los archivos en el directorio actual. |
 
 ### Opciones de `ls`
 
@@ -52,23 +64,26 @@ Los comodines ayudan a seleccionar múltiples archivos:
 
 ## Gestión de archivos
 
-| Comando | Función | Ejemplo |
-| :--- | :--- | :--- |
-| `mkdir` | Crear directorio | `mkdir projects` |
-| `touch` | Crear archivo vacío | `touch notes.txt` |
-| `cp` | Copiar | `cp notes.txt backup.txt` |
+| Comando | Función                             | Ejemplo                            |
+| :------ | :---------------------------------- | :--------------------------------- |
+| `mkdir` | Crear directorio                    | `mkdir projects`                   |
+| `touch` | Crear archivo vacío                 | `touch notes.txt`                  |
+| `cp`    | Copiar                              | `cp notes.txt backup.txt`          |
 | `cp -r` | Copiar de forma recursiva (carpeta) | `cp -r projects/ projects-backup/` |
-| `mv` | Mover (o renombrar) | `mv notes.txt doc.txt` |
-| `rm` | Eliminar (borrar) | `rm file.txt` |
-| `rmdir` | Eliminar directorio **vacío** | `rmdir old-empty-dir` |
-| `rm -i` | Confirmación interactiva | `rm -i file.txt` |
+| `mv`    | Mover (o renombrar)                 | `mv notes.txt doc.txt`             |
+| `rm`    | Eliminar (borrar)                   | `rm file.txt`                      |
+| `rmdir` | Eliminar directorio **vacío**       | `rmdir old-empty-dir`              |
+| `rm -i` | Confirmación interactiva            | `rm -i file.txt`                   |
 
 <Aside type="tip">
-Si una ruta contiene espacios, **envuélvela con comillas**: `mv "Informe Final.txt" informes/`.
+  Si una ruta contiene espacios, **envuélvela con comillas**: `mv "Informe
+  Final.txt" informes/`.
 </Aside>
 
 <Aside type="caution">
- **`rm -rf /`**: El `rm -r` (recursivo) combinado con `-f` (forzar) es peligroso. Borra carpetas y su contenido sin preguntar. Revisa siempre la ruta antes de pulsar Enter.
+  **`rm -rf /`**: El `rm -r` (recursivo) combinado con `-f` (forzar) es
+  peligroso. Borra carpetas y su contenido sin preguntar. Revisa siempre la ruta
+  antes de pulsar Enter.
 </Aside>
 
 ## Búsqueda de archivos
@@ -123,5 +138,41 @@ Cuando escribes una orden, el shell busca el ejecutable en cada directorio de `$
   - En `zsh`: añádelo a `~/.zshrc`
 
 <Aside type="tip">
-Si `which` no encuentra una orden pero el ejecutable existe, verifica que su directorio esté en `$PATH` o invócalo con la **ruta absoluta** (`/usr/local/bin/foo`) o una **ruta relativa** (`./foo`).
+  Si `which` no encuentra una orden pero el ejecutable existe, verifica que su
+  directorio esté en `$PATH` o invócalo con la **ruta absoluta**
+  (`/usr/local/bin/foo`) o una **ruta relativa** (`./foo`).
 </Aside>
+
+---
+
+## Comprueba tus conocimientos
+
+1. Estás en `/home/juan/docs` y quieres copiar el archivo `informe.txt` directamente a la carpeta padre `/home/juan`. ¿Cuál es el comando con ruta relativa correcto?
+
+<MultipleChoice>
+     <Option>`cp informe.txt /home/juan`</Option>
+     <Option isCorrect>`cp informe.txt ..`</Option>
+     <Option>`cp informe.txt ~/`</Option>
+</MultipleChoice>
+
+2. Has descargado un script de internet y necesitas encontrar un archivo de log viejo que sea mayor a 100MB alojado en algún lugar de `/var/log`. ¿Cuál es el comando más idóneo?
+
+<MultipleChoice>
+  <Option>
+    `ls -la /var/log | grep "100MB"`
+  </Option>
+  <Option>
+    `whereis log > 100M`
+  </Option>
+  <Option isCorrect>
+    `find /var/log -size +100M`
+  </Option>
+</MultipleChoice>
+
+3. Quieres listar todos los archivos, incluyendo los ocultos (que empiezan por punto), ordenados por fecha para ver los más recientes al fondo de la pantalla. ¿Qué combinación de banderas de `ls` usarías?
+
+<MultipleChoice>
+     <Option isCorrect>`ls -latr`</Option>
+     <Option>`ls -lh`</Option>
+     <Option>`ls -a -hidden`</Option>
+</MultipleChoice>

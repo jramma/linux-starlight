@@ -1,0 +1,149 @@
+---
+title: 3.4 Conexiones Remotas y SSH
+description: Cerrando la puerta de las contraseñas para adoptar la criptografía de llaves.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás cómo el Demonio SSH (`sshd`) atiende tus conexiones en el puerto
+  22. - Generarás tu propio par de llaves criptográficas asimétricas
+  (`ssh-keygen`). - Aprenderás a "exportar" tu llave pública al servidor remoto
+  (`ssh-copy-id`). - Securizarás el archivo `sshd_config` contra ataques de
+  fuerza bruta.
+</PreCheck>
+
+Rara vez te sentarás físicamente frente a un servidor Linux con un teclado conectado. El 99% del tiempo lo administrarás desde tu casa u oficina a través de Internet usando **SSH** (Secure Shell).
+
+---
+
+## 1. Conectándose por Contraseña (Poco Seguro)
+
+Por defecto, si un servidor Linux tiene el servicio SSH instalado, puedes conectarte apuntando a su IP y proveyendo un usuario existente y su contraseña.
+
+```bash
+# Conectarse al servidor apuntando a su IPv4 local o pública
+ssh juan@192.168.1.50
+```
+
+El problema es que **tu servidor está constantemente bajo ataque**. Existen "bots" chinos y rusos que escanean todo Internet las 24 horas del día, intentando adivinar contraseñas (`root/1234`, `admin/admin`) millones de veces por segundo. Esto se llama Ataque de Fuerza Bruta. Si tu contraseña es débil, entrarán y destruirán tu empresa.
+
+---
+
+## 2. La Magia de las Llaves Criptográficas
+
+Para volver una computadora in-hackeable, en Linux **desactivamos el uso de contraseñas** y obligamos a que el acceso remoto se verifique matemáticamente usando un Sistema de Llaves Asimétricas.
+
+Funciona así:
+
+1. En **tu ordenador personal** generas un par matemático: Una **Llave Pública** (Un candado que le puedes compartir a todo el mundo) y una **Llave Privada** (La clave real para abrir ese candado, que _jamás_ sale de tu casa).
+2. Mandas tu Llave Pública al buzón del Servidor Linux.
+3. Ahora, cuando intentes entrar al Servidor, este examinará matemáticamente si tu ordenador personal posee la Llave Privada correcta para ese candado. **Si no la tienes, te corta la conexión inmediatamente.**
+
+### Paso A: Generar tu par de llaves
+
+En **tu ordenador personal** (no en el servidor), abre una terminal y ejecuta:
+
+```bash
+# El algoritmo actual recomendado en 2024 es ED25519 (muy seguro y rápido)
+ssh-keygen -t ed25519
+```
+
+Esto creará dos archivos ocultos en tu ordenador dentro de la carpeta `~/.ssh/`:
+
+- `id_ed25519`: Tu llave privada (¡Secréta, no la pierdas, no la compartas!).
+- `id_ed25519.pub`: Tu llave pública (El candado para exportar).
+
+### Paso B: Exportar el candado al Servidor
+
+Sabiendo la IP de tu servidor y tu usuario, vamos a "implantar" tu llave pública dentro de él. (Esta será la última vez que necesites escribir tu ridícula contraseña analógica).
+
+```bash
+ssh-copy-id juan@192.168.1.50
+```
+
+¡Listo! A partir de ahora, si haces `ssh juan@192.168.1.50`, entrarás sin que el servidor te pregunte nada.
+
+---
+
+## 3. Blindando el Servidor (`sshd_config`)
+
+Ahora que tú puedes entrar con una llave in-hackeable, tenemos que decirle al servidor que **rechace a cualquier persona en la Tierra que intente conectarse usando una contraseña normal**.
+
+Entra por SSH al servidor y edita el archivo maestro del "Demonio" (Servicio de fondo) SSH:
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+Busca las siguientes tres líneas clave, descoméntalas quitando el `#` inicial si lo tuvieran, y ponlas exactamente en estos valores preventivos:
+
+1. `PermitRootLogin no` (Nunca permitir que nadie inicie sesión directamente escribiendo el nombre 'root'. Obliga a que la gente entre con su usuario normal y después use `sudo`).
+2. `PasswordAuthentication no` (Cierra la puerta de las contraseñas normales. Adiós fuerza bruta).
+3. `PubkeyAuthentication yes` (Confirma que solo admites llaves criptográficas).
+
+Guarda el archivo y reinicia el servicio para que aplique los cambios:
+
+```bash
+sudo systemctl restart ssh
+```
+
+<Aside type="caution">
+  Antes de reiniciar el servicio SSH con `PasswordAuthentication no`, ¡asegúrate
+  de que tu llave criptográfica realmente funciona abriendo una segunda terminal
+  e intentando entrar! Si la apagaste y tu llave te falla, **te quedarás
+  bloqueado afuera de tu propio servidor para siempre**.
+</Aside>
+
+---
+
+## Comprueba tus conocimientos
+
+1. Has generado tu par de llaves y se han guardado como `id_rsa` e `id_rsa.pub`. ¿Cuál de los dos archivos es el que debes enviar y pegar en el servidor remoto Linux que quieres administrar y por qué?
+
+   <MultipleChoice>
+     <Option>
+       El `id_rsa` porque es la llave privada que abrirá las configuraciones
+       internas del servidor de forma protegida.
+     </Option>
+     <Option isCorrect>
+       El `id_rsa.pub` porque es la Llave Pública. Es un "candado" seguro de
+       compartir y el servidor la usará para retar matemáticamente a mi
+       computadora para ver si posee la llave privada genuina.
+     </Option>
+     <Option>
+       Ambos, porque SSH requiere el par completo para verificar la conexión de
+       origen a destino.
+     </Option>
+   </MultipleChoice>
+
+2. Trabajas en una multinacional y han notado que en el archivo de "logs" del servidor hay 15.000 intentos de inicio de sesión fallidos por segundo desde Rusia intentando entrar directamente como administrador absoluto de la máquina. Tu llave criptográfica ya está operativa. ¿Qué dos líneas modificas dentro de `sshd_config` usando Nano para erradicar completamente esta amenaza?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Busco y establezco `PasswordAuthentication no` (Para que no valgan las
+       combinaciones de fuerza bruta) y `PermitRootLogin no` (Para obligar a los
+       administradores reales a entrar como sus usuarios rasos antes de poder
+       ejecutar 'sudo').
+     </Option>
+     <Option>
+       Busco y establezco `UseDNS no` y `PubkeyAuthentication no`.
+     </Option>
+     <Option>Le cambio el 'ListenAddress' a la IPv4 rusa.</Option>
+   </MultipleChoice>
+
+3. Acabas de terminar de modificar el archivo `/etc/ssh/sshd_config` a la perfección. Sin embargo, intentas entrar desde otro PC usando contraseñas prohibidas y te das cuenta que **el servidor te sigue dejando entrar como si no hubieras hecho absolutamente nada.** ¿Qué te ha faltado por hacer para que Debian procese tu nueva mentalidad LFCS?
+   <MultipleChoice>
+     <Option>Cerrar la sesión escribiendo `exit` y volver a entrar.</Option>
+     <Option>Correr el comando de recarga `ssh-keygen restart`.</Option>
+     <Option isCorrect>
+       Guardar el archivo en el editor no hace nada por sí solo. Es obligatorio
+       reiniciar el proceso demonio que escucha en la red (Systemd) usando `sudo
+       systemctl restart ssh`.
+     </Option>
+   </MultipleChoice>

@@ -1,0 +1,137 @@
+---
+title: 2.3 Tuberías (Pipes) y Redirecciones
+description: Desencadenando el verdadero poder de la Filosofía Unix concatenando pequeños comandos.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás el concepto de `stdin`, `stdout` y `stderr` (entradas y salidas estándar).
+  - Sabrás cómo registrar la salida de los comandos en archivos usando `>` y `>>`.
+  - Aprenderás la esencia de Linux uniendo comandos complejos con Tuberías (`|`).
+  - Filtrarás datos masivos en segundos usando `grep`, `tail` y `wc`.
+</PreCheck>
+
+La Filosofía fundamental de Unix dictamina: **"Escribe programas que hagan solo una cosa, pero que la hagan perfecta. Luego, escribe programas para trabajar juntos."**
+
+Ninguna herramienta en Linux hace todo. En su lugar, el poder de un Sysadmin reside en usar legos (pequeños comandos aislados) y conectarlos entre sí.
+
+---
+
+## 1. Redirecciones: Controlando el flujo
+
+Normalmente, cuando ejecutas un comando, su resultado se imprime en tu pantalla. Podemos redirigir esta salida directamente a un archivo para guardar este resultado permanentemente.
+
+### Los Tres Flujos (Streams) Estándar
+
+Cada proceso en Linux nace siempre con tres "tuberías invisibles" conectadas a él:
+
+1. **`stdin` (0)**: Entrada estándar. Por defecto es tu teclado.
+2. **`stdout` (1)**: Salida estándar. El resultado exitoso de un comando. Por defecto es tu pantalla.
+3. **`stderr` (2)**: Error estándar. Los mensajes de fallo. También salen por tu pantalla.
+
+### Operadores de Redirección
+
+- **`>` (Sobrescribir):** Redirige el `stdout` reemplazando todo el contenido previo del archivo si este ya existe. Si no existe, lo crea.
+
+  ```bash
+  # Guarda el mensaje anulando el contenido anterior de registro.txt
+  echo "Sistema iniciado" > registro.txt
+  ```
+
+- **`>>` (Añadir / Append):** Redirige el `stdout` agregando la salida al final del archivo sin tocar el texto existente. Vital para sistemas de Logs.
+
+  ```bash
+  echo "Nueva alerta de seguridad" >> registro.txt
+  ```
+
+- **`2>` (Redirigir solo Errores):** Supongamos que escaneas un disco entero. La pantalla se llenará de errores "Permiso Denegado". Puedes limpiar la vista enviando los errores a `/dev/null` (el agujero negro de Linux).
+  ```bash
+  # Muestra los archivos encontrados, pero oculta e ignora los errores
+  find / -name "*.conf" 2> /dev/null
+  ```
+
+---
+
+## 2. Tuberías (`|` PIPES)
+
+Aquí es donde Linux brilla. El operador de Tubería `|` toma la Salida Estándar (`stdout`) del comando a su izquierda, y la introduce como si la hubieras tecleado (Entrada Estándar / `stdin`) en el comando de la derecha.
+
+```bash
+comando1 | comando2 | comando3
+```
+
+### Filtros Esenciales (Coreutils)
+
+Los siguientes comandos están diseñados específicamente para brillar cuando se conectan detrás de un Pipe:
+
+1. **`grep`**: El buscador universal. Filtra e imprime solo las líneas que contienen una palabra o patrón.
+   ```bash
+   # Lee un archivo inmenso, y solo imprime las líneas con la palabra "Error"
+   cat /var/log/syslog | grep "Error"
+   ```
+2. **`less`**: Paginador. Si la salida de un comando es de miles de líneas y abarrota tu pantalla, ponle `| less` y podrás navegarla cómodamente con flechas (presiona `q` para salir).
+3. **`wc` (Word Count)**: Cuenta bytes, palabras o, lo más útil, líneas con la bandera `-l` (lines).
+4. **`head` y `tail`**: Muestran sólo las 10 primeras (`head`) o las 10 últimas (`tail`) líneas de texto.
+
+### Ejemplos Prácticos de Sysadmin
+
+- Quiero ver todas las IPs caídas y conectadas, pero solo quiero que me muestre las líneas que digan "UP" (conectadas):
+  ```bash
+  ip a | grep "UP"
+  ```
+- Quiero saber cuántos procesos en el servidor contienen la palabra "nginx" en su nombre (para saber cuántos workers HTTP hay vivios):
+  ```bash
+  ps aux | grep "nginx" | wc -l
+  ```
+
+---
+
+## Comprueba tus conocimientos
+
+1. Si quieres guardar un listado detallado de los archivos de un directorio `/var/log` en un archivo llamado `inventario.log` sin borrar de casualidad otra información importante que pudiera ya contener ese archivo, ¿qué operador usas?
+
+<MultipleChoice>
+  <Option>
+    `ls -la /var/log | inventario.log`
+  </Option>
+  <Option>
+    `ls -la /var/log > inventario.log`
+  </Option>
+  <Option isCorrect>
+    `ls -la /var/log >> inventario.log`
+  </Option>
+</MultipleChoice>
+
+2. Ejecutas un comando engorroso que llena tu pantalla con cientos de líneas rojas de advertencia que no te importan, impidiendo que leas los resultados positivos porque se desplazan muy rápido. ¿Cómo ocultas los errores?
+
+<MultipleChoice>
+  <Option>
+    Poniendo `| grep "errores"` al final del comando.
+  </Option>
+  <Option isCorrect>
+    Añadiendo `2> /dev/null` al final del comando para enviar el Flujo Estándar de Errores al basurero.
+  </Option>
+  <Option>
+    Redirigiendo el comando usando `>> /dev/null`.
+  </Option>
+</MultipleChoice>
+
+3. Quieres listar tu directorio actual, pero dicho directorio contiene 15.000 fotos antiguas. Sólo quieres saber rápidamente y con exactitud cuántas imágenes hay en total. ¿Cómo combinas comandos para esto?
+
+<MultipleChoice>
+  <Option>
+    `find . -type f > wc -l`
+  </Option>
+  <Option isCorrect>
+    Listar los archivos (`ls`) y pasar ese resultado por una tubería al contador de líneas (`| wc -l`). Comando final: `ls | wc -l`
+  </Option>
+  <Option>
+    Ejecutar `tail -15000`
+  </Option>
+</MultipleChoice>

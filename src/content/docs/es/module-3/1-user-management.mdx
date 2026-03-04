@@ -1,0 +1,156 @@
+---
+title: 3.1 Anatomía del Usuario Linux
+description: Destripando cómo Linux entiende realmente las cuentas, el UID, /etc/passwd y /etc/shadow.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás que para el sistema, tú no eres "juan", eres el número **1000**.
+  - Leerás los archivos de texto que soportan toda la identidad del sistema
+  (`/etc/passwd`). - Aprenderás por qué las contraseñas reales se esconden en la
+  sombra (`/etc/shadow`). - Dominarás la creación (`useradd`) y destrucción
+  (`userdel`) de usuarios.
+</PreCheck>
+
+## 1. El Mito de los Nombres de Usuario
+
+Cuando inicias sesión escribiendo `juan`, Linux inmediatamente traduce ese texto para su uso interno.
+Para el Kernel de Linux, los nombres no existen, solo existen los **UIDs** (User Identifiers), que son números enteros.
+
+- **UID 0**: El emperador del sistema (`root`). Tiene poder absoluto.
+- **UIDs 1 al 999**: Usuarios "de sistema". Debian los reserva para procesos internos silenciosos, como el usuario que corre el servidor Apache (`www-data`) o el usuario de una base de datos.
+- **UIDs 1000 en adelante**: Los humanos normales. El primer humano que instaló Debian recibe el UID `1000`.
+
+Puedes saber exactamente quién eres y qué número tienes escribiendo el comando `id`:
+
+```bash
+id
+```
+
+---
+
+## 2. La Base de Datos Plana (`passwd`)
+
+Todas las cuentas del sistema, sin excepción, están documentadas en texto plano en un solo archivo universalmente leíble: `/etc/passwd`.
+_(Tranquilo, las contraseñas reales ya no viven aquí desde 1990)._
+
+Imprime el archivo con `cat /etc/passwd`. Verás líneas estructuradas con dos puntos `:`, como esta:
+
+`juan:x:1000:1000:Juan Perez:/home/juan:/bin/bash`
+
+Cada segmento separado por `:` significa algo crítico:
+
+1. `juan`: El nombre visual.
+2. `x`: Un indicador de que la contraseña está escondida en otro archivo más seguro.
+3. `1000`: El codiciado **UID** del usuario.
+4. `1000`: El GID (Group ID) principal del usuario.
+5. `Juan Perez`: Comentarios amigables (nombre real, teléfono, cuarto).
+6. `/home/juan`: El directorio de trabajo personal donde aterrizará al entrar.
+7. `/bin/bash`: El programa **Shell** por defecto que le dará la interfaz de consola. Si a un usuario le pones `/bin/false` o `/usr/sbin/nologin` aquí, ¡jamás podrá iniciar sesión!
+
+## 3. Las Sombras (`shadow`)
+
+Las contraseñas no se guardan tal cual. Se "hashean" (se cifran matemáticamente en una sopa de caracteres indescifrable) y se guardan en `/etc/shadow`.
+Este archivo está custodiado fieramente con permisos `600`, de forma que **solamente el superusuario (root) puede leerlo**.
+
+Si usas `sudo cat /etc/shadow | grep juan`, verás algo como esto:
+
+`juan:$6$salaleatoria123$TextoCifradoLarguisimoYFeisim0.Qf7h/:19200:0:99999:7:::`
+
+_(El `$6$` inicial le dice a Debian que se usó el poderoso algoritmo criptográfico SHA-512 para codificar la contraseña)._
+
+---
+
+## 4. Gestión de Cuentas (Alta y Baja)
+
+Para crear, alterar o borrar cuentas siempre necesitarás ser administrador (anteponer `sudo`).
+
+### Crear Usuarios (`useradd`)
+
+En Debian Linux exite un script hiper-amigable llamado `adduser`, que es interactivo y te hace todas las preguntas. Pero **en el examen LFCS la orden oficial que se evalúa por su predictibilidad en scripts es `useradd`**.
+
+```bash
+# Formar un usuario nuevo usando el comando duro y profesional
+# -m: Créale su carpeta HOME (/home/pedro)
+# -s: Asígnale como terminal programable Bash (/bin/bash)
+sudo useradd -m -s /bin/bash pedro
+
+# ¡Pedro aún no puede entrar porque su contraseña está bloqueada! Hay que dársela:
+sudo passwd pedro
+```
+
+### Alterar Usuarios (`usermod`)
+
+Si un usuario se casa, cambia de nombre o lo quieres bloquear.
+
+```bash
+# Cambiar la carpeta HOME de pedro a una nueva usando usermod
+sudo usermod -d /var/nueva_casa pedro
+
+# Bloquear temporalmente a pedro para que no inicie sesión (Lock)
+sudo usermod -L pedro
+
+# Desbloquearlo para retornarle el acceso (Unlock)
+sudo usermod -U pedro
+```
+
+### Eliminar Usuarios (`userdel`)
+
+```bash
+# Eliminar a Pedro, pero conservar misteriosamente todos sus archivos personales en su /home por si los necesitamos auditar.
+sudo userdel pedro
+
+# Eliminar a Pedro y QUEMAR/DESTRUIR todo lo que había en su carpeta personal simultáneamente (-r de Remove home).
+sudo userdel -r pedro
+```
+
+---
+
+## Comprueba tus conocimientos
+
+1. Ejecutas el comando `cat /etc/passwd | grep nginx`. Te devuelve la línea: `nginx:x:998:998::/var/cache/nginx:/usr/sbin/nologin`. ¿Qué significa esa trampa final en la línea?
+
+   <MultipleChoice>
+     <Option>Que la contraseña es inválida.</Option>
+     <Option isCorrect>
+       La shell asignada `/usr/sbin/nologin` impide expresamente que este
+       "usuario limitivo de sistema" pueda iniciar una sesión de terminal
+       interactiva, mejorando infinitamente la seguridad del servidor web.
+     </Option>
+     <Option>
+       Que la cuenta fue bloqueada temporalmente usando usermod -L.
+     </Option>
+   </MultipleChoice>
+
+2. Eres un sysadmin y la empresa ha despedido disciplinariamente a "manuel", por lo tanto su contrato fue terminado de inmediato. RRHH te pide que Manuel **NO PUEDA INICIAR SESIÓN**, pero que bajo ninguna circunstancia se borre en este momento ni su cuenta ni sus valiosos archivos de diseño, para que el gerente los revise mañana. ¿Qué comando usas?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       `sudo usermod -L manuel` (El parámetro L de Lock bloquea la contraseña
+       del usuario temporalmente en /etc/shadow impidiéndole el acceso sin
+       borrar nada).
+     </Option>
+     <Option>`sudo userdel manuel`</Option>
+     <Option>`sudo passwd manuel` y la dejo en blanco.</Option>
+   </MultipleChoice>
+
+3. Te piden de urgencia auditar si un atacante logró infiltrarse ayer y elevar sus permisos. Entras al servidor y haces un `grep` en `/etc/passwd`. Tu corazón da un vuelco y suenan las alarmas internas. ¿Qué encontraste que demuestra indefectiblemente que hay un usuario falso con poder administrativo total y destructivo camuflando en el sistema?
+   <MultipleChoice>
+     <Option>
+       Encontré un usuario llamado misterioso con el campo Shell en `/bin/bash`.
+     </Option>
+     <Option>
+       Encontré que el UID de la base de datos mysql saltó al 1000.
+     </Option>
+     <Option isCorrect>
+       Encontré a un usuario en apariencia inofensivo que en el tercer campo
+       (UID) tiene listado el número `0`. El número UID 0 otorga un poder total
+       y sagrado a los ojos del Kernel de Linux.
+     </Option>
+   </MultipleChoice>

@@ -5,8 +5,7 @@ sidebar:
   order: 3
 ---
 
-import { Aside } from '@astrojs/starlight/components'
-
+import { Aside } from "@astrojs/starlight/components";
 
 Linux utiliza repositorios ("repos") para gestionar el software de forma segura. Generalmente no se descargan archivos `.exe` de la web.
 
@@ -53,18 +52,19 @@ dnf info nginx
 ```
 
 <Aside type="note">
-En sistemas RHEL/CentOS 7 antiguos, verás `yum`. En RHEL 8/9, `yum` es solo un enlace simbólico a `dnf`.
+  En sistemas RHEL/CentOS 7 antiguos, verás `yum`. En RHEL 8/9, `yum` es solo un
+  enlace simbólico a `dnf`.
 </Aside>
 
 ## Ejercicios Prácticos
 
 1. **Actualizar Primero**:
-    - Ejecuta el comando de actualización apropiado para tu sistema (`apt update` o `dnf check-update`).
+   - Ejecuta el comando de actualización apropiado para tu sistema (`apt update` o `dnf check-update`).
 2. **Instalar Herramientas**:
-    - Instala `git` y `curl`.
-    - Verifica que están instalados comprobando sus versiones (`git --version`).
+   - Instala `git` y `curl`.
+   - Verifica que están instalados comprobando sus versiones (`git --version`).
 3. **Buscar**:
-    - Busca un paquete llamado `htop`.
-    - Instálalo y ejecútalo.
+   - Busca un paquete llamado `htop`.
+   - Instálalo y ejecútalo.
 4. **Limpiar**:
-    - Elimina `htop` si no lo quieres.
+   - Elimina `htop` si no lo quieres.

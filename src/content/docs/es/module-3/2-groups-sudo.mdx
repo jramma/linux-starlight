@@ -1,0 +1,157 @@
+---
+title: 3.2 Grupos, Sudo y visudo
+description: Otorga y quita permisos de administrador sin compartir jamás la contraseña de root.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprenderás la diferencia entre Grupos Primarios y Secundarios. - Sabrás
+  inyectar a un usuario en un grupo suplementario con `usermod -aG`. -
+  Aprenderás a transmutar de identidad usando `su` y `su -`. - Dominarás el
+  archivo de configuración más letal de todo Linux: `/etc/sudoers` mediante
+  `visudo`.
+</PreCheck>
+
+Crear usuarios está muy bien, pero si un usuario no tiene los privilegios adecuados, no podrá hacer más que leer archivos básicos. Para agrupar a docenas de usuarios bajo los mismos permisos (ej. desarrolladores vs contables), usamos los **Grupos**.
+
+---
+
+## 1. Grupos de Usuarios
+
+Todo usuario en Linux pertenece, como mínimo, a un grupo.
+
+### Grupo Primario
+
+Cuando creas un usuario con `useradd juan`, por detrás, Linux crea también un grupo privado llamado `juan` (GID 1000) y mete al usuario dentro. Este es su _grupo de nacimiento_ o grupo primario. Cualquier archivo que este usuario cree desde el teclado pertenecerá a este grupo.
+
+### Grupos Secundarios (Suplementarios)
+
+Un usuario puede pertenecer a cincuenta grupos adicionales simultáneamente (ej: grupo `docker`, grupo `www-data`, grupo `sudo`).
+
+### Operaciones con Grupos
+
+- **Crear un grupo nuevo**:
+  ```bash
+  sudo groupadd developers
+  ```
+- **Añadir a un usuario existente a un grupo suplementario**:
+  ```bash
+  # "User Modify -append -Group" (Añadir a Grupo)
+  # ¡Cuidado! Si olvidas la 'a', borrarás a Juan de todos sus otros grupos.
+  sudo usermod -aG developers juan
+  ```
+- **Ver a qué grupos pertenece alguien**:
+  ```bash
+  groups juan
+  ```
+
+---
+
+## 2. Pidiendo Permiso: `su` frente a `sudo`
+
+### El Interruptor Rápido: `su` (Switch User)
+
+`su` te permite iniciar una sub-sesión de terminal tomando la identidad de otro usuario.
+Si quieres ser el usuario `pedro`, ejecutarás `su pedro`, pero **el sistema te pedirá la contraseña personal de Pedro**.
+
+- **El peligro del guión (`-`)**:
+  - `su root`: Cambias al usuario root, pero mantienes tu ubicación actual y tus variables de entorno. Estás usando un root "contaminado" por las configuraciones de tu usuario personal.
+  - `su - root`: El método correcto. Cargas un entorno de root 100% puro y limpio, aterrizando en su `/root` de fábrica.
+
+<Aside type="caution">
+  Usar la identidad `root` pura es tan peligroso, que por defecto Ubuntu y
+  muchas instalaciones modernas de Debian bloquean la cuenta de root
+  desactivando su contraseña.
+</Aside>
+
+### El Delegador Sensato: `sudo` (Super User DO)
+
+`sudo` ejecuta _un solo comando_ con poderes administrativos, y luego devuelve el sistema a la normalidad al instante. Además:
+
+- A diferencia de `su`, **`sudo` te pide TU propia contraseña**, no la del administrador. Loggeando así quién ha hecho qué.
+- Puedes restringir a los usuarios para que solo puedan ejecutar ciertos comandos.
+
+---
+
+## 3. Dominando el terror de `/etc/sudoers`
+
+¿Cómo sabe Linux exactamente quién tiene derecho a usar `sudo`? Porque está escrito en el sagrado archivo `/etc/sudoers`.
+
+Si este archivo se corrompe por escribir mal una coma, **el sistema se bloqueará para siempre**, nadie jamás podrá usar `sudo` para arreglarlo, y el servidor quedará inconquistable a nivel administrativo (hasta que rompas el kernel físicamente reiniciando con un LiveCD de rescate).
+
+Por este motivo crítico, está TERMINANTEMENTE PROHIBIDO editar `/etc/sudoers` con Nano o Vim normales.
+**SIEMPRE debes usar la herramienta `visudo`**.
+
+```bash
+# Entrar a editar de forma segura
+sudo visudo
+```
+
+`visudo` abrirá el archivo en un editor. Pero la magia ocurre al guardar: `visudo` analizará la sintaxis de tu texto. Si escribiste algo incompatible que vaya a romper el sistema, `visudo` bloqueará el guardado y te mandará un error, salvando la vida del servidor.
+
+### Sintaxis de visudo
+
+Al bajar por el documento, verás esta línea que le da el poder de Dios al usuario root universalmente:
+`root    ALL=(ALL:ALL) ALL`
+
+Para darle acceso `sudo` a Juan a todo el sistema:
+`juan    ALL=(ALL:ALL) ALL`
+
+Para darle acceso `sudo` a Juan a todo el sistema, pero **sin que se le pida contraseña al ejecutar comandos** (muy útil para scripts automatizados):
+`juan    ALL=(ALL:ALL) NOPASSWD: ALL`
+
+Para configurar que todo el Grupo `developers` pueda reiniciar el servicio apache usando sudo, sin contraseña, pero no hacer nada más:
+`%developers    ALL=(ALL) NOPASSWD: /usr/sbin/service apache2 restart`
+
+<Aside type="tip" title="El grupo wheel/sudo">
+  En Debian, todos los miembros que añadas al grupo suplementario llamado `sudo`
+  adquieren automáticamente derechos `ALL=(ALL:ALL)`. Es la forma más rápida de
+  crear a un co-administrador sin tener que abrir `visudo`.
+</Aside>
+
+---
+
+## Comprueba tus conocimientos
+
+1. Ejecutas el comando `sudo usermod -G docker maria`. De repente María te llama por teléfono gritando que ha perdido el acceso de administración a todo el servidor para siempre. ¿Qué error catastrófico has cometido?
+
+   <MultipleChoice>
+     <Option>
+       Que el grupo 'docker' no existía, y eso bloqueó la cuenta de María.
+     </Option>
+     <Option>Que olvidé usar `-g` minúscula en lugar de mayúscula.</Option>
+     <Option isCorrect>
+       Usar `-G` sin la a (`-aG`) causa que se REEMPLACEN absolutamente todos
+       los grupos suplementarios que María tuviera antes (como el grupo de
+       'sudo' que le daba permisos) por el grupo 'docker' en exclusiva.
+     </Option>
+   </MultipleChoice>
+
+2. Estás preparando un script desatendido automático que tiene que reiniciar los servicios del sistema, por lo que necesita ser ejecutado con `sudo`. Abres `visudo` para añadir una regla al usuario remoto `jenkins`. ¿Qué parte de la sintaxis insertada te asegura que el script automático no se quedará en pausa por la noche pidiendo una contraseña en la consola vacía?
+
+   <MultipleChoice>
+     <Option isCorrect>NOPASSWD:</Option>
+     <Option>ALL=(ALL:ALL)</Option>
+     <Option>NOPROMPT:</Option>
+   </MultipleChoice>
+
+3. Hay un usuario en la empresa del que no confías mucho, pero te exige tener privilegios `sudo` para leer los gigantescos archivos de log del servidor Nginx (`/var/log/nginx/` etc), ya que su usuario raso recibe permiso denegado para entrar a esa carpeta. ¿Cuál es la forma más "Sysadmin" de solucionarlo sin arriesgar nada?
+   <MultipleChoice>
+     <Option>
+       Añadirle al grupo predeterminado 'sudo' (`usermod -aG sudo`).
+     </Option>
+     <Option isCorrect>
+       Usar `visudo` y crearle una regla personal de permisos limitados donde
+       SOLO se le otorgue permiso para ejecutar comandos binarios de lectura
+       como `cat` y `less` sobre esa carpeta específica con sudo.
+     </Option>
+     <Option>
+       Añadirle una regla `ALL=(ALL:ALL)` en visudo y confiar en su buena fe.
+     </Option>
+   </MultipleChoice>

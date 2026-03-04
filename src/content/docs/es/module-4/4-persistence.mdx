@@ -12,7 +12,8 @@ import { Aside } from "@astrojs/starlight/components";
 Los montajes de línea de comandos (`sudo mount`) desaparecen cuando reinicias. Para hacerlos permanentes, edita `/etc/fstab`.
 
 <Aside type="danger">
-Un error en `/etc/fstab` puede causar que tu sistema falle al arrancar. ¡Verifica siempre antes de reiniciar!
+  Un error en `/etc/fstab` puede causar que tu sistema falle al arrancar.
+  ¡Verifica siempre antes de reiniciar!
 </Aside>
 
 ### Mejor Práctica: Usar UUIDs
@@ -42,12 +43,12 @@ Acceder al almacenamiento a través de la red.
 1. Instalar comunes: `sudo apt install nfs-common` (Ubuntu) o `sudo dnf install nfs-utils` (Rocky).
 2. Probar montaje:
 
-    ```bash
-    sudo mount ip_servidor:/recurso/compartido /mnt/punto_montaje_local
-    ```
+   ```bash
+   sudo mount ip_servidor:/recurso/compartido /mnt/punto_montaje_local
+   ```
 
 3. Añadir a `fstab` para persistencia:
 
-    ```text
-    ip_servidor:/recurso  /mnt/local  nfs  defaults  0  0
-    ```
+   ```text
+   ip_servidor:/recurso  /mnt/local  nfs  defaults  0  0
+   ```

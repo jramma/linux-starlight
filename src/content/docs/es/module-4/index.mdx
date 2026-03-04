@@ -1,0 +1,50 @@
+---
+title: Módulo 4. Arranque del Sistema y Servicios
+description: Clase 4 - Dominando el ciclo de vida de Linux. Desde GRUB y módulos del Kernel hasta Systemd y Journalctl.
+sidebar:
+  order: 1
+---
+
+**Duración Estimada**: 4 horas (Clase 4)
+
+¡Hemos llegado al ecuador del curso LFCS (16 horas de 32)!
+Hasta ahora hemos aprendido a sobrevivir en el sistema, conectarnos y gobernar a los usuarios y la red. Sin embargo, un verdadero Administrador de Sistemas Linux no solo usa el sistema; **sabe cómo resucitarlo cuando no enciende y cómo orquestar sus demonios en segundo plano**.
+
+En esta clase 4, descendemos a las catacumbas de Debian. Entenderemos exactamente qué microscópicos pasos ocurren desde que presionas el botón físico de encendido de la computadora, hasta que te aparece la pantalla pidiendo usuario y contraseña. Y lo más importante: aprenderemos a intervenir quirúrgicamente en esos pasos cuando el sistema operativo se corrompa.
+
+## Mentalidad LFCS para este módulo
+
+Tu mentalidad pasa de "operador" a "cirujano".
+
+- Si un servidor no arranca porque alquien borró un módulo crítico del kernel, tú serás quien use GRUB para inyectar una consola de rescate.
+- Si un servicio web se cae misteriosamente a las 3:00 AM, dejarás de adivinar y empezarás a auditar con evidencia binaria directa usando `journalctl`.
+- Dejarás de usar el clásico `service nombre restart` para adoptar la majestuosidad de `systemctl`.
+
+---
+
+## Temas de la Clase 4
+
+### [4.1 El Proceso de Arranque (Boot)](/es/module-4/1-boot-process/)
+
+- El viaje de 5 estaciones: Fase Hardware (BIOS/UEFI) -> Fase de Cargador (GRUB2) -> Fase Núcleo (Kernel) -> Fase de Soporte (Initramfs) -> Fase de Usuario (Systemd).
+- Qué busca Linux en los temidos primeros segundos de encendido.
+
+### [4.2 Configuración de GRUB y el Kernel](/es/module-4/2-grub-kernel/)
+
+- Cómo modificar agresivamente pero con seguridad los parámetros de arranque temporal y permanentemente en `/etc/default/grub` (y `update-grub`).
+- Truco LFCS de supervivencia: Cambiar contraseñas olvidadas de root irrumpiendo en el parámetro `init=/bin/bash` desde GRUB.
+- Carga de drivers en caliente: Inspección con `lsmod` y forzado con `modprobe`.
+
+### [4.3 Systemd: El Rey de los Servicios](/es/module-4/3-systemd-services/)
+
+- El concepto de Demonio (Daemon).
+- Control vital con `systemctl`: Start, Stop, Status.
+- La sutil (pero gigantesca) diferencia entre `restart` (apagar y encender) y `reload` (leer el archivo de texto en caliente sin tirar conexiones).
+- Cómo hacer que algo sobreviva al reinicio (`enable` vs `disable`).
+- Entender los Runlevels modernos: Loss Targets de Systemd (`multi-user.target` vs `graphical.target`).
+
+### [4.4 Auditoría Forense y Logs](/es/module-4/4-logging-journalctl/)
+
+- Dónde están enterrados los cadáveres tradicionales: La carpeta `/var/log` (Especial atención a `syslog`, `auth.log` y `dmesg`).
+- La herramienta divina: `journalctl`.
+- Cómo buscar errores como un francotirador (`-u nginx`, `-p err`, `--since "yesterday"`).

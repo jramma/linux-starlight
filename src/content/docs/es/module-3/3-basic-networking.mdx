@@ -1,0 +1,140 @@
+---
+title: 3.3 Redes Básicas y Diagnóstico
+description: Cómo interactúa Debian con Internet y cómo diagnosticar cuando el servidor "se cae".
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprenderás la sintaxis de la moderna familia de comandos `ip` que reemplazó
+  a `ifconfig`. - Sabrás identificar tu Interfaz de Red física y tu Interfaz
+  Loopback. - Aprenderás a "sonar" a otros servidores usando ICMP (`ping`). -
+  Interpretarás la tabla de enrutamiento y la "Puerta de Enlace" (Gateway). -
+  Verás qué puertos están escuchando hackeos usando `ss` (Socket Statistics).
+</PreCheck>
+
+Un servidor de producción aislado y sin conexión a Internet es solo una costosa caja de metal calentando la habitación. Como administrador LFCS, saber leer o reparar la configuración de las tarjetas de red físicas e lógicas de Debian es una obligación ineludible.
+
+**Antigüedad:** Durante 20 años usamos herramientas como `ifconfig`, `route` o `netstat`. Actualmente el proyecto Linux los ha marcado como **obsoletos** a favor de la herramienta navaja-suiza moderna: El comando multiusos **`ip`**.
+
+---
+
+## 1. Viendo las Interfaces y Puertos (`ip a`)
+
+Tu servidor puede tener varias tarjetas de red físicas reales, y algunas virtuales. Cada una es una "Interfaz".
+
+Para saber qué IPs tiene configuradas tu máquina ahora mismo, ejecuta:
+
+```bash
+# Equivalente moderno para 'ifconfig' (ip address)
+ip a
+```
+
+**Lo que verás**:
+
+1. Una interfaz llamada **`lo` (Loopback)**: El sistema hablándose habitualmente a sí mismo en `127.0.0.1`. Jamás la toques.
+2. Una interfaz física llamada **`eth0`, `enp0s3` o `ens33`**: Tu tarjeta de red cableada real. Bajo su sección `inet` encontrarás tu Dirección IP IPv4 de área local (Ej. `192.168.1.150/24`).
+
+## 2. La Puerta de Salida: Enrutamiento (`ip r`)
+
+A veces tu servidor tiene asignada una IP perfectamente, pero "no tiene Internet". Esto ocurre porque Linux no sabe a qué router entregarle los datos para que salgan del edificio. A la orden que marca por dónde salir al mundo se le llama "Ruta por defecto" o **Default Gateway**.
+
+```bash
+# Equivalente moderno para 'route' (ip route)
+ip r
+```
+
+La línea más vital que debes buscar dirá algo como: `default via 192.168.1.1 dev eth0`. Esto significa que si Linux necesita internet de fuera, le mandará los paquetes al router (puerta de enlace) `192.168.1.1`.
+
+---
+
+## 3. Diagnóstico Temprano (Pinging)
+
+Si una web falla, nuestro protocolo siempre debe ser diagnosticar desde la capa más básica. ¿Acaso el cable de red está desconectado?
+
+El comando `ping` usa el protocolo ICMP de bajo nivel. Básicamente, tú gritas _"¡Ecos!"_, y la otra máquina (si está viva) te responde _"¡Estoy aquí!"_.
+
+```bash
+# Probar conexión contra los DNS públicos de Google
+ping 8.8.8.8
+
+# Probar si el sistema de nombres (DNS) logra convertir texto a IPs reales
+ping google.com
+```
+
+<Aside type="tip" title="Ping Infinito">
+  A diferencia de Windows, donde el comando `ping` se detiene él solo a los 4
+  intentos, en Unix el `ping` no parará JAMÁS hasta que tú lo asesines con la
+  combinación de cancelación forzada en terminal: **`Ctrl + C`**.
+</Aside>
+
+---
+
+## 4. Estadísticas y Puertos Escuchando (`ss`)
+
+Imagina que tu jefe te llama paniqueando: _"¡Instalaste el servidor Apache pero la web no carga!"_. Tú hiciste el ping al servidor y sí responde. Entonces, ¿Acaso el programa web Apache está corriendo realmente encendido? ¿Está el puerto 80 (HTTP) abierto e iluminado para recibir al mundo?
+
+Antiguamente usábamos el comando `netstat`. Hoy, los reyes usan **`ss`** (Socket Statistics), que es mil veces más rápido.
+
+```bash
+# Lista procesos escuchando la red, resolviendo números en puertos (ss tunel plain listen)
+sudo ss -tulpn
+```
+
+Los parámetros (TULPN) son el mantra del Sysadmin:
+
+- `-t`: Mostrar tráfico **T**CP.
+- `-u`: Mostrar tráfico **U**DP.
+- `-l`: Solo componentes en estado `LISTEN` (Escuchando a que alguien se conecte).
+- `-p`: Mostrar el nombre del **P**roceso culpable (`apache2` o `nginx`).
+- `-n`: Mostrar los **N**úmeros reales (Ej. puerto `80` en vez de imprimir un texto que diga `http`).
+
+Si corres este comando y **NO** ves a tu programa listado en la columna (Local Address:Port) como `0.0.0.0:80`, significa que el servidor web ni siquiera está arrancado en el sistema operativo.
+
+---
+
+## Comprueba tus conocimientos
+
+1. Usas el comando `ip a` en tu estación de trabajo y observas que la tarjeta física `eth0` no tiene ninguna mención a `inet` o una dirección IP. Solo tiene una cadena larga `link/ether C8:4B...`. Sin embargo, sabes que tu router local debería darle una IP dinámicamente usando el servidor de asignación DHCP. ¿Cuál de estos antiguos procesos forzaría al sistema operativo a "pedirle por favor a la red que le conceda una IP"?
+
+   <MultipleChoice>
+     <Option>`ping dhcp`</Option>
+     <Option isCorrect>
+       Utilizar un cliente DHCP de consola ejecutando el comando `sudo dhclient
+       eth0` para pedir a gritos un préstamo de IP al Router.
+     </Option>
+     <Option>`ip add default dhcp`</Option>
+   </MultipleChoice>
+
+2. Ejecutas un `ping ubuntu.com` y Linux te escupe el error: _"ping: ubuntu.com: Name or service not known"_. Acto seguido, ejecutas `ping 8.8.8.8` (que es la máquina real de Google) y sí te llegan respuestas normales de tiempo de latencia en ms. ¿Cómo deduces este fallo?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El servidor Linux SI tiene internet saliente (logra alcanzar la IP física
+       de Google 8.8.8.8), pero es absolutamente incapaz de resolver nombres
+       humanos porque su servicio de resolución DNS (Domain Name System) está
+       roto o mal configurado en la red.
+     </Option>
+     <Option>
+       El servidor no tiene ruta de salida a Internet y el Gateway por defecto
+       fue borrado.
+     </Option>
+     <Option>
+       La página de ubuntu.com se ha desconectado o me ha bloqueado mi IP.
+     </Option>
+   </MultipleChoice>
+
+3. Quieres auditar un servidor y ver si algún Malware o Troyano oscuro está ejecutándose de fondo abriendo "puertos furtivos" al exterior para recibir órdenes de hackers sin que tú lo sepas. ¿Qué comando te dará la lista forense de programas exactos que mantienen las "orejas abiertas" (Listen) a la tarjeta de red en este preciso nanosegundo?
+   <MultipleChoice>
+     <Option>`ip r` (Me enseñaría el enrutamiento).</Option>
+     <Option isCorrect>
+       Usar la estadística de zócalos con información de Procesos Numéricos:
+       `sudo ss -tulpn`
+     </Option>
+     <Option>`ps aux | grep malware`</Option>
+   </MultipleChoice>

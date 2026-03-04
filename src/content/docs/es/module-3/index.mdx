@@ -1,0 +1,48 @@
+---
+title: Módulo 3. Administración de Usuarios y Redes
+description: Clase 3 - Autenticación profunda, permisos Sudo, configuración de red estática y túneles SSH en Debian.
+sidebar:
+  order: 1
+---
+
+**Duración Estimada**: 4 horas (Clase 3)
+
+Este módulo marca el momento en que dejas de ser un mero usuario del sistema y te conviertes en un genuino Administrador.
+
+En Linux, la seguridad no es un programa antivirus que instalas después; está entretejida en el núcleo mismo del sistema a través de las jerarquías de Usuarios (UID), Grupos (GID) y sus permisos sobre los procesos. Además, un servidor aislado no sirve de nada, por lo que desmitificaremos cómo Debian habla con el mundo a través del protocolo TCP/IP y cómo nosotros hablamos de vuelta con él mediante túneles seguros.
+
+## Mentalidad LFCS para este módulo
+
+En un examen de certificación (y en la vida real), cometer un error en `/etc/sudoers` o borrar accidentalmente la puerta de enlace de red (`Gateway`) por defecto, significa que perderás el control remoto del servidor para siempre en cuestión de microsegundos, forzándote a un reinicio físico o a suspender el examen.
+
+Aprenderás a operar con la inmensa responsabilidad del usuario `root`, sabiendo cómo delegar ese poder a otros usuarios sin comprometer el servidor, y cómo atar tu Debian al tejido de Internet usando comandos modernos.
+
+---
+
+## Temas de la Clase 3
+
+### [3.1 Anatomía del Usuario Linux](/es/module-3/1-user-management/)
+
+- Qué es realmente una cuenta en Linux (UIDs, Shells y Home).
+- Destripando los archivos críticos: `/etc/passwd` y `/etc/shadow`.
+- Composición y destrucción de usuarios (`useradd`, `usermod`, `userdel`).
+
+### [3.2 Grupos y el Poder del Sudo](/es/module-3/2-groups-sudo/)
+
+- Entender el Grupo Primario vs los Grupos Secundarios.
+- Inyección de usuarios a grupos (`usermod -aG`).
+- El comando interactivo `su` frente a la delegación temporal de `sudo`.
+- El archivo más peligroso de Linux: edición a prueba de balas de `/etc/sudoers` usando `visudo`.
+
+### [3.3 Redes: El Sistema Arterial](/es/module-3/3-basic-networking/)
+
+- Entender interfaces (`eth0`, `ens33`, `lo`) e inspeccionarlas con `ip a`.
+- Cazar problemas de conexión con `ping` y diagnosticar puertos abiertos con `ss`.
+- Comprobar la puerta de enlace hacia internet (`ip r`).
+
+### [3.4 Criptografía Remota (SSH)](/es/module-3/4-ssh-keys/)
+
+- Entender el venerable puerto 22.
+- Cómo abandonar las inseguras contraseñas y generar un par de llaves criptográficas asimétricas (`ssh-keygen`).
+- Operación de exportación de llave pública a servidores remotos (`ssh-copy-id`).
+- Securización nivel paranoia del servicio `sshd_config`.

@@ -1,0 +1,5 @@
+- **Enfocado en Debian:** Toda la teoría, comandos y configuración (`apt`, `dpkg`, rutas) debe orientarse a la familia Debian/Ubuntu.
+- **Usar siempre pnpm:** Toda la gestión de paquetes de Node.js del entorno Astro debe hacerse estrictamente con `pnpm`. **NO USAR `npm` BAJO NINGUNA CIRCUNSTANCIA.**
+- **Estructura 32 Horas (8 Clases):** El curso total se divide en 8 módulos/clases, preparadas para durar 4 horas presenciales/síncronas cada una.
+- **Interactividad (Astro Docs Style):** En lugar de simples Checklists, usar `<MultipleChoice>` con `<Option isCorrect>` para evaluaciones al final de cada fichero `.mdx`. Usar `<PreCheck>` al inicio de las lecciones prácticas.
+- **Accesibilidad y Empezar por lo Fácil:** Al introducir herramientas terminales, priorizar la curva de aprendizaje (ej. empezar con `nano` antes que `vim`). Formato de archivos siempre `.mdx`.

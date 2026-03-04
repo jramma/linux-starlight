@@ -1,0 +1,114 @@
+---
+title: 4.4 Auditoría Forense y Logs
+description: Cómo descubrir quién, cómo y cuándo asaltó tu servidor usando journalctl y /var/log.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprenderás DÓNDE guarda Linux todos los registros históricos (`/var/log`). -
+  Entenderás qué ficheros leer para hackeos (`auth.log`) o para errores de
+  discos (`syslog`). - Aprenderás la magia de filtrar miles de líneas
+  instantáneamente con el lector binario `journalctl`.
+</PreCheck>
+
+Si un servidor se cae, el Administrador Junior entra en pánico, mira la pantalla negra e intenta reiniciar.
+El Administrador Senior (LFCS) **nunca adivina**. Sabe que Linux es un "chivato" compulsivo que registra absolutamente todo lo que pasa en el sistema, desde el momento en que se enchufa un pendrive hasta el milisegundo en que alguien falla una contraseña.
+
+Ese registro inmenso de la verdad se llama comúnmente **Logs**.
+
+---
+
+## 1. El Cementerio de Texto: `/var/log/`
+
+Por tradición histórica (y todavía en uso), casi todos los programas del mundo Linux que no tienen interfaz gráfica guardan sus lamentos y triunfos en forma de texto plano dentro de subcarpetas en `/var/log`.
+
+Como estos archivos crecen cientos de Megabytes a la semana, no puedes abrirlos con un editor pesado como `nano` porque colapsaría. **Siempre debes leer logs usando el visor ágil `less` o el rastreador `tail`**.
+
+### Archivos de Texto Críticos:
+
+- **`/var/log/syslog`** (en Debian) o `/var/log/messages` (en RHEL): El diario general del sistema. Aquí acaba la basura genérica.
+- **`/var/log/auth.log`** (o `secure`): El diario ultra-sensible. **Todo** inicio de sesión por SSH, todos los usos del comando `sudo` y los errores de contraseña se listan aquí obligatoriamente.
+- **`/var/log/dmesg`**: Mensajes exclusivos de hardware. Útil para ver por qué la placa base no reconoce la tarjeta de red.
+- **`/var/log/nginx/`** o `/var/log/apache2/`: Carpetas exclusivas que crean los servidores web para separar sus millones de accesos de la basura del sistema.
+
+<Aside type="tip" title="El comando inmortal: tail -f">
+  Para ver cómo un archivo se actualiza "en vivo" como en la película Matrix
+  mientras otro programador hace pruebas, usa la bandera 'Follow': `tail -f
+  /var/log/syslog`
+</Aside>
+
+---
+
+## 2. El Cazador Binario: `journalctl`
+
+Desde que irrumpió **Systemd** (el rey de la Fase 5 del que hablamos en la lección anterior), trajo consigo su propio sistema recolector de logs llamado `systemd-journald`.
+
+En lugar de crear archivos de texto plano desordenados, `journald` traga millones de logs de todos los demonios instalados y los comprime en un formato **binario indexado**.
+Como es binario, no puedes abrirlo con `cat` o `nano`. Tienes que interrogar a la base de datos usando su herramienta oficial: **`journalctl`**.
+
+`journalctl` es tan inmensamente superior a buscar textos a mano en `/var/log`, que se ha convertido en la herramienta principal requerida en el examen LFCS.
+
+### Dominando el Diario
+
+Ejecutar `journalctl` a secas te escupiría 500,000 líneas a la cara. Siempre debemos filtrar:
+
+- **Filtrar por Servicio Específico (`-u` de unit)**:
+  `journalctl -u sshd` (Muestra TODOS los logs de la historia de los inicios de sesión).
+- **Filtrar por Tiempo (`--since` y `--until`)**:
+  `journalctl -u apache2 --since "yesterday"` (Logs del servidor web desde ayer).
+  `journalctl --since "2024-05-30 08:00:00" --until "2024-05-30 10:00:00"` (Descubrir qué mató al servidor concretamente en ese rango de dos horas).
+
+- **Filtrar por Severidad (`-p` de priority)**:
+  `journalctl -p err` (Silencia toda la información irrelevante y te escupe directa y únicamente los Errorres Fatales reales del sistema).
+
+- **La Combinación Definitiva (Modo Sysadmin en Llamas)**:
+  ```bash
+  # "Dime qué errores graves han ocurrido en el servicio Nginx durante la última hora del reloj"
+  journalctl -u nginx -p err --since "1 hour ago"
+  ```
+
+---
+
+## Comprueba tus conocimientos
+
+1. Son las 4:00 AM, está sonando tu buscapersonas telefónico y el cliente jura que el programa principal de facturación dejó de responder a eso de las "tres y media". No tienes tiempo de leer el larguísimo texto general syslog buscando a ciegas. Tienes Systemd activo, túnel a internet y necesitas un bisturí. ¿Qué comando ejecutas para ir al grano forense?
+
+   <MultipleChoice>
+     <Option>`cat /var/log/syslog | grep "facturacion" | grep "3:30"`</Option>
+     <Option isCorrect>
+       Usar el interrogador de base de datos indexada: `journalctl -u
+       facturacion --since "03:00"`
+     </Option>
+     <Option>
+       `systemctl status facturacion` porque eso me dará el historial de hace
+       una hora.
+     </Option>
+   </MultipleChoice>
+
+2. Acabas de alquilar un VPS barato en un proveedor desconocido en Internet poniéndole un usuario simple. Tienes la paranoia extrema de que alguien ha conseguido acceder a tu Debian adivinando la contraseña mientras tú logueabas esta mañana a las 9. ¿Qué fichero de texto plano ancestral debes inspeccionar en vivo con `less` para confirmar tus sospechas?
+
+   <MultipleChoice>
+     <Option>`/var/log/dmesg`</Option>
+     <Option>`/etc/shadow`</Option>
+     <Option isCorrect>
+       El diario inquebrantable de autenticación: `/var/log/auth.log` (o en su
+       defecto `secure` si estuviéramos en RedHat). Aquí debe residir la IP de
+       tu ISP local si la conexión fue legítima.
+     </Option>
+   </MultipleChoice>
+
+3. Hay un usuario Junior escribiendo un script gigantesco en el directorio temporal, y quiere que mires la pantalla porque "siempre que ejecuta su script de limpieza, el servidor explota, pero es incapaz de leer el error porque la pantalla se desliza rapidísimo tapándolo con nuevas líneas en décimas de segundo". ¿Cómo te pegas en vivo a la cañería del archivo custom del usuario `/var/log/script_junior.log` para ver matrizamente cómo cae el error el momento que él pulse Enter?
+   <MultipleChoice>
+     <Option isCorrect>
+       Mandando a seguir (o 'trackear') la cola viva del fichero en RAM mediante
+       `tail -f /var/log/script_junior.log`
+     </Option>
+     <Option>`journalctl -f script_junior.log`</Option>
+     <Option>Editándolo velozmente con `nano`.</Option>
+   </MultipleChoice>

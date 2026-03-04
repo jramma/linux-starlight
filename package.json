@@ -24,8 +24,5 @@
     "hastscript": "^9.0.1",
     "prettier": "^3.5.3",
     "unist-util-visit": "^5.1.0"
-  },
-  "workspaces": [
-    "packages/*"
-  ]
+  }
 }
