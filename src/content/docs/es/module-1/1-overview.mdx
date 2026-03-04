@@ -1,46 +1,148 @@
 ---
-title: 1.1 Visión General y Certificaciones
-description: Introducción al ecosistema Linux y certificaciones clave.
+title: 1.1 Introducción a Linux (Debian) y la Certificación LFCS
+description: Visión profunda de la historia, filosofía y arquitectura de Linux centrándonos en distribuciones orientadas a Debian.
 sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
 
-## El Ecosistema Linux
+## 1. Breve Historia y Filosofía
 
-Linux es un núcleo (kernel) de sistema operativo libre y de código abierto creado por **Linus Torvalds** en 1991. Hoy en día, "Linux" se refiere típicamente al núcleo más una colección de utilidades GNU y software, formando una variedad de **"distribucions" (distros)**.
+Para entender cómo funciona Linux, especialmente como Administrador de Sistemas en el entorno moderno de servidores, ayuda entender de dónde viene.
 
-### Familias de Distribuciones Clave
+### De Unix a Linux
 
-Para un administrador de sistemas, comprender los dos linajes corporativos principales es crucial:
+1. **Unix (Años 70)**: Desarrollado originalmente por investigadores en los Laboratorios Bell de AT&T (incluyendo a Ken Thompson y Dennis Ritchie). Su diseño apostó por crear sistemas operativos jerárquicos de archivos y utilidades pequeñas que hacían una sola cosa, pero la hacían bien (la "Filosofía Unix"). Unix, sin embargo, se volvió software propietario altamente costoso.
+2. **El Proyecto GNU (1983)**: Richard Stallman lanzó el Proyecto GNU (_GNU's Not Unix_) con el objetivo de crear un sistema operativo completo, libre y de código abierto que se comportara como Unix. Dedicaron años a reconstruir versiones libres de todas las utilidades esenciales de Unix (como `ls`, `grep`, el compilador GCC, etc.). Pero a principios de los 90, su núcleo (o _kernel_), llamado GNU Hurd, aún no estaba listo.
+3. **El Kernel de Linux (1991)**: Linus Torvalds, un estudiante en Finlandia, escribió su propio núcleo aficionado y lo combinó con las utilidades de GNU. Este matrimonio de herramientas (GNU) + núcleo (Linux) es lo que técnicamente forma el sistema operativo completo que hoy comúnmente llamamos, de manera abreviada, "Linux".
 
-1.  **Familia Debian**:
-    -   **Debian**: El proyecto original, estable e impulsado por la comunidad.
-    -   **Ubuntu**: Basado en Debian, muy popular en la nube y la empresa. Utiliza paquetes `.deb` y el gestor `apt`.
-    -   **Linux Mint/Kali/Pop!_OS**: Otros derivados.
+### La Filosofía "Todo es un archivo"
 
-2.  **Familia Red Hat (RHEL)**:
-    -   **Red Hat Enterprise Linux (RHEL)**: El estándar comercial.
-    -   **Fedora**: El campo de pruebas para RHEL.
-    -   **Rocky Linux / AlmaLinux**: Alternativas impulsadas por la comunidad, compatibles binariamente con RHEL (llenando el vacío dejado por CentOS). Utiliza paquetes `.rpm` y el gestor `dnf`/`yum`.
+Uno de los principios más definitorios que hereda Linux de Unix es que **"Todo es un archivo"**. Esta no es una metáfora. En Linux:
 
-## Certificaciones Oficiales
+- Un documento de texto es un archivo.
+- Los directorios (carpetas) son archivos (que contienen listas de otros archivos).
+- Tus discos duros y unidades USB están representados como archivos en el directorio `/dev` (ej. `/dev/sda`).
+- Los procesos en ejecución de la memoria RAM tienen su propio "archivo" virtual en el sistema de archivos `/proc`.
 
-Validar tus habilidades es esencial para la progresión profesional. Este curso apunta a las siguientes:
+Si dominas las herramientas para manipular archivos de texto, podrás manipular la mayor parte de la configuración del sistema operativo.
+
+---
+
+## 2. El Ecosistema Linux y nuestra meta: Debian
+
+Hoy en día, el término "Linux" se refiere al núcleo (kernel). Para tener un sistema usable, varias organizaciones y comunidades empaquetan el kernel junto con cientos de otras herramientas y programas de GNU, un sistema de inicialización, y más. A estos empaquetados se les llama **Distribuciones** o **"Distros"**.
+
+Para un administrador de sistemas, hay dos familias corporativas/comunitarias gigantes que dominan los servidores:
+
+1.  **Familia Red Hat (RHEL)**: Utiliza gestores de paquetes como `dnf` y `/rpm`. Es el estándar de muchas corporaciones. Ejemplos: Red Hat Enterprise Linux, Fedora, Rocky Linux, AlmaLinux.
+2.  **Familia Debian**: Utiliza gestores de paquetes como `apt` o `apt-get` y el sistema de paquetes `.deb`.
+
+<Aside type="note" title="El Foco de este Curso: Debian">
+  A lo largo de nuestras 32 horas de formación para la certificación LFCS,
+  **utilizaremos la distribución Debian (y sus derivadas directas como Ubuntu
+  Server) como nuestra plataforma principal de referencia**.
+  <br />
+  <br />
+  Debian es conocido por su extrema estabilidad (su rama "Stable" solo recibe
+  actualizaciones cuando han sido exhaustivamente probadas), su rigurosa
+  adhesión a los principios del Open Source y su enorme repositorio de paquetes.
+  Aprender debianízate hoy significa tener una base sólida para administrar la
+  abrumadora mayoría de los contenedores Docker modernos y servidores en la
+  nube.
+</Aside>
+
+---
+
+## 3. ¿Qué es un Sysadmin Moderno?
+
+Un Administrador de Sistemas de Linux es el fontanero, arquitecto y guardaespaldas de la infraestructura digital.
+
+### Tus Tareas Principales
+
+1. **Puesta en Mancha y Configuración**: Instalar el SO sin inferfaz gráfica (headless), configurar cuentas y asegurar que los servicios de red respondan.
+2. **Mantenimiento y Rendimiento**: Monitorizar la saturación del disco y los cuellos de botella de la RAM a través de herramientas especializadas sin entorno de ventanas (X11 o Wayland).
+3. **Seguridad**: Auditar y reducir permisos (`chmod`, `chown`, ACLs), revisar logs y configurar cortafuegos (`ufw` o `iptables`).
+4. **Automatización**: En lugar de hacer y escribir el mismo comando manualmente en 10 servidores, escribir un script (en `bash`) que lo haga por ti.
+
+---
+
+## 4. Las Certificaciones de la Industria
+
+Entender cómo funciona este ecosistema y poder desenvolverte sin un ratón es fundamental, y validarlo mediante certificaciones impulsará tu carrera.
 
 ### Linux Foundation Certified Sysadmin (LFCS)
--   **Enfoque**: Habilidad práctica para diseñar, instalar, configurar y gestionar un sistema.
--   **Proveedor**: The Linux Foundation (neutral).
--   **Formato del Examen**: 100% Basado en rendimiento (Terminal en vivo). Se te dan tareas para resolver.
--   **Distribuciones**: Eliges efectivamente entre Ubuntu y Rocky/CentOS stream.
 
-### Red Hat Certified System Administrator (RHCSA)
--   **Enfoque**: Habilidades de administración de sistemas básicas en entornos Red Hat.
--   **Proveedor**: Red Hat.
--   **Formato del Examen**: 100% Basado en rendimiento (EX200).
--   **Distribuciones**: RHEL.
+Nuestro objetivo para las próximas lecciones es prepararte para el **LFCS**.
+
+- **Enfoque**: Habilidad rápida y práctica para instalar, configurar y solucionar problemas desde el CLI en ambientes Enterprise.
+- **Proveedor**: The Linux Foundation, el gremio neutral que da soporte al desarrollo del Kernel.
+- **Formato del Examen**: **100% Basado en Rendimiento** (Escenario Práctico en Terminal en vivo). Tienes 2 horas para conectarte a una consola remota y resolver tickets mediante la terminal en el momento.
+- **Distribuciones**: En el momento de la inscripción se debe escoger entre Ubuntu 20.04 (familia Debian) o CentOS Stream (familia Red Hat). Nosotros nos enfocaremos en preparar para Ubuntu/Debian.
 
 <Aside type="tip">
-**¿Por qué basado en rendimiento?** Los exámenes de elección múltiple son raros en la administración de Linux. Tienes que saber *cómo* hacer la tarea, no solo recordar la teoría. La memoria muscular es clave.
+  **La Memoria Muscular es la Clave** Dado que el examen requiere que ejecutes
+  comandos reales para arreglar sistemas reales de forma remota, la teoría (leer
+  este manual) no será útil sin la práctica continua de golpear el teclado hasta
+  que los comandos fluyan de manera natural sin tener que consultarlos
+  (memorización táctil).
 </Aside>
+
+---
+
+## Comprueba tus conocimientos
+
+Para asentar lo aprendido en esta lección, responde a estas preguntas integradoras:
+
+1. Históricamente, ¿por qué fue vital la creación del GNU Project antes del Kernel de Linux?
+
+   <MultipleChoice>
+     <Option>
+       Porque Linus Torvalds necesitaba una interfaz gráfica para poder compilar
+       C.
+     </Option>
+     <Option isCorrect>
+       Porque Unix era propietario/cerrado, y GNU aportó las herramientas
+       utilitarias libres esenciales (ls, grep, compiladores) a las que luego se
+       acopló el Kernel.
+     </Option>
+     <Option>
+       Porque GNU fue en realidad el primer núcleo desarrollado en los años 70.
+     </Option>
+   </MultipleChoice>
+
+2. ¿Cuál de las siguientes afirmaciones describe mejor el principio "Todo es un archivo" en Linux?
+
+   <MultipleChoice>
+     <Option>
+       Todos los archivos de texto deben terminar con la extensión `.txt` para
+       que el Kernel los lea.
+     </Option>
+     <Option>
+       Linux guarda una copia física de la memoria RAM en el disco duro cada vez
+       que arrancamos.
+     </Option>
+     <Option isCorrect>
+       Los componentes de hardware (como `/dev/sda`) y los procesos en RAM
+       (`/proc`) se representan e interactúan en el sistema de manera idéntica a
+       los archivos de texto estándar.
+     </Option>
+   </MultipleChoice>
+
+3. Con respecto al examen de certificación LFCS, ¿cuál es su formato principal?
+   <MultipleChoice>
+     <Option>
+       Elección múltiple y verdadero/falso sobre la arquitectura del Kernel.
+     </Option>
+     <Option isCorrect>
+       100% Basado en Rendimiento, resolviendo problemas usando comandos reales
+       en una terminal en vivo.
+     </Option>
+     <Option>
+       Un proyecto de desarrollo escrito en Bash que se entrega después de una
+       semana.
+     </Option>
+   </MultipleChoice>

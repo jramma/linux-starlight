@@ -39,5 +39,9 @@
   "pagefind.one_result": "[COUNT] resultado para [SEARCH_TERM]",
   "pagefind.alt_search": "No hay resultados para [SEARCH_TERM]. ",
   "pagefind.search_suggestion": "No hay resultados para [SEARCH_TERM]. ",
-  "pagefind.searching": "Buscando [SEARCH_TERM]..."
+  "pagefind.searching": "Buscando [SEARCH_TERM]...",
+  "checklist.or": "o",
+  "multipleChoice.defaultCorrect": "¡Correcto!",
+  "multipleChoice.defaultIncorrect": "Inténtalo de nuevo.",
+  "multipleChoice.submitLabel": "Enviar respuesta"
 }

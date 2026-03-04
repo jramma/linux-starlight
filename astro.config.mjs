@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightThemeNova from "starlight-theme-nova";
+import { rehypeTasklistEnhancer } from "./config/plugins/rehype-tasklist-enhancer";
 
 // https://astro.build/config
 export default defineConfig({
@@ -16,7 +17,7 @@ export default defineConfig({
           href: "https://github.com/jramma/linux-starlight",
         },
       ],
-      defaultLocale: "es",
+      defaultLocale: "ca",
       locales: {
         es: {
           label: "Español",
@@ -28,142 +29,140 @@ export default defineConfig({
           label: "Català",
         },
       },
-      customCss: [
-        './src/styles/global.css'
-      ],
+      customCss: ["./src/styles/global.css"],
       sidebar: [
         {
-          label: 'Guía de Linux',
+          label: "Guía de Linux",
           translations: {
-            en: 'Linux Guide',
-            ca: 'Guia de Linux',
+            en: "Linux Guide",
+            ca: "Guia de Linux",
           },
           items: [
             {
-              label: 'Módulo 1: Introducción',
+              label: "Módulo 1: Introducción",
               translations: {
-                en: 'Module 1: Introduction',
-                ca: 'Mòdul 1: Introducció',
+                en: "Module 1: Introduction",
+                ca: "Mòdul 1: Introducció",
               },
-              autogenerate: { directory: 'module-1' },
+              autogenerate: { directory: "module-1" },
             },
             {
-              label: 'Módulo 2: Comandos',
+              label: "Módulo 2: Comandos",
               translations: {
-                en: 'Module 2: Commands',
-                ca: 'Mòdul 2: Comandaments',
+                en: "Module 2: Commands",
+                ca: "Mòdul 2: Comandaments",
               },
-              autogenerate: { directory: 'module-2' },
+              autogenerate: { directory: "module-2" },
             },
             {
-              label: 'Módulo 3: Administración',
+              label: "Módulo 3: Administración",
               translations: {
-                en: 'Module 3: Administration',
-                ca: 'Mòdul 3: Administració',
+                en: "Module 3: Administration",
+                ca: "Mòdul 3: Administració",
               },
-              autogenerate: { directory: 'module-3' },
+              autogenerate: { directory: "module-3" },
             },
             {
-              label: 'Módulo 4: Almacenamiento',
+              label: "Módulo 4: Almacenamiento",
               translations: {
-                en: 'Module 4: Storage',
-                ca: 'Mòdul 4: Emmagatzematge',
+                en: "Module 4: Storage",
+                ca: "Mòdul 4: Emmagatzematge",
               },
-              autogenerate: { directory: 'module-4' },
+              autogenerate: { directory: "module-4" },
             },
             {
-              label: 'Módulo 5: Redes y Seguridad',
+              label: "Módulo 5: Redes y Seguridad",
               translations: {
-                en: 'Module 5: Networking & Security',
-                ca: 'Mòdul 5: Xarxes i Seguretat',
+                en: "Module 5: Networking & Security",
+                ca: "Mòdul 5: Xarxes i Seguretat",
               },
-              autogenerate: { directory: 'module-5' },
+              autogenerate: { directory: "module-5" },
             },
             {
-              label: 'Módulo 6: Automatización',
+              label: "Módulo 6: Automatización",
               translations: {
-                en: 'Module 6: Automation',
-                ca: 'Mòdul 6: Automatització',
+                en: "Module 6: Automation",
+                ca: "Mòdul 6: Automatització",
               },
-              autogenerate: { directory: 'module-6' },
+              autogenerate: { directory: "module-6" },
             },
           ],
         },
         {
-          label: 'Información Adicional',
+          label: "Información Adicional",
           translations: {
-            en: 'Additional Information',
-            ca: 'Informació Addicional',
+            en: "Additional Information",
+            ca: "Informació Addicional",
           },
           items: [
             {
-              label: 'Certificaciones',
+              label: "Certificaciones",
               translations: {
-                en: 'Certifications',
-                ca: 'Certificacions',
+                en: "Certifications",
+                ca: "Certificacions",
               },
-              slug: 'certification',
+              slug: "certification",
             },
             {
-              label: 'Recursos',
+              label: "Recursos",
               translations: {
-                en: 'Resources',
-                ca: 'Recursos',
+                en: "Resources",
+                ca: "Recursos",
               },
-              slug: 'resources',
+              slug: "resources",
             },
             {
-              label: 'Apéndice',
+              label: "Apéndice",
               translations: {
-                en: 'Appendix',
-                ca: 'Apèndix',
+                en: "Appendix",
+                ca: "Apèndix",
               },
-              slug: 'appendix',
+              slug: "appendix",
             },
           ],
         },
       ],
       components: {
-        Head: './src/overrides/Head.astro',
-        Footer: './src/overrides/Footer.astro',
+        Head: "./src/overrides/Head.astro",
+        Footer: "./src/overrides/Footer.astro",
       },
       plugins: [
         starlightThemeNova({
           nav: [
             {
               label: {
-                es: 'Comenzar',
-                en: 'Get Started',
-                ca: 'Començar',
+                es: "Comenzar",
+                en: "Get Started",
+                ca: "Començar",
               },
               href: {
-                es: '/es/',
-                en: '/en/',
-                ca: '/ca/',
+                es: "/es/",
+                en: "/en/",
+                ca: "/ca/",
               },
             },
             {
               label: {
-                es: 'Certificaciones',
-                en: 'Certifications',
-                ca: 'Certificacions',
+                es: "Certificaciones",
+                en: "Certifications",
+                ca: "Certificacions",
               },
               href: {
-                es: '/es/certification/',
-                en: '/en/certification/',
-                ca: '/ca/certification/',
+                es: "/es/certification/",
+                en: "/en/certification/",
+                ca: "/ca/certification/",
               },
             },
             {
               label: {
-                es: 'Recursos',
-                en: 'Resources',
-                ca: 'Recursos',
+                es: "Recursos",
+                en: "Resources",
+                ca: "Recursos",
               },
               href: {
-                es: '/es/resources/',
-                en: '/en/resources/',
-                ca: '/ca/resources/',
+                es: "/es/resources/",
+                en: "/en/resources/",
+                ca: "/ca/resources/",
               },
             },
           ],
@@ -171,4 +170,7 @@ export default defineConfig({
       ],
     }),
   ],
+  markdown: {
+    rehypePlugins: [rehypeTasklistEnhancer()],
+  },
 });
