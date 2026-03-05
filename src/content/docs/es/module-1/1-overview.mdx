@@ -8,6 +8,7 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
 import Option from "@/components/tutorial/Option.astro";
+import { Icon } from 'astro-icon/components';
 
 ## 1. Breve Historia y Filosofía
 
@@ -56,6 +57,106 @@ Para un administrador de sistemas, hay dos familias corporativas/comunitarias gi
 </Aside>
 
 ---
+
+## 2.1 Distribuciones Linux
+
+Una distribución (o "distro") toma el kernel de Linux y le añade software adicional, como un gestor de paquetes, utilidades de GNU, y típicamente un entorno de escritorio, para crear un sistema operativo completo que el usuario final o administrador pueda usar.
+
+Las distros se dividen comúnmente en "familias" según su origen y su sistema de gestión de paquetes:
+
+- **Familia Debian** (Debian, Ubuntu, Linux Mint): Usan `apt` y paquetes `.deb`. Famosas por su gran comunidad e increíble estabilidad. Son el estándar de facto en contenedores y servidores en la nube.
+- **Familia Red Hat** (RHEL, Fedora, CentOS, Rocky Linux): Usan `dnf`/`yum` y paquetes `.rpm`. Muy comunes en entornos empresariales y corporativos tradicionales.
+- **Familia Arch** (Arch Linux, Manjaro): Usan `pacman` y un modelo *rolling release* (actualizaciones continuas). Populares entre entusiastas que desean tener instalado el software más reciente bajo un sistema minimalista.
+
+### Arch Linux
+
+<Icon name="arch"  style="width: 3rem; height: 3rem;"/>
+
+Arch Linux es la distro más minimalista y la que más control tiene el usuario. No tiene un entorno gráfico por defecto, sino que se instala con el mínimo de paquetes y se puede configurar desde cero. Es la distro que más se asemeja a un sistema operativo tradicional, pero con la ventaja de que puedes instalar lo que necesites. [Visitar Arch Linux](https://archlinux.org/)
+
+### Debian
+
+<Icon name="debian"  style="width: 3rem; height: 3rem;"/>
+
+Debian es uno de los sistemas operativos libres más antiguos y estables. Conocido por su riguroso sistema de pruebas y su inmenso repositorio de software, sirve como base fundamental para incontables distribuciones modernas (incluyendo Ubuntu). Es el estándar de facto para servidores debido a su confiabilidad extrema. [Visitar Organización Debian](https://www.debian.org/)
+
+### Fedora
+
+<Icon name="fedora"  style="width: 3rem; height: 3rem; color: #007acc;"/>
+
+Fedora es una distribución independiente financiada por Red Hat que se caracteriza por estar siempre a la vanguardia tecnológica (*bleeding edge*). Incorpora las versiones más recientes de software libre e innovaciones que, tras ser probadas y madurar en Fedora, eventualmente formarán parte de las futuras versiones estables de RHEL. [Visitar Proyecto Fedora](https://fedoraproject.org/)
+
+### Red Hat Enterprise Linux (RHEL)
+
+<Icon name="redhat"  style="width: 3rem; height: 3rem;"/>
+
+Red Hat Enterprise Linux es la principal distribución de Linux de código abierto pero de uso comercial diseñada para el sector empresarial. Destaca por ofrecer un soporte técnico robusto, seguridad certificada y ciclos de vida increíblemente largos para el software, siendo la pieza central de infraestructuras críticas corporativas. [Visitar Red Hat](https://www.redhat.com/)
+
+### Ubuntu
+
+<Icon name="ubuntu"  style="width: 3rem; height: 3rem; color: #ff8000"/>
+
+Ubuntu es una distribución popular y estable desarrollada por la empresa Canonical (y basada estrechamente en Debian). Inicialmente enfocada en la facilidad de uso para el usuario de escritorio, se ha convertido también en una elección prioritaria para servidores y despliegue de software en la nube gracias a sus versiones LTS (Long Term Support). [Visitar Ubuntu](https://ubuntu.com/)
+
+<Aside type="tip" title="Distribuciones Linux">
+Puedes explorar el inmenso árbol genealógico completo de distribuciones de Linux en este extenso artículo de [Wikipedia](https://en.wikipedia.org/wiki/List_of_Linux_distributions).
+</Aside>
+
+---
+
+### 2.2 Entornos de Escritorio (X11 vs Wayland)
+
+<Aside type="caution" title="Servidores sin interfaz">
+  Ten en cuenta que **como administradores de sistemas normalmente gestionaremos servidores en modo *headless* (sin pantalla o interfaz visual)**, operando casi exclusivamente a través de la interfaz de línea de comandos (CLI) de forma remota vía SSH.
+</Aside>
+
+En sistemas operativos como Windows o macOS, la interfaz gráfica de usuario (GUI) está intrínsecamente unida al núcleo del sistema. En Linux, la interfaz gráfica es simplemente un conjunto de programas de espacio de usuario que se ejecutan sobre el sistema base, ofreciendo una alta modularidad.
+
+Para que exista una interfaz gráfica se utiliza un **Servidor Gráfico** (o Display Server), existiendo dos opciones principales:
+
+- **X11 (X.Org)**: El estándar tradicional que lleva décadas en uso. Es extremadamente compatible con la mayoría de software, pero su código base y diseño antiguo no ofrecen el nivel de aislamiento y seguridad que requieren los sistemas actuales.
+- **Wayland**: El protocolo moderno diseñado como reemplazo lógico a X11. Es fundamentalmente más seguro frente a captura de teclas y del sistema (*keyloggers*), y maneja con mucha mayor suavidad e independencia las distintas tasas de refresco y el escalado en monitores de alta resolución. La mayoría de distros de escritorio modernas lo adoptan por defecto.
+
+A continuación, un esquema simplificado para comparar cómo de ineficiente y largo es el camino gráfico en X11 frente a la arquitectura directa de Wayland (y por qué este último consume menos recursos de CPU/GPU):
+
+#### Arquitectura X11 (La Vía Larga)
+```mermaid
+graph TD
+    HW_Input[Hardware: Ratón / Teclado] -->|1. Evento físico| Kernel
+    Kernel -->|2. Datos brutos| X11{Servidor X11}
+    X11 -->|3. Traslada evento| App[Aplicación / Programa]
+    App -->|4. Renderiza vía CPU/GPU| X11
+    X11 -->|5. Petición de mapa de píxels| Compositor[Entorno de Escritorio]
+    Compositor -->|6. Compone imagen final| X11
+    X11 -->|7. Petición de pintado| GPU[Hardware: GPU / Pantalla]
+```
+
+#### Arquitectura Wayland (La Vía Directa)
+```mermaid
+graph TD
+    HW_Input[Hardware: Ratón / Teclado] -->|1. Evento físico| Kernel
+    Kernel -->|2. Datos brutos| Compositor{Wayland Compositor<br/>Entorno de Escritorio}
+    Compositor -->|3. Traslada evento| App[Aplicación / Programa]
+    App -->|4. Renderiza vía CPU/GPU| Compositor
+    Compositor -->|5. Petición directa de pintado| GPU[Hardware: GPU / Pantalla]
+```
+
+Sobre este servidor se apoya el **Entorno de Escritorio** (Desktop Environment), responsable del *look & feel* y diseño de interacción del sistema (gestión de ventanas, menús, explorador de archivos, configuración). Alternativas muy populares incluyen:
+
+- **GNOME**: Diseño enfocado al modernismo, al minimalismo, y en flujos de atajos de teclado y gestos (entorno base en Ubuntu y Fedora).
+- **KDE Plasma**: Altamente personalizable y lleno de utilidades; resulta más familiar a los usuarios recientes que migran de Windows.
+- **XFCE**: Eficiente, simple y sumamente ligero, creado con el propósito de optimizar los recursos computacionales y alargar la vida útil de hardware antiguo.
+
+<Aside type="caution" title="Distribuciones Linux vs Entornos de Escritorio">
+Es esencial **no confundir una distribución con un entorno de escritorio**. Ubuntu, por ejemplo, es una distribución que por defecto trae el escritorio GNOME integrado, pero puedes perfectamente modificar el sistema para instalar e iniciar un entorno diferente como KDE Plasma o XFCE.
+</Aside>
+---
+
+![Hyprland](../../../../assets/dekstops/hyprland.jpg)
+Hyprland desktop (Wayland)
+![KDE desktop](../../../../assets/dekstops/kali.jpg)
+KDE desktop (X11)
+
 
 ## 3. ¿Qué es un Sysadmin Moderno?
 

@@ -1,5 +1,5 @@
 ---
-title: 1.2 Instalación por Consola y Estructura
+title: 1.2 Instalación
 description: Guía profunda para entender el particionamiento manual, el árbol de directorios y la configuración de red por comandos durante una instalación Headless.
 sidebar:
   order: 3
@@ -56,6 +56,21 @@ Una vez el disco está formateado y montado en `/`, se vuelca (o descarga) el si
 - `/tmp`: Archivos temporales. **Se borra automáticamente** en cada reinicio. No guardes nada importante aquí.
 - `/usr`: Programas, librerías y utilidades no esenciales para el arranque instalados por el usuario/sistema (`/usr/bin`).
 - `/var`: "Variable". Datos que crecen y cambian frecuentemente. Aquí viven los registros del sistema (`/var/log`), bases de datos y webs (`/var/www`).
+
+```mermaid
+graph LR
+    Raiz["/ (Directorio Raíz)"]
+    
+    Raiz --> bin["/bin & /sbin (Binarios)"]
+    Raiz --> boot["/boot (Arranque)"]
+    Raiz --> dev["/dev (Dispositivos)"]
+    Raiz --> etc["/etc (Configuración)"]
+    Raiz --> home["/home (Usuarios)"]
+    Raiz --> rootDir["/root (Superusuario)"]
+    Raiz --> tmp["/tmp (Temporales)"]
+    Raiz --> usr["/usr (Programas)"]
+    Raiz --> var["/var (Datos Variables)"]
+```
 
 ---
 
