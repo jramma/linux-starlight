@@ -136,7 +136,8 @@ Esto arrojará un árbol de todas las librerías a las que se conecta. Aquellas 
    </MultipleChoice>
 
 3. Un desarrollador de tu backend te envía un software mágico autocompilado `.exe` de UNIX. Lo pones en `/usr/bin/miscript` e intentas ejecutarlo tirando en el shell `./miscript`. Obtienes un lacónico error invisible de "Archvios u Objetos Compartidos no Encontrados". Necesitáis hacerle una radiografía a esa caja negra empaquetada binaria hoy mismo para deducir ciegamente a qué librerías está queriendo enlazar dentro de tu servidor y cuáles están faltantes. ¿Cuál de estos es un paso estándar para este fin?
-   <MultipleChoice>
+   
+<MultipleChoice>
   <Option isCorrect>
     El radar autopsia dinámico: Corriendo `ldd /usr/bin/miscript` examinará limpiamente y volcará el grafo topológico resolviendo los links libreros *.so compartidos y sacará a relucir si falta alguno mediante flag '*=> not found*'.
   </Option>
