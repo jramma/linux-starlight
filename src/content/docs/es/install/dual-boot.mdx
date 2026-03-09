@@ -1,0 +1,221 @@
+---
+title: Dual Boot — Linux junto a Windows
+description: Guía paso a paso para instalar Ubuntu Linux junto a Windows usando el gestor de arranque GRUB, conservando ambos sistemas operativos.
+sidebar:
+  order: 2
+---
+
+import Checklist from "@/components/Checklist.astro";
+import { Aside, Steps } from "@astrojs/starlight/components";
+
+La instalación en **dual boot** te permite tener Windows y Linux en el mismo ordenador y elegir cuál arrancar cada vez que lo enciendes. Ninguno de los dos se elimina.
+
+> **Tiempo estimado:** 45-90 minutos dependiendo del ordenador.
+
+---
+
+## Antes de empezar — lista de comprobación
+
+Haz estas verificaciones **antes de tocar nada**:
+
+<Checklist key="dual-boot-prereqs">
+- [ ] He hecho una **copia de seguridad de Windows** (o acepto el riesgo).
+- [ ] Tengo mínimo **40 GB libres en disco** — lo comprobé en Administración de discos.
+- [ ] Tengo el **USB de Ubuntu listo** (mínimo 8 GB, con la ISO grabada).
+- [ ] El **cargador está enchufado** — no instalaré con batería.
+- [ ] Sé que mi PC usa **UEFI** (lo verifiqué en msinfo32 → "Modo BIOS: UEFI").
+</Checklist>
+
+---
+
+## Paso 1 — Desactivar Fast Startup en Windows
+
+Windows tiene una función llamada "Inicio Rápido" que deja el disco en un estado semisuspendido. Si Linux intenta acceder a ese disco, puede corromper datos.
+
+<Steps>
+1. Abre el **Panel de Control → Opciones de energía**
+2. Haz clic en **"Elegir el comportamiento del botón de inicio/apagado"**
+3. Haz clic en **"Cambiar la configuración actualmente no disponible"**
+4. **Desmarca** la casilla "Activar inicio rápido"
+5. Guardar cambios
+</Steps>
+---
+
+## Paso 2 — Desactivar Secure Boot (en algunos equipos)
+
+Secure Boot es una medida de seguridad UEFI que impide arrancar sistemas operativos no firmados. Ubuntu moderno funciona con Secure Boot activo, pero en algunos equipos da problemas.
+
+<Aside>
+**Prueba primero con Secure Boot activado.** Solo desactívalo si el installer de Ubuntu no arranca.
+</Aside>
+
+Para desactivarlo si es necesario:
+<Steps>
+1. Entra en la BIOS/UEFI (normalmente pulsando `F2`, `F10`, `Del` o `Esc` al encender)
+2. Busca la sección **Security** o **Boot**
+3. Localiza **Secure Boot** y cámbialo a **Disabled**
+4. Guarda y sal (`F10` normalmente)
+</Steps>
+
+---
+
+## Paso 3 — Crear espacio en disco desde Windows
+
+El instalador de Ubuntu puede redimensionar la partición de Windows, pero es más seguro hacerlo desde Windows primero.
+
+<Steps>
+1. Pulsa `Win + X` y abre **Administración de discos**
+2. Haz clic derecho sobre la partición de Windows (`C:`) → **Reducir volumen...**
+3. En "¿En cuánto desea reducirlo?" introduce el espacio para Linux en MB:
+   - Mínimo recomendado: `40960` (40 GB)
+   - Cómodo: `61440` (60 GB)
+4. Haz clic en **Reducir**
+</Steps>
+
+Verás un bloque gris de "Espacio no asignado". Es el espacio que usará Linux. **No toques ese espacio desde Windows**, el instalador de Ubuntu lo usará.
+
+---
+
+## Paso 4 — Arrancar desde el USB
+
+<Steps>
+1. Inserta el USB de Ubuntu
+2. Reinicia el ordenador
+3. Accede al **menú de arranque** pulsando la tecla de tu fabricante al encender el PC:
+   - **Dell / Acer / Lenovo:** `F12`
+   - **HP:** `F9` o `Esc`
+   - **ASUS:** `F8` o `Esc`
+   - **MSI:** `F11`
+4. Selecciona el USB (aparece como "USB" o el nombre de tu pendrive)
+</Steps>
+
+Si arrancas desde el USB correctamente, verás el menú de GRUB o directo el instalador de Ubuntu.
+
+---
+
+## Paso 5 — Instalar Ubuntu junto a Windows
+
+### 5.1 — Pantallas iniciales
+
+<Steps>
+1. Selecciona el idioma: **Español**
+2. En "Tipo de instalación", elige el teclado que usas
+3. En "Actualizaciones y otro software":
+   - ✅ Instalar software de terceros (drivers wifi, codecs)
+   - La conexión a internet durante la instalación es opcional
+</Steps>
+
+### 5.2 — Tipo de instalación ← **la pantalla más importante**
+
+Aquí es donde decides cómo se instala:
+
+**Selecciona: "Instalar Ubuntu junto a Windows Boot Manager"**
+
+Esta opción aparece automáticamente si Ubuntu detectó Windows en el disco y hay espacio no asignado. El instalador configurará GRUB para que puedas elegir al arrancar.
+
+> ⚠️ **NO selecciones "Borrar disco e instalar Ubuntu"** — eso eliminaría Windows.
+
+Si no aparece la opción de dual boot:
+- Selecciona **"Algo más"** (instalación manual) y crea una partición `ext4` en el espacio no asignado con punto de montaje `/`
+
+### 5.3 — Deslizador de espacio
+
+Si usaste la opción automática, aparecerá un deslizador para ajustar cuánto espacio va a cada sistema. Ajústalo según lo que dejaste libre en el Paso 3.
+
+### 5.4 — Configuración de usuario
+
+- **Tu nombre:** nombre completo
+- **Nombre del equipo:** elige uno sin espacios (ej: `ubuntu-pc`)
+- **Usuario:** en minúsculas sin espacios (ej: `alumno`)
+- **Contraseña:** elige una segura y memorizable
+
+### 5.5 — Instalación
+
+Haz clic en **Instalar ahora** y confirma la escritura al disco.
+
+La instalación tarda entre 15 y 30 minutos. Al terminar, el instalador pedirá reiniciar. Retira el USB cuando te lo indique.
+
+---
+
+## Paso 6 — El menú GRUB
+
+Al encender el ordenador ahora aparecerá el **menú de GRUB** con opciones como:
+
+```
+Ubuntu
+Advanced options for Ubuntu
+Windows Boot Manager
+```
+
+Usa las flechas del teclado para seleccionar y pulsa **Enter**.
+
+- Si no pulsas nada, arrancará la opción por defecto (Ubuntu) tras 10 segundos
+- Para cambiar el sistema por defecto: en Ubuntu, edita `/etc/default/grub` (ver más abajo)
+
+---
+
+## Ajustes post-instalación
+
+### Cambiar el sistema operativo por defecto
+
+Si quieres que Windows arranque por defecto en lugar de Ubuntu:
+
+```bash
+sudo nano /etc/default/grub
+```
+
+Cambia la línea:
+
+```
+GRUB_DEFAULT=0
+```
+
+Por el número que corresponde a Windows en el menú GRUB (cuenta desde 0). Si Windows es la tercera opción, pon `GRUB_DEFAULT=2`.
+
+Aplica el cambio:
+
+```bash
+sudo update-grub
+```
+
+### Sincronizar el reloj entre Windows y Linux
+
+Windows guarda la hora en el BIOS en hora local. Linux la guarda en UTC. Esto causa que el reloj cambie al cambiar de sistema. Solución: haz que Linux también use hora local:
+
+```bash
+timedatectl set-local-rtc 1 --adjust-system-clock
+```
+
+### Acceder a los archivos de Windows desde Ubuntu
+
+Ubuntu monta las particiones Windows automáticamente. Aparecen en el explorador de archivos como **"Disco de X GB"** o en `/media/tuusuario/`.
+
+---
+
+## Resolución de problemas frecuentes
+
+| Problema | Causa probable | Solución |
+|---------|---------------|---------|
+| GRUB no aparece, arranca Windows directo | UEFI ignora GRUB | Entra en BIOS, cambia el orden de arranque: poner "ubuntu" primero |
+| Ubuntu no detecta Windows en la instalación | Fast Startup activo | Vuelve al Paso 1 desde Windows y desactívalo |
+| El wifi no funciona en Ubuntu | Drivers propietarios | Conecta por cable y ejecuta `sudo ubuntu-drivers autoinstall` |
+| Error "no se puede acceder a la partición de Windows" | Fast Startup activo | Desactiva Fast Startup en Windows y reinicia en Windows antes de acceder desde Ubuntu |
+| GRUB desaparece después de una actualización de Windows | Windows sobreescribió el bootloader | Arranca desde el USB Ubuntu → selecciona "Try Ubuntu" → usa Boot-Repair |
+
+---
+
+## ¿Quieres desinstalar Linux y volver solo a Windows?
+
+<Steps>
+1. Arranca en Windows
+2. Abre **Administración de discos**
+3. Elimina las particiones de Linux (las que no tienen letra de unidad)
+4. Expande la partición de Windows sobre el espacio liberado
+5. Para restaurar el bootloader de Windows (si GRUB impide arrancar):
+   ```cmd
+   bootrec /fixmbr
+   bootrec /fixboot
+   bootrec /rebuildbcd
+   ```
+   Ejecuta desde la consola de recuperación de Windows (arrancar desde USB de Windows → Reparar el equipo → Símbolo del sistema).
+</Steps>

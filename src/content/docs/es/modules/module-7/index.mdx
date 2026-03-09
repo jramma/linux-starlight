@@ -23,23 +23,23 @@ Un Administrador LFCS no reza para que no lo ataquen. Un Administrador sabe que 
 
 ## Temas de la Clase 7
 
-### [7.1 Principios de Defensa en Profundidad](/es/module-7/1-security-principles/)
+### [7.1 Principios de Defensa en Profundidad](/es/modules/module-7/1-security-principles/)
 
 - Por qué está prohibido loguearse puramente como `root`.
 - Defensa física extrema: Cómo ponerle un candado con contraseña al propio gestor de arranque **GRUB** en el metal para evitar la inyección de consolas de rescate (`init=/bin/bash`) contra infiltraciones de teclado local.
 
-### [7.2 Confinamiento Obligatorio (AppArmor)](/es/module-7/2-mac-apparmor/)
+### [7.2 Confinamiento Obligatorio (AppArmor)](/es/modules/module-7/2-mac-apparmor/)
 
 - Por qué los permisos `chmod 777` clásicos ("Discretionary Access Control") fracasan si el propio demonio es hackeado.
 - Introducción al Mandatory Access Control (MAC).
 - Cómo el kernel de Debian aísla y escuda programas en cubos independientes vigilando sus perfiles con **AppArmor** (`aa-status`, `enforce`).
 
-### [7.3 Radiografía de Puertos (SS y LSOF)](/es/module-7/3-network-ports/)
+### [7.3 Radiografía de Puertos (SS y LSOF)](/es/modules/module-7/3-network-ports/)
 
 - Entender el concepto de "Demonios en Escucha" (Sockets, Puertos TCP/UDP).
 - Rastrear intrusos o servicios expuestos peligrosamente con el legendario analizador moderno `ss -tulpn`.
 
-### [7.4 El Cortafuegos (UFW)](/es/module-7/4-firewall-ufw/)
+### [7.4 El Cortafuegos (UFW)](/es/modules/module-7/4-firewall-ufw/)
 
 - La locura ilegible de iptables y su salvador en Debian: Uncomplicated Firewall (`ufw`).
 - Denegación estricta por defecto.

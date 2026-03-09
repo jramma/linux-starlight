@@ -24,19 +24,19 @@ Manejar discos de producción en terminal requiere tener los nervios de acero de
 
 ## Temas de la Clase 5
 
-### [5.1 Anatomía del Bloque (Particionado)](/es/module-5/1-disks-partitions/)
+### [5.1 Anatomía del Bloque (Particionado)](/es/modules/module-5/1-disks-partitions/)
 
 - Comprender la filosofía "Todo es un archivo" en `/dev/`.
 - `lsblk`: Tu radar para encontrar discos perdidos.
 - Diferencia de arquitecturas entre las tablas MBR clásicas (`fdisk`) y las modernas GPT (`parted`) sin límites de 2TB.
 
-### [5.2 Sistemas de Archivos y Montaje Permanente](/es/module-5/2-filesystems-mount/)
+### [5.2 Sistemas de Archivos y Montaje Permanente](/es/modules/module-5/2-filesystems-mount/)
 
 - Darle forma legible al disco crudo usando formateadores: Familia `mkfs` (`ext4`, `xfs`).
 - Inyectar el disco a mano en la rama del sistema (`mount`) y extirparlo de manera segura (`umount`).
 - Hacer que el disco sobreviva a los apagados aprendiendo a leer Identificadores Únicos (`blkid`) y editando la tabla divina: `/etc/fstab`.
 
-### [5.3 LVM (Logical Volume Management)](/es/module-5/3-lvm-management/)
+### [5.3 LVM (Logical Volume Management)](/es/modules/module-5/3-lvm-management/)
 
 - Entender el concepto de LVM: Virtualización del almacenamiento separando la física del espacio visual del usuario final.
 - **La Tríada Estricta**: Entender la conversión paso a paso de Physical Volumes (`pvcreate`) a Volume Groups (`vgcreate`) y finalmente Logical Volumes (`lvcreate`).

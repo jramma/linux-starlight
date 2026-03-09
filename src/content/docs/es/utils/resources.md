@@ -2,7 +2,7 @@
 title: Recursos
 description: Recursos para aprender y practicar Linux.
 sidebar:
-  order: 3
+  order: 2
 ---
 
 # Recursos

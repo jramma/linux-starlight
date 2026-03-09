@@ -24,18 +24,18 @@ Tu mentalidad pasa de "operador" a "cirujano".
 
 ## Temas de la Clase 4
 
-### [4.1 El Proceso de Arranque (Boot)](/es/module-4/1-boot-process/)
+### [4.1 El Proceso de Arranque (Boot)](/es/modules/module-4/1-boot-process/)
 
 - El viaje de 5 estaciones: Fase Hardware (BIOS/UEFI) -> Fase de Cargador (GRUB2) -> Fase Núcleo (Kernel) -> Fase de Soporte (Initramfs) -> Fase de Usuario (Systemd).
 - Qué busca Linux en los temidos primeros segundos de encendido.
 
-### [4.2 Configuración de GRUB y el Kernel](/es/module-4/2-grub-kernel/)
+### [4.2 Configuración de GRUB y el Kernel](/es/modules/module-4/2-grub-kernel/)
 
 - Cómo modificar agresivamente pero con seguridad los parámetros de arranque temporal y permanentemente en `/etc/default/grub` (y `update-grub`).
 - Truco LFCS de supervivencia: Cambiar contraseñas olvidadas de root irrumpiendo en el parámetro `init=/bin/bash` desde GRUB.
 - Carga de drivers en caliente: Inspección con `lsmod` y forzado con `modprobe`.
 
-### [4.3 Systemd: El Rey de los Servicios](/es/module-4/3-systemd-services/)
+### [4.3 Systemd: El Rey de los Servicios](/es/modules/module-4/3-systemd-services/)
 
 - El concepto de Demonio (Daemon).
 - Control vital con `systemctl`: Start, Stop, Status.
@@ -43,7 +43,7 @@ Tu mentalidad pasa de "operador" a "cirujano".
 - Cómo hacer que algo sobreviva al reinicio (`enable` vs `disable`).
 - Entender los Runlevels modernos: Loss Targets de Systemd (`multi-user.target` vs `graphical.target`).
 
-### [4.4 Auditoría Forense y Logs](/es/module-4/4-logging-journalctl/)
+### [4.4 Auditoría Forense y Logs](/es/modules/module-4/4-logging-journalctl/)
 
 - Dónde están enterrados los cadáveres tradicionales: La carpeta `/var/log` (Especial atención a `syslog`, `auth.log` y `dmesg`).
 - La herramienta divina: `journalctl`.

@@ -1,12 +1,12 @@
 import type starlight from '@astrojs/starlight';
-import enLabels from '../src/content/nav/en';
+import esLabels from '../src/content/nav/es';
 
 type StarlightSidebarConfig = NonNullable<Parameters<typeof starlight>[0]['sidebar']>;
 type StarlightSidebarEntry = StarlightSidebarConfig[number];
 type StarlightManualSidebarGroup = Extract<StarlightSidebarEntry, { items: any[] }>;
 type StarlightAutoSidebarGroup = Extract<StarlightSidebarEntry, { autogenerate: any }>;
 
-type NavKey = keyof typeof enLabels;
+type NavKey = keyof typeof esLabels;
 type NavDict = Record<NavKey, string>;
 
 const translations = Object.entries(
@@ -34,7 +34,7 @@ export function group(
 	group: Omit<StarlightManualSidebarGroup, 'label'> | Omit<StarlightAutoSidebarGroup, 'label'>
 ): StarlightManualSidebarGroup | StarlightAutoSidebarGroup {
 	return {
-		label: enLabels[key],
+		label: esLabels[key],
 		translations: translations[key],
 		...group,
 	};
