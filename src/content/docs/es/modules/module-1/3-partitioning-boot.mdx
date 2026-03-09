@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem, FileTree, LinkCard } from "@astrojs/starlight/components";
 import PreCheck from "@/components/tutorial/PreCheck.astro";
 import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
 import Option from "@/components/tutorial/Option.astro";
@@ -53,7 +53,110 @@ Pintar las "rayas de la pista" en un disco para que Linux sepa organizar carpeta
 
 ---
 
-## 3. El Proceso de Arranque (Desde Botón de Encendido a Servidor Activo)
+## 3. Esquemas de Particionamiento Habituales
+
+<LinkCard
+  title="Árbol de directorios FHS"
+  description="Repasa cómo se organiza el sistema de archivos de Linux antes de decidir cómo particionar."
+  href="/es/modules/module-1/2-installation/#2-el-árbol-de-directorios-fhs"
+/>
+
+El instalador de distribuciones como Ubuntu o Debian suele preguntarte si quieres **todo junto** o separar `/home`. Aquí están los tres escenarios más comunes:
+
+<Tabs>
+  <TabItem label="🖥️ Mínimo (todo junto)">
+    La opción más sencilla: todo en una sola partición raíz. Válida para VMs, entornos de prueba o equipos con poco espacio.
+
+    | Partición | Punto de montaje | Sistema de archivos | Tamaño orientativo |
+    |-----------|-----------------|---------------------|--------------------|
+    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
+    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
+    | `/dev/sda3` | `/` | ext4 | Todo el resto |
+
+    <FileTree>
+    - / *Todo el sistema en una sola partición*
+      - boot/
+        - efi/ `sda1` — FAT32, 512 MB
+      - home/ `sda3` — mismo disco que el sistema
+        - usuario/
+      - var/
+        - log/
+      - etc/
+      - tmp/
+    </FileTree>
+
+    <Aside type="caution">
+      Si un usuario llena `/home` con archivos grandes, el sistema operativo también se queda sin espacio y puede dejar de funcionar.
+    </Aside>
+  </TabItem>
+
+  <TabItem label="🏠 Desktop (/home separado)">
+    La opción que típicamente te ofrece el instalador gráfico de Ubuntu. Separar `/home` permite reinstalar el sistema sin perder los datos del usuario.
+
+    | Partición | Punto de montaje | Sistema de archivos | Tamaño orientativo |
+    |-----------|-----------------|---------------------|--------------------|
+    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
+    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
+    | `/dev/sda3` | `/` | ext4 | 30–50 GB |
+    | `/dev/sda4` | `/home` | ext4 | Todo el resto |
+
+    <FileTree>
+    - / `sda3` — ext4, 30-50 GB
+      - boot/
+        - efi/ `sda1` — FAT32, 512 MB
+      - etc/
+      - var/
+        - log/
+      - tmp/
+    - home/ `sda4` — ext4, partición independiente
+      - usuario/
+        - documentos/
+        - proyectos/
+    </FileTree>
+
+    <Aside type="tip">
+      Con `/home` en su propia partición puedes formatear `/` y reinstalar el sistema operativo manteniendo intactos todos tus documentos, configuraciones de usuario y proyectos.
+    </Aside>
+  </TabItem>
+
+  <TabItem label="🖧 Servidor (producción)">
+    En entornos de servidor se aíslan `/var` y opcionalmente `/tmp` para evitar que logs o bases de datos descontrolados colapsen el sistema. Es el esquema recomendado para el LFCS.
+
+    | Partición | Punto de montaje | Sistema de archivos | Tamaño orientativo |
+    |-----------|-----------------|---------------------|--------------------|
+    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
+    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1 |
+    | `/dev/sda3` | `/` | ext4 / xfs | 20–30 GB |
+    | `/dev/sda4` | `/var` | ext4 / xfs | 20–100 GB |
+    | `/dev/sda5` | `/home` | ext4 | Lo que quede |
+
+    <FileTree>
+    - / `sda3` — ext4/xfs, 20-30 GB
+      - boot/
+        - efi/ `sda1` — FAT32, 512 MB
+      - etc/
+      - tmp/
+    - var/ `sda4` — ext4/xfs, 20-100 GB
+      - log/ *Logs del sistema — pueden crecer sin límite*
+      - lib/
+        - postgresql/
+        - mysql/
+      - www/
+        - html/
+    - home/ `sda5` — ext4, espacio restante
+      - deploy/
+      - admin/
+    </FileTree>
+
+    <Aside type="note">
+      `/var` contiene `/var/log` (logs del sistema), `/var/lib` (bases de datos como PostgreSQL o MySQL) y `/var/www` (webs con Apache/Nginx). Aislarlo impide que un log desbocado llene el disco raíz y tumbe el servidor.
+    </Aside>
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. El Proceso de Arranque (Desde Botón de Encendido a Servidor Activo)
 
 ¿Qué pasa desde el segundo que enciendes la máquina de metal hasta que puedes escribir comandos?
 

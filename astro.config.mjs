@@ -36,30 +36,6 @@ export default defineConfig({
         Head: "./src/overrides/Head.astro",
         Footer: "./src/overrides/Footer.astro",
       },
-      plugins: [
-        starlightThemeNova({
-          nav: [
-            {
-              label: { es: "Comenzar", ca: "Començar" },
-              href: { es: "/es/", ca: "/ca/" },
-            },
-            {
-              label: { es: "Certificaciones", ca: "Certificacions" },
-              href: {
-                es: "/es/utils/certification/",
-                ca: "/ca/utils/certification/",
-              },
-            },
-            {
-              label: { es: "Recursos", ca: "Recursos" },
-              href: {
-                es: "/es/utils/resources/",
-                ca: "/ca/utils/resources/",
-              },
-            },
-          ],
-        }),
-      ],
     }),
     icon(),
     mermaid(),

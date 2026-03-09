@@ -5,9 +5,7 @@ sidebar:
   order: 1
 ---
 
-## A
 
-## B
+## P
 
-## C
-
+- **Particionar:** es el proceso de 

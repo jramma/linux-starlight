@@ -138,6 +138,22 @@ El sitio está disponible en tres idiomas:
 - 💡 Sugerir mejoras en la documentación
 - 🎨 Mejorar el diseño o la experiencia de usuario
 
+### Componentes de Astro Starlight 
+
+https://starlight.astro.build/components/tabs/
+
+- Cards
+- Link Cards
+- Card Grids 
+- Asides
+- Badges
+- Code
+- File Tree
+- Icons
+- Link Buttons
+- Steps
+- Tabs
+
 ## 📄 Licencia
 
 Este proyecto es open source y está disponible para que cualquiera lo use, modifique y mejore.
