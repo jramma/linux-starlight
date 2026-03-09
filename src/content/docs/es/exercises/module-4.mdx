@@ -1,0 +1,182 @@
+---
+title: "Ejercicios: Módulo 4 — Arranque y Servicios"
+description: Ejercicios prácticos sobre el proceso de arranque de Linux, GRUB, systemd, servicios y gestión de logs con journalctl.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+---
+
+## Ejercicio 4.1 — El proceso de arranque
+
+**¿Cuál es el orden correcto del proceso de arranque en un sistema Linux con UEFI?**
+
+<MultipleChoice>
+  <Option>Kernel → UEFI/BIOS → GRUB → systemd → Login</Option>
+  <Option isCorrect>UEFI/BIOS → GRUB → Kernel Linux → initramfs → systemd → Login</Option>
+  <Option>systemd → GRUB → Kernel → UEFI → Login</Option>
+</MultipleChoice>
+
+---
+
+**¿Cuál es la función del `initramfs` en el arranque?**
+
+<MultipleChoice>
+  <Option>Es el gestor de arranque que reemplaza a GRUB en sistemas modernos.</Option>
+  <Option isCorrect>Es un sistema de archivos temporal en RAM que contiene los drivers y herramientas mínimas para montar el sistema de archivos raíz real.</Option>
+  <Option>Es el primer proceso que inicia el sistema de init al arrancar.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 4.2 — GRUB
+
+**¿En qué archivo se configura el tiempo de espera y las opciones de arranque de GRUB?**
+
+<MultipleChoice>
+  <Option>`/boot/grub/grub.cfg` (este se genera, no se edita directamente)</Option>
+  <Option isCorrect>`/etc/default/grub` (este es el que se edita)</Option>
+  <Option>`/etc/grub.d/00_header`</Option>
+</MultipleChoice>
+
+---
+
+**Tras editar `/etc/default/grub`, ¿qué comando debes ejecutar para que los cambios surtan efecto?**
+
+<MultipleChoice>
+  <Option>`grub-install /dev/sda`</Option>
+  <Option isCorrect>`update-grub` (en Debian/Ubuntu) o `grub2-mkconfig -o /boot/grub2/grub.cfg` (en RHEL)</Option>
+  <Option>`systemctl restart grub`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué parámetro en `/etc/default/grub` controla cuántos segundos espera el menú antes de arrancar la opción por defecto?**
+
+<MultipleChoice>
+  <Option>`GRUB_DEFAULT`</Option>
+  <Option isCorrect>`GRUB_TIMEOUT`</Option>
+  <Option>`GRUB_WAIT`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 4.3 — systemd y servicios
+
+**¿Qué comando muestra el estado del servicio `nginx`?**
+
+<MultipleChoice>
+  <Option>`service nginx status` (funciona pero es legado)</Option>
+  <Option isCorrect>`systemctl status nginx`</Option>
+  <Option>`ps aux | grep nginx`</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo habilitas el servicio `postgresql` para que arranque automáticamente en cada reinicio?**
+
+<MultipleChoice>
+  <Option>`systemctl start postgresql`</Option>
+  <Option isCorrect>`systemctl enable postgresql`</Option>
+  <Option>`systemctl daemon-enable postgresql`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué diferencia hay entre `systemctl stop` y `systemctl disable`?**
+
+<MultipleChoice>
+  <Option>No hay diferencia, ambos hacen lo mismo.</Option>
+  <Option isCorrect>`stop` detiene el servicio ahora mismo. `disable` evita que arranque automáticamente en el próximo reinicio, pero no lo para.</Option>
+  <Option>`stop` elimina el servicio del sistema; `disable` solo lo pausa temporalmente.</Option>
+</MultipleChoice>
+
+---
+
+**Analiza este archivo de unidad systemd:**
+
+```ini
+[Unit]
+Description=Mi Aplicación Web
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/miapp --port 8080
+Restart=always
+User=webuser
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**¿Qué significa `Restart=always`?**
+
+<MultipleChoice>
+  <Option>El servicio se reinicia cada vez que reinicias el sistema.</Option>
+  <Option isCorrect>systemd reiniciará automáticamente el servicio si muere o falla, independientemente del código de salida.</Option>
+  <Option>El servicio se reinicia solo cuando termina correctamente (código 0).</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 4.4 — Logs y journalctl
+
+**¿Qué comando muestra los logs del servicio `sshd` en tiempo real?**
+
+<MultipleChoice>
+  <Option>`tail -f /var/log/sshd.log`</Option>
+  <Option isCorrect>`journalctl -u sshd -f`</Option>
+  <Option>`systemctl logs sshd --follow`</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo filtras en journalctl solo los errores y mensajes críticos del arranque actual?**
+
+<MultipleChoice>
+  <Option>`journalctl --level=error`</Option>
+  <Option isCorrect>`journalctl -b -p err` (boot actual, prioridad error o superior)</Option>
+  <Option>`journalctl --critical -b0`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué significa la flag `-b` en `journalctl -b`?**
+
+<MultipleChoice>
+  <Option>Muestra los logs en modo binario comprimido.</Option>
+  <Option isCorrect>Filtra los logs del arranque actual (current boot). Con `-b -1` verías el arranque anterior.</Option>
+  <Option>Muestra solo los logs del módulo `boot` del kernel.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 4.5 — Caso práctico: servicio caído
+
+Tu servidor de producción tiene el servicio `mariadb` caído. Diagnostica y resuélvelo:
+
+```bash
+# 1. Verifica el estado
+systemctl status mariadb
+
+# 2. Ve los últimos logs detallados
+journalctl -u mariadb -n 50 --no-pager
+
+# 3. Intenta reiniciar
+sudo systemctl start mariadb
+
+# 4. Si falla, busca el error específico en los logs
+journalctl -u mariadb -b -p err
+```
+
+**¿Qué flag de `journalctl` usarías para ver solo los logs de los últimos 10 minutos?**
+
+<MultipleChoice>
+  <Option>`journalctl --last=10m`</Option>
+  <Option isCorrect>`journalctl --since "10 minutes ago"`</Option>
+  <Option>`journalctl -t 10min`</Option>
+</MultipleChoice>

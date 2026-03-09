@@ -1,0 +1,217 @@
+---
+title: "Ejercicios: Módulo 2 — Comandos Básicos"
+description: Ejercicios prácticos de navegación, edición de texto, permisos, procesos, tuberías, archivado y documentación en la terminal Linux.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<Aside type="tip" title="Consejo">
+  Abre una terminal y ejecuta los comandos mientras lees. La práctica es la única forma de memorizar estos fundamentos.
+</Aside>
+
+---
+
+## Ejercicio 2.1 — Navegación del sistema de archivos
+
+**¿Qué comando muestra el directorio de trabajo actual?**
+
+<MultipleChoice>
+  <Option>cd</Option>
+  <Option isCorrect>pwd</Option>
+  <Option>ls</Option>
+</MultipleChoice>
+
+---
+
+**Dado este árbol de directorios, ¿cuál es la ruta absoluta del archivo `config.cfg`?**
+
+```
+/
+└── home/
+    └── admin/
+        └── proyecto/
+            └── config.cfg
+```
+
+<MultipleChoice>
+  <Option>./proyecto/config.cfg</Option>
+  <Option isCorrect>/home/admin/proyecto/config.cfg</Option>
+  <Option>~/admin/proyecto/config.cfg</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué hace el comando `ls -lah /var/log`?**
+
+<MultipleChoice>
+  <Option>Lista solo los archivos ocultos del directorio `/var/log`.</Option>
+  <Option isCorrect>Lista todos los archivos (incluso ocultos) con permisos, propietario, tamaños legibles por humanos.</Option>
+  <Option>Borra todos los logs del sistema.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 2.2 — Edición de texto con vim/nano
+
+**En `vim`, ¿qué secuencia de teclas guarda el archivo y sale del editor?**
+
+<MultipleChoice>
+  <Option>Ctrl+S seguido de Ctrl+Q</Option>
+  <Option>:exit y Enter en modo normal</Option>
+  <Option isCorrect>`:wq` y Enter en modo normal (o `ZZ`)</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo añades una línea al final de un archivo existente sin borrarlo?**
+
+```bash
+# Completa con el operador correcto:
+echo "nueva línea" ___ /etc/hosts
+```
+
+<MultipleChoice>
+  <Option>`>` (redireccionamiento simple)</Option>
+  <Option isCorrect>`>>` (append / redireccionamiento de adición)</Option>
+  <Option>`|` (tubería)</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 2.3 — Tuberías y filtros
+
+**¿Qué hace este comando?**
+
+```bash
+cat /etc/passwd | grep "bash" | wc -l
+```
+
+<MultipleChoice>
+  <Option>Borra todas las cuentas que usen bash como shell.</Option>
+  <Option isCorrect>Cuenta cuántas líneas en `/etc/passwd` contienen la palabra "bash" (es decir, usuarios con bash como shell por defecto).</Option>
+  <Option>Muestra el contenido de los archivos de bash de todos los usuarios.</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando muestra las últimas 20 líneas de un archivo de log en tiempo real?**
+
+<MultipleChoice>
+  <Option>`head -20 /var/log/syslog`</Option>
+  <Option>`cat -n /var/log/syslog`</Option>
+  <Option isCorrect>`tail -f -n 20 /var/log/syslog`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 2.4 — Permisos
+
+**Analiza esta salida de `ls -l`:**
+
+```
+-rwxr-x--- 1 deploy www-data 4096 mar  9 10:00 deploy.sh
+```
+
+¿Quién puede ejecutar el archivo?
+
+<MultipleChoice>
+  <Option>Solo el propietario `deploy` y el usuario `root`.</Option>
+  <Option isCorrect>El usuario `deploy` (rwx) y cualquier miembro del grupo `www-data` (r-x). Otros usuarios no tienen ningún permiso.</Option>
+  <Option>Todos los usuarios del sistema, ya que tiene bit de ejecución.</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando da permisos de ejecución al propietario de un script, sin modificar los demás permisos?**
+
+<MultipleChoice>
+  <Option>`chmod 777 script.sh`</Option>
+  <Option isCorrect>`chmod u+x script.sh`</Option>
+  <Option>`chown +x script.sh`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 2.5 — Procesos
+
+**¿Qué comando muestra los procesos en tiempo real con uso de CPU y memoria?**
+
+<MultipleChoice>
+  <Option>ps aux</Option>
+  <Option isCorrect>top (o htop si está instalado)</Option>
+  <Option>jobs -l</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo envías la señal SIGKILL al proceso con PID 1234?**
+
+<MultipleChoice>
+  <Option>`kill 1234`</Option>
+  <Option isCorrect>`kill -9 1234`</Option>
+  <Option>`pkill -STOP 1234`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 2.6 — Archivado y compresión
+
+**¿Qué hace el siguiente comando?**
+
+```bash
+tar -czvf backup.tar.gz /home/usuario/documentos
+```
+
+<MultipleChoice>
+  <Option>Extrae el archivo `backup.tar.gz` en `/home/usuario/documentos`.</Option>
+  <Option isCorrect>Crea (`c`) un archivo comprimido con gzip (`z`) con salida verbose (`v`) llamado `backup.tar.gz` con el contenido de `/home/usuario/documentos`.</Option>
+  <Option>Verifica la integridad del archivo `backup.tar.gz`.</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué flag de `tar` se usa para extraer un archivo?**
+
+<MultipleChoice>
+  <Option>`-c` (create)</Option>
+  <Option>`-v` (verbose)</Option>
+  <Option isCorrect>`-x` (extract)</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 2.7 — Documentación
+
+**¿Cómo accedes a la página de manual del comando `chmod`?**
+
+<MultipleChoice>
+  <Option isCorrect>`man chmod`</Option>
+  <Option>`help chmod`</Option>
+  <Option>`chmod --docs`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 2.8 — Caso práctico integrador
+
+Tienes que encontrar todos los archivos `.log` mayores de 100 MB en el servidor y comprimirlos en un único archivo:
+
+```bash
+# Paso 1: Encuenta los archivos
+find /var/log -name "*.log" -size +100M
+
+# Paso 2: Comprime los resultados (ejemplo con xargs)
+find /var/log -name "*.log" -size +100M | xargs tar -czvf logs_grandes.tar.gz
+```
+
+**¿Qué hace `-size +100M` en el comando `find`?**
+
+<MultipleChoice>
+  <Option>Filtra archivos de exactamente 100 MB.</Option>
+  <Option isCorrect>Filtra archivos con tamaño **mayor** que 100 MB.</Option>
+  <Option>Limita la búsqueda a los últimos 100 minutos.</Option>
+</MultipleChoice>

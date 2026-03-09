@@ -1,0 +1,175 @@
+---
+title: "Ejercicios: Módulo 3 — Usuarios y Red"
+description: Ejercicios prácticos sobre gestión de usuarios, grupos, sudo, redes básicas y claves SSH en Linux.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<Aside type="tip" title="Recomendación">
+  Practica estos comandos en una máquina virtual o sistema de prueba. Nunca en producción sin supervisión.
+</Aside>
+
+---
+
+## Ejercicio 3.1 — Gestión de usuarios
+
+**¿Qué comando crea un nuevo usuario llamado `devuser` con su directorio home?**
+
+<MultipleChoice>
+  <Option>`useradd devuser`</Option>
+  <Option isCorrect>`useradd -m devuser`</Option>
+  <Option>`adduser --no-home devuser`</Option>
+</MultipleChoice>
+
+---
+
+**¿Dónde se almacenan las contraseñas cifradas de los usuarios en Linux?**
+
+<MultipleChoice>
+  <Option>En `/etc/passwd` en texto cifrado.</Option>
+  <Option isCorrect>En `/etc/shadow`, accesible solo por root.</Option>
+  <Option>En `/home/.passwords` de cada usuario.</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando bloquea la cuenta del usuario `peter` sin eliminarla?**
+
+<MultipleChoice>
+  <Option>`userdel -l peter`</Option>
+  <Option isCorrect>`usermod -L peter`</Option>
+  <Option>`passwd --freeze peter`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 3.2 — Grupos y sudo
+
+**¿Cómo añades al usuario `ana` al grupo secundario `docker` sin quitarla de sus grupos actuales?**
+
+<MultipleChoice>
+  <Option>`usermod -g docker ana`</Option>
+  <Option isCorrect>`usermod -aG docker ana`</Option>
+  <Option>`groupadd docker ana`</Option>
+</MultipleChoice>
+
+---
+
+**Analiza esta línea en `/etc/sudoers`:**
+
+```
+%developers ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
+```
+
+**¿Qué permite esta regla?**
+
+<MultipleChoice>
+  <Option>Que cualquier usuario pueda reiniciar nginx sin contraseña.</Option>
+  <Option isCorrect>Que todos los miembros del grupo `developers` puedan ejecutar `systemctl restart nginx` como root sin introducir contraseña.</Option>
+  <Option>Que el usuario `developers` tenga acceso root completo sin contraseña.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 3.3 — Redes básicas
+
+**¿Qué comando muestra las interfaces de red y sus direcciones IP en sistemas modernos?**
+
+<MultipleChoice>
+  <Option>`ifconfig -a` (obsoleto pero funciona)</Option>
+  <Option isCorrect>`ip addr show` (o `ip a`)</Option>
+  <Option>`netstat -i`</Option>
+</MultipleChoice>
+
+---
+
+**Ejecutas `ping 8.8.8.8` y no hay respuesta. ¿Qué comando usarías para diagnosticar la ruta hasta el destino?**
+
+<MultipleChoice>
+  <Option>`nmap 8.8.8.8`</Option>
+  <Option isCorrect>`traceroute 8.8.8.8` (o `mtr 8.8.8.8` para modo interactivo)</Option>
+  <Option>`ip route show 8.8.8.8`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué archivo en sistemas con NetworkManager/systemd-networkd define la configuración de red estática en Debian/Ubuntu moderno?**
+
+<MultipleChoice>
+  <Option>`/etc/network/interfaces` (método clásico)</Option>
+  <Option isCorrect>Archivos `.yaml` en `/etc/netplan/` (método moderno en Ubuntu)</Option>
+  <Option>`/etc/resolv.conf` (solo para DNS)</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 3.4 — SSH y claves
+
+**¿Qué comando genera un par de claves SSH de tipo Ed25519?**
+
+<MultipleChoice>
+  <Option>`ssh-copy-id -t ed25519 servidor`</Option>
+  <Option isCorrect>`ssh-keygen -t ed25519 -C "comentario"`</Option>
+  <Option>`openssl genrsa -out id_ed25519 4096`</Option>
+</MultipleChoice>
+
+---
+
+**¿Dónde debes colocar tu clave pública en el servidor remoto para autenticarte sin contraseña?**
+
+<MultipleChoice>
+  <Option>En `/etc/ssh/authorized_keys`</Option>
+  <Option isCorrect>En `~/.ssh/authorized_keys` del usuario con el que te conectarás</Option>
+  <Option>En `/root/.ssh/id_ed25519.pub`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué parámetro del fichero `/etc/ssh/sshd_config` debes desactivar para prohibir el login de root por SSH?**
+
+<MultipleChoice>
+  <Option>`AllowUsers root`</Option>
+  <Option isCorrect>`PermitRootLogin no`</Option>
+  <Option>`RootSSH disable`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 3.5 — Caso práctico
+
+Debes configurar un servidor para que:
+1. El usuario `deploy` pueda reiniciar el servicio `nginx` con sudo sin contraseña
+2. Nadie pueda conectarse por SSH con contraseña (solo claves)
+3. El puerto SSH se cambie al 2222
+
+**¿Cuáles son los pasos correctos?**
+
+<Aside type="note" title="Respuesta">
+
+**Paso 1** — Edita `/etc/sudoers` (con `visudo`):
+```
+deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
+```
+
+**Paso 2** — Edita `/etc/ssh/sshd_config`:
+```
+PasswordAuthentication no
+PubkeyAuthentication yes
+Port 2222
+PermitRootLogin no
+```
+
+**Paso 3** — Recarga SSH:
+```bash
+sudo systemctl reload sshd
+```
+
+**¡Importante!** Antes de cerrar la sesión, abre una nueva conexión de prueba:
+```bash
+ssh -p 2222 deploy@servidor
+```
+</Aside>

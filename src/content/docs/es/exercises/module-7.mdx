@@ -1,0 +1,169 @@
+---
+title: "Ejercicios: Módulo 7 — Seguridad y Cortafuegos"
+description: Ejercicios prácticos sobre principios de seguridad, AppArmor, análisis de puertos y gestión del firewall con UFW e iptables.
+sidebar:
+  order: 7
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+---
+
+## Ejercicio 7.1 — Principios de seguridad
+
+**¿Qué principio de seguridad implica dar a cada usuario o proceso solo los permisos mínimos necesarios para su función?**
+
+<MultipleChoice>
+  <Option>Defensa en profundidad</Option>
+  <Option isCorrect>Principio de mínimo privilegio (Least Privilege)</Option>
+  <Option>Seguridad por oscuridad</Option>
+</MultipleChoice>
+
+---
+
+**¿Cuál es la diferencia entre DAC (Discretionary Access Control) y MAC (Mandatory Access Control)?**
+
+<MultipleChoice>
+  <Option>DAC usa contraseñas; MAC usa certificados digitales.</Option>
+  <Option isCorrect>En DAC el propietario del recurso controla los permisos (como `chmod`). En MAC el sistema operativo impone políticas centralizadas que ni el propietario puede saltarse (como SELinux/AppArmor).</Option>
+  <Option>DAC es para servidores; MAC es solo para escritorios.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 7.2 — AppArmor
+
+**¿Qué hace AppArmor cuando una aplicación intenta realizar una acción no permitida por su perfil?**
+
+<MultipleChoice>
+  <Option>Reinicia automáticamente la aplicación con permisos limitados.</Option>
+  <Option isCorrect>En modo `enforce`, bloquea la acción y la registra en los logs del sistema. En modo `complain`, solo la registra sin bloquearla.</Option>
+  <Option>Elimina el archivo al que intentaba acceder la aplicación.</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando muestra el estado de todos los perfiles de AppArmor cargados?**
+
+<MultipleChoice>
+  <Option>`apparmor -list`</Option>
+  <Option isCorrect>`aa-status`</Option>
+  <Option>`systemctl list-units apparmor`</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo pones el perfil de `nginx` en modo `complain` (solo log, sin bloqueos)?**
+
+<MultipleChoice>
+  <Option>`aa-disable nginx`</Option>
+  <Option isCorrect>`aa-complain /etc/apparmor.d/usr.sbin.nginx`</Option>
+  <Option>`apparmor-notify --mode=complain nginx`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 7.3 — Análisis de puertos y red
+
+**¿Qué comando muestra todos los puertos TCP en escucha con el proceso que los usa?**
+
+<MultipleChoice>
+  <Option>`netstat -an` (obsoleto)</Option>
+  <Option isCorrect>`ss -tlnp` (sockets TCP en escucha, numérico, con proceso)</Option>
+  <Option>`lsof -port all`</Option>
+</MultipleChoice>
+
+---
+
+**¿Para qué se usa `nmap -sV -p 1-1000 192.168.1.1`?**
+
+<MultipleChoice>
+  <Option>Para bloquear los puertos del 1 al 1000 en esa IP.</Option>
+  <Option isCorrect>Para escanear los puertos del 1 al 1000 del host `192.168.1.1` e intentar detectar la versión del servicio que corre en cada puerto abierto.</Option>
+  <Option>Para ver el tráfico de red en tiempo real en esa IP.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 7.4 — Firewall con UFW
+
+**¿Qué comando permite el tráfico HTTPS (puerto 443 TCP) con UFW?**
+
+<MultipleChoice>
+  <Option>`ufw open 443`</Option>
+  <Option isCorrect>`ufw allow 443/tcp` (o `ufw allow 'Nginx HTTPS'`)</Option>
+  <Option>`iptables -A INPUT -p tcp --dport 443 -j ACCEPT`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué hace este conjunto de reglas UFW?**
+
+```bash
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw enable
+```
+
+<MultipleChoice>
+  <Option>Bloquea todo el tráfico de red del servidor.</Option>
+  <Option isCorrect>Implementa una política restrictiva: bloquea todo el tráfico entrante por defecto, pero permite SSH, HTTP y HTTPS. El tráfico saliente está permitido.</Option>
+  <Option>Permite solo el tráfico local (loopback) y SSH.</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo eliminarias la regla que permite el puerto 8080 con UFW?**
+
+<MultipleChoice>
+  <Option>`ufw remove allow 8080`</Option>
+  <Option isCorrect>`ufw delete allow 8080`</Option>
+  <Option>`ufw deny 8080 --remove`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 7.5 — Caso práctico: hardening básico
+
+Acabas de instalar un servidor nuevo accesible desde internet. Lista las 5 acciones de seguridad más importantes que realizarías inmediatamente:
+
+<Aside type="note" title="Respuesta recomendada">
+
+1. **Actualizar el sistema:**
+   ```bash
+   apt update && apt upgrade -y
+   ```
+
+2. **Configurar SSH seguro** (`/etc/ssh/sshd_config`):
+   ```
+   PermitRootLogin no
+   PasswordAuthentication no
+   Port 2222   # Cambiar puerto por defecto
+   ```
+
+3. **Activar el firewall UFW:**
+   ```bash
+   ufw default deny incoming
+   ufw allow 2222/tcp  # nuevo puerto SSH
+   ufw allow 80/tcp
+   ufw allow 443/tcp
+   ufw enable
+   ```
+
+4. **Crear usuario no-root con sudo** y deshabilitar el root:
+   ```bash
+   adduser adminuser
+   usermod -aG sudo adminuser
+   ```
+
+5. **Instalar fail2ban** para bloquear IPs con demasiados intentos fallidos:
+   ```bash
+   apt install fail2ban -y
+   systemctl enable --now fail2ban
+   ```
+</Aside>

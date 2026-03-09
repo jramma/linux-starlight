@@ -1,0 +1,162 @@
+---
+title: "Ejercicios: Módulo 5 — Almacenamiento y LVM"
+description: Ejercicios prácticos sobre discos, particiones, sistemas de archivos, montaje y gestión de volúmenes lógicos con LVM.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+---
+
+## Ejercicio 5.1 — Discos y particiones
+
+**¿Qué comando lista todos los discos y particiones del sistema de forma clara?**
+
+<MultipleChoice>
+  <Option>`fdisk -l /dev/sda`</Option>
+  <Option isCorrect>`lsblk` (muestra el árbol de dispositivos de bloque)</Option>
+  <Option>`mount | grep disk`</Option>
+</MultipleChoice>
+
+---
+
+**¿Cuál es la diferencia entre MBR y GPT?**
+
+<MultipleChoice>
+  <Option>MBR soporta discos de más de 2 TB; GPT está limitado a 2 TB.</Option>
+  <Option isCorrect>MBR es el esquema antiguo (máx. 4 particiones primarias, discos hasta 2 TB); GPT es el moderno (128 particiones, discos de cualquier tamaño, necesario para UEFI).</Option>
+  <Option>GPT solo funciona en sistemas Linux; MBR es compatible con todos los sistemas.</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué herramienta usarías para crear particiones en un disco con esquema GPT?**
+
+<MultipleChoice>
+  <Option>`fdisk` (soporta GPT en versiones modernas, pero mejor usar gdisk)</Option>
+  <Option isCorrect>`gdisk` o `parted` (diseñados específicamente para GPT)</Option>
+  <Option>`mkfs.ext4` (no gestiona tablas de partición)</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 5.2 — Sistemas de archivos y montaje
+
+**¿Qué comando formatea la partición `/dev/sdb1` con el sistema de archivos ext4?**
+
+<MultipleChoice>
+  <Option>`format /dev/sdb1 ext4`</Option>
+  <Option isCorrect>`mkfs.ext4 /dev/sdb1`</Option>
+  <Option>`fdisk --mkfs ext4 /dev/sdb1`</Option>
+</MultipleChoice>
+
+---
+
+**Para que un sistema de archivos se monte automáticamente en cada arranque, ¿qué archivo debes editar?**
+
+<MultipleChoice>
+  <Option>`/etc/mounts.conf`</Option>
+  <Option isCorrect>`/etc/fstab`</Option>
+  <Option>`/boot/grub/mounts.cfg`</Option>
+</MultipleChoice>
+
+---
+
+**Analiza esta línea de `/etc/fstab`:**
+
+```
+UUID=a1b2c3d4  /data  ext4  defaults,noatime  0  2
+```
+
+**¿Qué significa el último campo `2`?**
+
+<MultipleChoice>
+  <Option>El sistema de archivos se montará en segundo lugar después del raíz.</Option>
+  <Option isCorrect>El orden de `fsck` (comprobación de disco al arranque). `1` es para el raíz, `2` para el resto. `0` desactiva la comprobación.</Option>
+  <Option>La prioridad de montaje; menor número = más prioritario.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 5.3 — LVM
+
+**¿Cuál es el orden correcto para crear un volumen lógico con LVM?**
+
+<MultipleChoice>
+  <Option>Crear VG → Crear PV → Crear LV → Formatear</Option>
+  <Option isCorrect>Crear PV (`pvcreate`) → Crear VG (`vgcreate`) → Crear LV (`lvcreate`) → Formatear con `mkfs`</Option>
+  <Option>Crear LV → Asignar PV → Crear VG → Montar</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando amplía un grupo de volúmenes `datos-vg` añadiendo el disco `/dev/sdc`?**
+
+<MultipleChoice>
+  <Option>`lvcreate -L +50G datos-vg /dev/sdc`</Option>
+  <Option isCorrect>`vgextend datos-vg /dev/sdc` (primero debes hacer `pvcreate /dev/sdc`)</Option>
+  <Option>`pvextend datos-vg /dev/sdc`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando extiende el volumen lógico `/dev/datos-vg/home-lv` en 10 GB y redimensiona el sistema de archivos ext4 al mismo tiempo?**
+
+<MultipleChoice>
+  <Option>`lvresize -L +10G /dev/datos-vg/home-lv`</Option>
+  <Option isCorrect>`lvextend -L +10G -r /dev/datos-vg/home-lv` (el flag `-r` redimensiona el fs automáticamente)</Option>
+  <Option>`resize2fs /dev/datos-vg/home-lv +10G`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 5.4 — Monitorización de disco
+
+**¿Qué comando muestra el uso de disco de todos los sistemas de archivos montados en formato legible?**
+
+<MultipleChoice>
+  <Option>`du -sh /*`</Option>
+  <Option isCorrect>`df -h`</Option>
+  <Option>`lsblk --usage`</Option>
+</MultipleChoice>
+
+---
+
+**¿Para qué sirve el comando `du -sh /var/*`?**
+
+<MultipleChoice>
+  <Option>Muestra el uso de disco del sistema de archivos `/var`.</Option>
+  <Option isCorrect>Muestra el tamaño total de cada subdirectorio dentro de `/var`, en formato legible por humanos.</Option>
+  <Option>Elimina los archivos duplicados en `/var`.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 5.5 — Caso práctico: disco lleno
+
+El disco raíz de tu servidor está al 95%. Diagnostica:
+
+```bash
+# 1. Ver qué sistema de archivos está lleno
+df -h
+
+# 2. Encontrar los directorios más grandes en /
+du -sh /* 2>/dev/null | sort -rh | head -20
+
+# 3. Buscar archivos grandes
+find / -type f -size +1G 2>/dev/null
+
+# 4. Ver logs grandes
+du -sh /var/log/* | sort -rh | head -10
+```
+
+**¿Qué hace `sort -rh`?**
+
+<MultipleChoice>
+  <Option>Ordena en orden alfabético inverso.</Option>
+  <Option isCorrect>Ordena en orden descendente (`-r`) interpretando tamaños legibles como 1G, 500M (`-h`).</Option>
+  <Option>Muestra solo los archivos ocultos ordenados por tamaño.</Option>
+</MultipleChoice>

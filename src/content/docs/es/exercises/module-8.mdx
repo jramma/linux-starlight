@@ -1,0 +1,236 @@
+---
+title: "Ejercicios: Módulo 8 — Servidor Web Final"
+description: Ejercicios prácticos sobre NGINX, la pila LEMP, resolución de problemas y preparación para el examen LFCS.
+sidebar:
+  order: 8
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+---
+
+## Ejercicio 8.1 — NGINX
+
+**¿Cuál es la diferencia principal entre NGINX y Apache en cuanto a arquitectura?**
+
+<MultipleChoice>
+  <Option>NGINX es más antiguo y solo funciona en servidores de alto rendimiento.</Option>
+  <Option isCorrect>Apache crea un proceso/hilo por conexión (bloqueante). NGINX usa un modelo asíncrono y no bloqueante con un número fijo de workers, siendo más eficiente con muchas conexiones simultáneas.</Option>
+  <Option>NGINX no soporta PHP; Apache sí de forma nativa.</Option>
+</MultipleChoice>
+
+---
+
+**¿Dónde se almacenan los archivos de configuración de los sitios disponibles en NGINX?**
+
+<MultipleChoice>
+  <Option>`/etc/nginx/conf.d/` (válido) y `/etc/nginx/sites-available/` (Debian/Ubuntu)</Option>
+  <Option isCorrect>En Debian/Ubuntu: `/etc/nginx/sites-available/` (disponibles) y `/etc/nginx/sites-enabled/` (activos, mediante symlinks)</Option>
+  <Option>`/var/www/nginx/vhosts/`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando verifica la sintaxis de la configuración de NGINX sin reiniciarlo?**
+
+<MultipleChoice>
+  <Option>`systemctl check nginx`</Option>
+  <Option isCorrect>`nginx -t`</Option>
+  <Option>`nginx --validate-config`</Option>
+</MultipleChoice>
+
+---
+
+**Analiza este bloque de configuración de NGINX:**
+
+```nginx
+server {
+    listen 80;
+    server_name ejemplo.com www.ejemplo.com;
+    root /var/www/ejemplo;
+    index index.html index.php;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+**¿Qué hace la directiva `try_files $uri $uri/ =404`?**
+
+<MultipleChoice>
+  <Option>Redirige todas las peticiones a `/404.html`.</Option>
+  <Option isCorrect>Intenta servir el archivo `$uri`, si no existe intenta `$uri/` (como directorio), y si tampoco existe devuelve un error 404.</Option>
+  <Option>Comprime todos los archivos del sitio antes de servirlos.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 8.2 — Pila LEMP
+
+**¿Qué componentes forman la pila LEMP?**
+
+<MultipleChoice>
+  <Option>Linux, Express, MySQL, PHP</Option>
+  <Option isCorrect>Linux, nginx (**E** por su pronunciación), MySQL/MariaDB, PHP/Python/Perl</Option>
+  <Option>Linux, Elasticsearch, MongoDB, Python</Option>
+</MultipleChoice>
+
+---
+
+**Para conectar NGINX con PHP, ¿qué componente es imprescindible?**
+
+<MultipleChoice>
+  <Option>El módulo `mod_php` de Apache</Option>
+  <Option isCorrect>PHP-FPM (FastCGI Process Manager) que gestiona los procesos PHP separados de NGINX</Option>
+  <Option>`libphp5-nginx` del repositorio oficial</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando crea una base de datos MySQL/MariaDB llamada `produccion` y otorga todos los permisos al usuario `webuser`?**
+
+```sql
+-- Completa los comandos SQL:
+CREATE DATABASE _________;
+GRANT ALL PRIVILEGES ON _________.* TO '_______'@'localhost' IDENTIFIED BY 'password';
+FLUSH PRIVILEGES;
+```
+
+<MultipleChoice>
+  <Option>`CREATE DATABASE web; GRANT ALL ON web.* TO 'admin'@'%';`</Option>
+  <Option isCorrect>`CREATE DATABASE produccion; GRANT ALL PRIVILEGES ON produccion.* TO 'webuser'@'localhost' IDENTIFIED BY 'password'; FLUSH PRIVILEGES;`</Option>
+  <Option>`MAKE DATABASE produccion; ALLOW webuser ALL ON produccion;`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 8.3 — Resolución de problemas (troubleshooting)
+
+**Un servicio no arranca. ¿Cuál es el primer comando que ejecutarías?**
+
+<MultipleChoice>
+  <Option>`reboot`</Option>
+  <Option isCorrect>`systemctl status nombre-servicio` seguido de `journalctl -u nombre-servicio -n 50`</Option>
+  <Option>`ps aux | grep servicio`</Option>
+</MultipleChoice>
+
+---
+
+**NGINX devuelve error 502 Bad Gateway. ¿Cuál es la causa más probable?**
+
+<MultipleChoice>
+  <Option>El dominio DNS no está correctamente configurado.</Option>
+  <Option isCorrect>El backend al que NGINX hace proxy (PHP-FPM, una aplicación Node.js, etc.) no está corriendo o no es accesible en el socket/puerto configurado.</Option>
+  <Option>Los permisos de los archivos estáticos son incorrectos.</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo verificas qué proceso está usando el puerto 80?**
+
+<MultipleChoice>
+  <Option>`ps aux | grep ":80"`</Option>
+  <Option isCorrect>`ss -tlnp | grep :80` o `lsof -i :80`</Option>
+  <Option>`netstat --port 80 --show-pid`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 8.4 — Preparación LFCS
+
+**En el examen LFCS, recibes este escenario: "El servicio SSH del servidor no responde en el puerto 22". ¿Cuáles son los pasos metódicos para diagnosticarlo?**
+
+<Aside type="note" title="Metodología de diagnóstico">
+
+```bash
+# 1. Verifica si el servicio está corriendo
+systemctl status sshd
+
+# 2. Comprueba si hay errores en los logs
+journalctl -u sshd -n 30
+
+# 3. Verifica si está escuchando en el puerto
+ss -tlnp | grep :22
+
+# 4. Comprueba el firewall
+ufw status
+iptables -L INPUT -n
+
+# 5. Revisa la configuración
+sshd -t   # Verifica la sintaxis de sshd_config
+
+# 6. Si el servicio no arranca, reinícialo
+sudo systemctl restart sshd
+```
+</Aside>
+
+---
+
+**¿Qué significa el código de salida `0` al ejecutar un comando en Bash?**
+
+<MultipleChoice>
+  <Option>El comando falló y devolvió un error genérico.</Option>
+  <Option isCorrect>El comando se ejecutó con éxito sin errores.</Option>
+  <Option>El comando está en ejecución en segundo plano (background).</Option>
+</MultipleChoice>
+
+---
+
+**¿Cuál de estos comandos muestra el uso de CPU, memoria y procesos de forma interactiva y actualizada?**
+
+<MultipleChoice>
+  <Option>`ps aux --top`</Option>
+  <Option isCorrect>`top` (estándar) o `htop` (versión mejorada si está instalada)</Option>
+  <Option>`vmstat --interactive`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 8.5 — Caso práctico final integrador
+
+Tienes que desplegar un sitio web WordPress en un servidor Debian. Enumera los pasos en el orden correcto:
+
+<Aside type="note" title="Solución completa">
+
+```bash
+# 1. Actualizar sistema
+apt update && apt upgrade -y
+
+# 2. Instalar la pila LEMP
+apt install nginx mariadb-server php-fpm php-mysql -y
+
+# 3. Asegurar MariaDB
+mysql_secure_installation
+
+# 4. Crear base de datos para WordPress
+mysql -u root -p <<EOF
+CREATE DATABASE wordpress;
+GRANT ALL ON wordpress.* TO 'wpuser'@'localhost' IDENTIFIED BY 'contraseña_segura';
+FLUSH PRIVILEGES;
+EOF
+
+# 5. Descargar WordPress
+cd /var/www
+wget https://wordpress.org/latest.tar.gz
+tar -xzf latest.tar.gz
+chown -R www-data:www-data wordpress/
+
+# 6. Configurar NGINX para el sitio
+# Crear /etc/nginx/sites-available/wordpress con el bloque server
+
+# 7. Activar el sitio y recargar NGINX
+ln -s /etc/nginx/sites-available/wordpress /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+
+# 8. Configurar el firewall
+ufw allow 'Nginx Full'
+ufw enable
+
+# 9. Certificado SSL con Certbot
+apt install certbot python3-certbot-nginx -y
+certbot --nginx -d tudominio.com
+```
+</Aside>

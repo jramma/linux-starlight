@@ -1,0 +1,187 @@
+---
+title: "Ejercicios: Módulo 6 — Software y Tareas"
+description: Ejercicios sobre gestión de paquetes, compilación de software, sincronización horaria y programación de tareas con cron y systemd timers.
+sidebar:
+  order: 6
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+---
+
+## Ejercicio 6.1 — Gestión de paquetes (apt)
+
+**¿Qué diferencia hay entre `apt update` y `apt upgrade`?**
+
+<MultipleChoice>
+  <Option>Son sinónimos; ambos actualizan el sistema completo.</Option>
+  <Option isCorrect>`apt update` refresca la lista de paquetes disponibles desde los repositorios. `apt upgrade` instala las versiones nuevas de los paquetes ya instalados.</Option>
+  <Option>`apt update` actualiza el kernel; `apt upgrade` actualiza las aplicaciones.</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo instalas el paquete `build-essential` sin que el sistema pida confirmación?**
+
+<MultipleChoice>
+  <Option>`apt install build-essential --confirm`</Option>
+  <Option isCorrect>`apt install build-essential -y`</Option>
+  <Option>`dpkg --install build-essential`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué comando elimina un paquete y también sus archivos de configuración?**
+
+<MultipleChoice>
+  <Option>`apt remove nginx`</Option>
+  <Option isCorrect>`apt purge nginx`</Option>
+  <Option>`dpkg --delete-config nginx`</Option>
+</MultipleChoice>
+
+---
+
+**¿Para qué sirve `apt autoremove`?**
+
+<MultipleChoice>
+  <Option>Elimina automáticamente los paquetes desactualizados.</Option>
+  <Option isCorrect>Elimina paquetes que se instalaron como dependencias y ya no son necesarios porque el paquete principal fue desinstalado.</Option>
+  <Option>Actualiza automáticamente todos los paquetes del sistema por la noche.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 6.2 — Compilación desde código fuente
+
+**¿Cuál es el orden correcto para compilar e instalar software desde código fuente en Linux?**
+
+<MultipleChoice>
+  <Option>`make → ./configure → make install`</Option>
+  <Option isCorrect>`./configure → make → sudo make install`</Option>
+  <Option>`install → configure → make`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué paquetes son imprescindibles para compilar software C/C++ en Debian/Ubuntu?**
+
+<MultipleChoice>
+  <Option>`gcc`, `python3` y `cmake`</Option>
+  <Option isCorrect>`build-essential` (incluye `gcc`, `g++`, `make`) y las `libdevheaders` de las dependencias del proyecto</Option>
+  <Option>`llvm`, `clang` y `automake`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 6.3 — Sincronización horaria
+
+**¿Qué servicio gestiona la sincronización NTP en sistemas modernos con systemd?**
+
+<MultipleChoice>
+  <Option>`ntpd` (el demonio NTP clásico)</Option>
+  <Option isCorrect>`systemd-timesyncd` (viene integrado en systemd) o `chrony` (más preciso)</Option>
+  <Option>`clockd` del kernel de Linux</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo compruebas el estado de la sincronización horaria con `timedatectl`?**
+
+<MultipleChoice>
+  <Option>`timedatectl --sync-status`</Option>
+  <Option isCorrect>`timedatectl status` (muestra si NTP está sincronizado, la hora local y UTC)</Option>
+  <Option>`systemctl status ntp`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 6.4 — Programación de tareas (cron)
+
+**Analiza esta expresión cron:**
+
+```
+30 2 * * 1-5 /usr/local/bin/backup.sh
+```
+
+**¿Con qué frecuencia se ejecuta?**
+
+<MultipleChoice>
+  <Option>Cada 30 minutos todos los días de la semana.</Option>
+  <Option isCorrect>A las 02:30 de lunes a viernes (días 1-5 de la semana).</Option>
+  <Option>El día 30 de cada mes a las 2 de la madrugada solo los lunes.</Option>
+</MultipleChoice>
+
+---
+
+**¿Cómo editas el crontab del usuario actual?**
+
+<MultipleChoice>
+  <Option>`nano /etc/crontab`</Option>
+  <Option isCorrect>`crontab -e`</Option>
+  <Option>`vi /var/spool/cron/usuario`</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué expresión cron ejecuta una tarea cada 15 minutos?**
+
+<MultipleChoice>
+  <Option>`15 * * * *`</Option>
+  <Option isCorrect>`*/15 * * * *`</Option>
+  <Option>`0 15 * * *`</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 6.5 — Systemd Timers
+
+**¿Cuál es la ventaja de usar un systemd timer frente a cron?**
+
+<MultipleChoice>
+  <Option>Los systemd timers son más rápidos porque usan memoria compartida.</Option>
+  <Option isCorrect>Los timers integran logging con journalctl, pueden depender de otros servicios, soportan ejecución si el sistema estaba apagado (persistent), y permiten dependencias con systemd.</Option>
+  <Option>Los timers de systemd permiten ejecutar scripts con mayor prioridad de CPU.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 6.6 — Caso práctico
+
+Necesitas programar un script de backup (`/usr/local/bin/backup.sh`) que se ejecute todos los días a las 3:00 AM. El script tarda unos 10 minutos y quieres que sus logs queden en journalctl.
+
+**¿Cuál es la solución más robusta?**
+
+<Aside type="note" title="Respuesta: systemd timer">
+
+**1. Archivo de servicio** `/etc/systemd/system/backup.service`:
+```ini
+[Unit]
+Description=Backup diario
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/backup.sh
+```
+
+**2. Archivo de timer** `/etc/systemd/system/backup.timer`:
+```ini
+[Unit]
+Description=Timer para backup diario
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+**3. Activar el timer:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now backup.timer
+systemctl list-timers  # Verificar
+```
+</Aside>

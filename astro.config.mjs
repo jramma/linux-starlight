@@ -96,6 +96,57 @@ export default defineConfig({
           ],
         },
         {
+          label: "Ejercicios Prácticos",
+          translations: {
+            ca: "Exercicis Pràctics",
+          },
+          autogenerate: { directory: "exercises" },
+        },
+        {
+          label: "Instalar Linux",
+          translations: {
+            en: "Install Linux",
+            ca: "Instal·lar Linux",
+          },
+          items: [
+            {
+              label: "Crear un usb Booteable",
+              translations: {
+                ca: "Crear un usb Booteable",
+              },
+              slug: "bootable-usb",
+            },
+            {
+              label: "Dual con Windows",
+              translations: {
+                ca: "Certificacions",
+              },
+              slug: "certification",
+            },
+            {
+              label: "Instalación Limpia",
+              translations: {
+                ca: "Recursos",
+              },
+              slug: "resources",
+            },
+            {
+              label: "Instalación en máquina virtual",
+              translations: {
+                ca: "Instal·lació en màquina virtual",
+              },
+              slug: "virtual-machine",
+            },
+            {
+              label: "Instalar en servidor",
+              translations: {
+                ca: "Apèndix",
+              },
+              slug: "appendix",
+            },
+          ],
+        },
+        {
           label: "Información Adicional",
           translations: {
             en: "Additional Information",

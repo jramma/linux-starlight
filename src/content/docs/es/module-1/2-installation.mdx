@@ -5,16 +5,15 @@ sidebar:
   order: 3
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Steps } from "@astrojs/starlight/components";
 import PreCheck from "@/components/tutorial/PreCheck.astro";
 import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
 import Option from "@/components/tutorial/Option.astro";
 
 <PreCheck>
-  - Comprenderás la necesidad de separar el gestor de arranque raíz
-  (`/boot/efi`) de la ruta principal (`/`). - Distinguirás la utilidad de los
-  directorios vitales del FHS como `/etc` y `/var`. - Aprenderás a configurar
-  una red Wi-Fi desde terminal pura mediante `nmcli` o `wpa_supplicant`.
+  - Comprenderás la necesidad de separar el gestor de arranque raíz (`/boot/efi`) de la ruta principal (`/`).
+  - Distinguirás la utilidad de los directorios vitales del FHS como `/etc` y `/var`.
+  - Aprenderás a configurar una red Wi-Fi desde terminal pura mediante `nmcli` o `wpa_supplicant`.
 </PreCheck>
 
 Pese a que distribuciones como Ubuntu ofrecen instaladores gráficos o semi-gráficos (TUI) muy sencillos, un verdadero SysAdmin debe saber qué ocurre bajo el capó. Entender una instalación manual (similar a como se instala Arch Linux, pero aplicada a conceptos de Debian) cimenta tu conocimiento sobre cómo respira el sistema operativo.
@@ -27,11 +26,17 @@ Cuando instalas un sistema Linux sin interfaz gráfica, tienes que ocuparte de t
 
 Antes de poder guardar un solo archivo, necesitas preparar el disco duro físico. En Linux, no existen las "unidades C: o D:". Existe un único árbol jerárquico que comienza en la raíz (`/`), y los discos físicos se "montan" (enganchan) en ramas de este árbol.
 
-Para poder arrancar un sistema moderno (UEFI), un esquema de particiones mínimo y profesional consta de tres piezas:
+Para poder arrancar un sistema moderno (UEFI), debes realizar el siguiente esquema de particiones mínimo y profesional:
 
-1. **Partición EFI (`/boot/efi`)**: Un espacio pequeño (aprox. 500MB) formateado en `FAT32`. Es donde el firmware de la placa base busca el gestor de arranque (GRUB) para encender el equipo.
-2. **Partición Swap**: Espacio de intercambio usado como "RAM de emergencia". Si la máquina se queda sin memoria física, usa este espacio en disco. En servidores de bases de datos a veces se omite o se maneja como un archivo, pero tradicionalmente se le asigna su propia partición (ej. 2GB o el tamaño de la RAM).
-3. **Patición Raíz (`/`)**: Formateada clásicamente en `ext4` o `xfs`. Contiene todo el sistema operativo.
+<Steps>
+
+1. **Crear la partición EFI (`/boot/efi`)**: Configura un espacio pequeño (aprox. 500MB) formateado en `FAT32`. Es donde el firmware de la placa base busca el gestor de arranque (GRUB) para encender el equipo.
+
+2. **Crear la partición Swap**: Asigna espacio de intercambio usado como "RAM de emergencia". Si la máquina se queda sin memoria física, usa este espacio en disco. En servidores de bases de datos a veces se omite o se maneja como un archivo, pero tradicionalmente se le asigna su propia partición (ej. 2GB o el tamaño de la RAM).
+
+3. **Crear la partición Raíz (`/`)**: Crea esta partición y formatéala clásicamente en `ext4` o `xfs`. Contendrá todo el sistema operativo.
+
+</Steps>
 
 En instalaciones de grado empresarial, es común separar `/home` (datos de usuarios) o `/var` (bases de datos y logs) en particiones o discos independientes para evitar que un log descontrolado llene el disco e impida arrancar el sistema.
 
@@ -47,15 +52,20 @@ En instalaciones de grado empresarial, es común separar `/home` (datos de usuar
 
 Una vez el disco está formateado y montado en `/`, se vuelca (o descarga) el sistema operativo base. Linux sigue un estándar llamado _Filesystem Hierarchy Standard_ (FHS). Así es como se organiza tu disco:
 
-- `/bin` y `/sbin`: Contienen los binarios (comandos esenciales como `ls`, `cp`, `ip`).
-- `/boot`: El Kernel (`vmlinuz`) y los archivos de arranque inicial.
-- `/dev`: "Device". Archivos especiales que representan tu hardware. `/dev/sda` es tu disco duro, `/dev/null` es el agujero negro del sistema.
-- `/etc`: El corazón de la configuración. **Si necesitas cambiar cómo se comporta un programa globalmente, el archivo de texto está aquí.** (ej. `/etc/ssh/sshd_config`, `/etc/passwd`).
-- `/home`: Las carpetas personales de cada usuario regular (ej. `/home/juan`).
-- `/root`: La carpeta personal del superusuario (administrador supremo). Separada de `/home` por seguridad.
-- `/tmp`: Archivos temporales. **Se borra automáticamente** en cada reinicio. No guardes nada importante aquí.
-- `/usr`: Programas, librerías y utilidades no esenciales para el arranque instalados por el usuario/sistema (`/usr/bin`).
-- `/var`: "Variable". Datos que crecen y cambian frecuentemente. Aquí viven los registros del sistema (`/var/log`), bases de datos y webs (`/var/www`).
+<Steps>
+
+4. **Familiarízate con los directorios del sistema**:
+   - `/bin` y `/sbin`: Contienen los binarios (comandos esenciales como `ls`, `cp`, `ip`).
+   - `/boot`: El Kernel (`vmlinuz`) y los archivos de arranque inicial.
+   - `/dev`: "Device". Archivos especiales que representan tu hardware. `/dev/sda` es tu disco duro, `/dev/null` es el agujero negro del sistema.
+   - `/etc`: El corazón de la configuración. **Si necesitas cambiar cómo se comporta un programa globalmente, el archivo de texto está aquí.** (ej. `/etc/ssh/sshd_config`, `/etc/passwd`).
+   - `/home`: Las carpetas personales de cada usuario regular (ej. `/home/juan`).
+   - `/root`: La carpeta personal del superusuario (administrador supremo). Separada de `/home` por seguridad.
+   - `/tmp`: Archivos temporales. **Se borra automáticamente** en cada reinicio. No guardes nada importante aquí.
+   - `/usr`: Programas, librerías y utilidades no esenciales para el arranque instalados por el usuario/sistema (`/usr/bin`).
+   - `/var`: "Variable". Datos que crecen y cambian frecuentemente. Aquí viven los registros del sistema (`/var/log`), bases de datos y webs (`/var/www`).
+
+</Steps>
 
 ```mermaid
 graph LR
@@ -84,50 +94,67 @@ Durante una instalación TUI (Text User Interface) o consola pura, lo más fáci
 
 En la familia Debian moderna, y especialmente si herramientas comunitarias están presentes, la forma más estándar para el LFCS de gestionar redes es mediante `nmcli` (Network Manager Command Line Interface).
 
-1. **Revisar si la tarjeta Wi-Fi es detectada**:
+<Steps>
+
+5. **Revisar si la tarjeta Wi-Fi es detectada**:
+
+   Muestra todos los dispositivos de red. Deberías ver algo como `wlan0` o `wlp3s0` con el tipo `wifi`.
 
    ```bash
-   # Muestra todos los dispositivos de red
    nmcli device status
    ```
 
-   _Deberías ver algo como `wlan0` o `wlp3s0` con el tipo `wifi`._
+6. **Escanear redes disponibles**:
 
-2. **Escanear redes disponibles**:
+   Muestra las redes Wi-Fi al alcance y su fuerza de señal.
 
    ```bash
-   # Muestra las redes Wi-Fi al alcance y su fuerza de señal
    nmcli device wifi list
    ```
 
-3. **Conectarse a una red**:
+7. **Conectarse a una red**:
+
+   Conecta y guarda la contraseña para futuros reinicios.
 
    ```bash
-   # Conecta y guarda la contraseña para futuros reinicios
    nmcli device wifi connect "NombreDeTuRed" password "TuContraseñaSecreta"
    ```
 
-4. **Verificar la IP asignada**:
+8. **Verificar la IP asignada**:
+
    ```bash
    ip a
    ```
 
+</Steps>
+
 ### Alternativa de bajo nivel: `wpa_supplicant`
 
-Si el medio de instalación es extremadamente mínimo (como el instalador clásico de Debian o Arch), `NetworkManager` podría no estar instalado aún. En su lugar, se utilizan herramientas crudas.
+Si el medio de instalación es extremadamente mínimo (como el instalador clásico de Debian o Arch), `NetworkManager` podría no estar instalado aún. En su lugar, se utilizan herramientas crudas. Para esto, se genera un archivo de configuración inyectando tu contraseña cifrada y luego se llama al demonio:
 
-Para esto, se genera un archivo de configuración inyectando tu contraseña cifrada y luego se llama al demonio:
+<Steps>
 
-```bash
-# 1. Generar la configuración de la red
-wpa_passphrase "NombreDeTuRed" "Contraseña" > /etc/wpa_supplicant/wpa_supplicant.conf
+5. **Generar la configuración de la red**:
 
-# 2. Iniciar la conexión en segundo plano (asumiendo que tu interfaz es wlan0)
-wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf
+   ```bash
+   wpa_passphrase "NombreDeTuRed" "Contraseña" > /etc/wpa_supplicant/wpa_supplicant.conf
+   ```
 
-# 3. Solicitar una dirección IP
-dhclient wlan0
-```
+6. **Iniciar la conexión en segundo plano**:
+
+   Asumiendo que tu interfaz es `wlan0`.
+
+   ```bash
+   wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf
+   ```
+
+7. **Solicitar una dirección IP**:
+
+   ```bash
+   dhclient wlan0
+   ```
+
+</Steps>
 
 Con internet funcionando, el sistema ya puede descargar el resto de paquetes (`apt install ...`) para finalizar la instalación y reiniciar hacia tu nuevo Linux.
 

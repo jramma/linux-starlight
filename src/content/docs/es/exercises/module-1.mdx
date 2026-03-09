@@ -1,0 +1,122 @@
+---
+title: "Ejercicios: Módulo 1 — Introducción a Linux"
+description: Ejercicios prácticos sobre historia de Linux, distribuciones, filosofía Unix y el ecosistema de certificaciones.
+sidebar:
+  order: 1
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<Aside type="tip" title="Cómo usar estos ejercicios">
+  Intenta responder cada pregunta **sin mirar** el material del módulo. Después verifica tus respuestas y repasa los conceptos que hayas fallado.
+</Aside>
+
+---
+
+## Ejercicio 1.1 — Historia y filosofía
+
+**¿En qué año y por quién fue liberado el kernel de Linux?**
+
+<MultipleChoice>
+  <Option>1983, por Richard Stallman como parte del proyecto GNU.</Option>
+  <Option>1969, por Ken Thompson en los Laboratorios Bell de AT&T.</Option>
+  <Option isCorrect>1991, por Linus Torvalds, un estudiante universitario en Finlandia.</Option>
+</MultipleChoice>
+
+---
+
+**¿Cuál es el significado práctico del principio "Todo es un archivo" en Linux?**
+
+<MultipleChoice>
+  <Option>Que todos los archivos deben tener extensión para que el sistema los reconozca.</Option>
+  <Option isCorrect>Que los dispositivos de hardware (`/dev/sda`), procesos (`/proc`) y configuraciones del sistema se representan e interactúan como archivos de texto estándar.</Option>
+  <Option>Que el sistema de archivos de Linux no usa carpetas, solo archivos planos.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 1.2 — Familias de distribuciones
+
+**¿Qué gestor de paquetes y formato de paquete utiliza la familia Debian?**
+
+<MultipleChoice>
+  <Option>dnf / .rpm</Option>
+  <Option isCorrect>apt / .deb</Option>
+  <Option>pacman / .pkg.tar.zst</Option>
+</MultipleChoice>
+
+---
+
+**Relaciona cada distribución con su familia correcta:**
+
+| Distribución | Familia |
+|-------------|---------|
+| Rocky Linux | ? |
+| Ubuntu | ? |
+| Arch Linux | ? |
+| Fedora | ? |
+
+<Aside type="note" title="Respuesta">
+- **Rocky Linux** → Familia Red Hat (usa `dnf` / `.rpm`)
+- **Ubuntu** → Familia Debian (usa `apt` / `.deb`)
+- **Arch Linux** → Familia Arch (usa `pacman`)
+- **Fedora** → Familia Red Hat (usa `dnf` / `.rpm`)
+</Aside>
+
+---
+
+## Ejercicio 1.3 — Entornos gráficos
+
+**¿Cuál es la principal ventaja de Wayland sobre X11?**
+
+<MultipleChoice>
+  <Option>Wayland es más compatible con software antiguo que X11.</Option>
+  <Option isCorrect>Wayland es fundamentalmente más seguro y eficiente: los clientes renderizan directamente, eliminando intermediarios y reduciendo el consumo de CPU/GPU.</Option>
+  <Option>Wayland ofrece más opciones de personalización visual que X11.</Option>
+</MultipleChoice>
+
+---
+
+**¿Por qué los servidores Linux normalmente se administran sin entorno gráfico?**
+
+<MultipleChoice>
+  <Option>Porque los entornos gráficos son incompatibles con Linux en modo servidor.</Option>
+  <Option>Porque la ley exige que los servidores funcionen en modo texto.</Option>
+  <Option isCorrect>Para ahorrar recursos (CPU, RAM, disco), mejorar la seguridad y facilitar la administración remota vía SSH.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 1.4 — Certificación LFCS
+
+**¿Cuál es el formato del examen LFCS?**
+
+<MultipleChoice>
+  <Option>50 preguntas de test de opción múltiple en 90 minutos.</Option>
+  <Option>Un proyecto de scripting Bash que se entrega a distancia.</Option>
+  <Option isCorrect>100% basado en rendimiento: resolución de escenarios reales en una terminal en vivo durante 2 horas.</Option>
+</MultipleChoice>
+
+---
+
+**¿Qué distribuciones soporta el examen LFCS al momento de la inscripción?**
+
+<MultipleChoice>
+  <Option isCorrect>Ubuntu (familia Debian) o CentOS Stream (familia Red Hat), a elegir.</Option>
+  <Option>Solo Fedora, que es el estándar de la Linux Foundation.</Option>
+  <Option>Debian, Arch Linux y openSUSE, según el candidato.</Option>
+</MultipleChoice>
+
+---
+
+## Ejercicio 1.5 — Caso práctico
+
+Eres administrador de sistemas en una empresa. Te piden elegir una distribución Linux para 20 servidores de producción que requieren soporte durante 10 años, gestión empresarial y estabilidad máxima.
+
+**¿Cuál sería tu elección y por qué?**
+
+<Aside type="note" title="Respuesta razonada">
+Las opciones más adecuadas son **Rocky Linux** o **AlmaLinux** (familia Red Hat), ambas con ciclos de soporte de 10 años y diseñadas como sustitutos de RHEL para entornos empresariales. También sería válido **Ubuntu Server LTS** (5 años de soporte oficial, ampliable a 10 con ESM). La clave es priorizar el **ciclo LTS** sobre las novedades tecnológicas.
+</Aside>
