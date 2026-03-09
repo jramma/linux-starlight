@@ -1,0 +1,136 @@
+---
+title: 2.5 Control de Processos i Treballs
+description: Com inspeccionar el sistema en temps real, caçar processos rebels i enviar-los al segon pla.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprendràs a identificar qualsevol programa en execució mitjançant el seu comandament
+  `ps` i el seu PID. - Sabràs com caçar i destruir processos bloquejats enviant
+  senyals amb `kill`. - Dominaràs l'enviament de tasques llargues al segon pla
+  (`&`, `bg`) per alliberar la teva terminal.
+</PreCheck>
+
+A Linux, cada programa, comandament o servei en execució s'anomena **Procés**. Cada procés viu al sistema té assignat un número d'identificació únic i temporal anomenat **PID** (Process ID). Com a administrador, gran part del teu dia consistirà a monitoritzar aquests processos i assassinar educadament (o a la força) aquells que estiguin consumint massa RAM o CPU.
+
+---
+
+## 1. Veient els Processos Actuals
+
+Hi ha dos enfocaments per mirar què està passant al teu Debian: les "fotos estàtiques" i el "vídeo en temps real".
+
+### `ps` (Process Status) - La Foto Estàtica
+
+Mostra una captura en aquell instant exacte dels processos. Per si sol `ps` només mostra els de la teva terminal actual, la qual cosa rarament és útil. Per veure **tots els processos del sistema** en estil Sysadmin, usa les banderes `aux` (estil BSD) o `-ef` (estil estàndard UNIX).
+
+```bash
+# Imprimeix tots els processos amb usuari, percentatge de CPU/RAM, PID i Comandament.
+ps aux
+```
+
+_Com que això imprimirà milers de línies, l'ideal és sempre combinar-ho amb el Pipe i Grep que vam aprendre en lliçons anteriors:_
+
+```bash
+ps aux | grep "nginx"
+```
+
+### `top` i `htop` - El Vídeo en Viu
+
+Mostren una taula en viu que s'actualitza cada pocs segons. Són ideals per veure quin programa està col·lapsant el servidor ara mateix.
+
+- **`top`**: Ve instal·lat en absolutament tots els sistemes Linux. Prem `q` per sortir.
+- **`htop`**: Una versió molt més maca, a color i amb barres visuals per a les CPUs. Pot ser que necessitis instal·lar-lo primer (`sudo apt install htop`).
+
+---
+
+## 2. Matar Processos (Senyals)
+
+Quan un programa es penja o un usuari executa un script infinit, l'has de aturar enviant-li Senyals (_Signals_). A Linux, no apagues programes, els _matoes_.
+
+### `kill` clàssic (per PID)
+
+Usa el comandament `kill` seguit del número de PID del procés rebel.
+
+- **`kill 1234` (Senyal SIGTERM - 15)**: Li demana amablement al programa amb PID 1234 que acabi. Li dóna temps a desar dades, tancar fitxers i morir dignament. És el comportament per defecte.
+- **`kill -9 1234` (Senyal SIGKILL - 9)**: L'execució màxima. El kernel de Linux destrueix el procés instantàniament. El programa no té oportunitat de desar res. Usa-ho només si l'opció anterior no ha funcionat després d'esperar uns segons.
+
+### `killall` (per Nom)
+
+A vegades tens 50 processos del mateix programa (ex: `apache2`) i no vols cercar 50 PIDs diferents.
+
+```bash
+# Envia el senyal SIGTERM a tots els processos que s'anomenin "apache2"
+sudo killall apache2
+```
+
+---
+
+## 3. Treballs en Segon Pla (Jobs)
+
+Executes un script de backup massiu. La terminal es bloqueja i no pots escriure més comandaments fins que el backup acabi (la qual cosa podria trigar hores!). Com seguim treballant?
+
+### Background (`&`)
+
+Afegeix un símbol d' _ampersand_ `&` al final del comandament i el sistema et retornarà el control de la terminal immediatament, mentre el comandament corre silenciosament al fons.
+
+```bash
+tar -czf backup.tar.gz /var/www/ &
+```
+
+### Suspendre i Reanudar
+
+Has oblidat posar l' `&` i el comandament ja ha començat i ha bloquejat la teva pantalla?
+
+1. Estant a la terminal bloquejada, prem la combinació màgica **`Ctrl + Z`**. Això "congelarà" (suspendrà) el procés i et retornarà la teva terminal.
+2. Escriu **`bg`** (Background) i dóna-li a Enter. El procés congelat es reanudarà alegrement en segon pla i tu conservaràs la terminal lliure.
+3. Si en algun moment vols portar-lo de tornada a la teva pantalla, escriu **`fg`** (Foreground).
+
+<Aside type="note" title="Com veig les meves tasques de fons?">
+  Pots escriure el comandament `jobs`. Et llistarà les tasques suspeses i de
+  fons que tens corrent en *aquella* terminal específica.
+</Aside>
+
+---
+
+## Comprova els teus coneixements
+
+1. El teu servidor web està molt lent. Saps que hi ha un script de Python mal programat consumint moltíssima RAM. Quina és la forma més professional de descobrir el seu número de PID sabent que la pantalla t'expulsaria massa línies de text si usessis `ps aux` sense filtres?
+
+   <MultipleChoice>
+     <Option>
+       Executar `top python` i deixar que la pantalla l'marqui en vermell.
+     </Option>
+     <Option isCorrect>
+       Executar `ps aux | grep "python"`. Així filtro la foto estàtica de tots
+       els processos per mostrar només les línies del culpable i miro la columna
+       PID.
+     </Option>
+     <Option>Executar `killall python` per obtenir el seu PID.</Option>
+   </MultipleChoice>
+
+2. Has localitzat que l'script rebel té el PID `8842` i has intentat tancar-lo executant `kill 8842`. Han passat dos minuts i ha ignorat la teva petició per complet perquè estava atrapat en un bucle infinit. Quin comandament executa la teva ordre com a administrador de xarxa incontestable?
+
+   <MultipleChoice>
+     <Option>`kill -15 8842`</Option>
+     <Option>`killall -f 8842`</Option>
+     <Option isCorrect>
+       `kill -9 8842` (Envia el brutal senyal SIGKILL i destrueix el procés
+       immediatament).
+     </Option>
+   </MultipleChoice>
+
+3. Has començat a descarregar un fitxer de diversos GB usant `wget`. Et dónes compte que trigarà mitja hora i la terminal està bloquejada mostrant la barra de progrés, però volies seguir escrivint altres comandaments en aquella mateixa finestra. Com lliberes el teu teclat sense cancel·lar la descàrrega?
+   <MultipleChoice>
+     <Option>Escric la paraula `background` i apreto Enter.</Option>
+     <Option>Apreto `Ctrl + C` per posar la descàrrega en fons.</Option>
+     <Option isCorrect>
+       Premo `Ctrl + Z` per congelar el procés i recuperar el cursor, seguit
+       de el comandament `bg` perquè la descàrrega continuï en el segon pla.
+     </Option>
+   </MultipleChoice>

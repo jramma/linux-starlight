@@ -1,0 +1,299 @@
+---
+title: "Pràctica 4 — Arrencada i Serveis"
+description: Crea una unitat systemd i un timer des de zero. Repara un servei trencat trobant els errors de configuració.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="tip" title="Abans de començar">
+Aquesta pràctica té dos exercicis. El primer és de creació (construeixes una unitat des de zero). El segon és de reparació (hi ha errors intencionals que has de localitzar). Treballa en ordre.
+</Aside>
+
+---
+
+## Exercici 4.1 — Crear una unitat systemd i un timer
+
+### Context
+
+systemd és el sistema d'init de Linux: gestiona tots els serveis del sistema. Qualsevol programa pot convertir-se en un servei systemd creant un fitxer d'unitat (`.service`). Els timers són l'alternativa moderna a cron, integrada amb el sistema de logging.
+
+### Setup — preparar l'script que automatitzarem
+
+```bash
+# Crea l'script que el servei executarà
+sudo nano /usr/local/bin/monitor_disco.sh
+```
+
+Escriu exactament aquest contingut:
+
+```bash
+#!/bin/bash
+# monitor_disco.sh — registra l'ús del disc en un log
+
+LOGFILE="/var/log/monitor_disco.log"
+FECHA=$(date '+%Y-%m-%d %H:%M:%S')
+USO=$(df -h / | tail -1 | awk '{print $5}')
+
+echo "[$FECHA] Ús del disc arrel: $USO" >> "$LOGFILE"
+```
+
+Desa i dona-li permisos d'execució:
+
+```bash
+sudo chmod +x /usr/local/bin/monitor_disco.sh
+
+# Prova manual que funciona
+sudo /usr/local/bin/monitor_disco.sh
+cat /var/log/monitor_disco.log
+# Ha d'aparèixer una línia amb la data i el percentatge d'ús del disc
+```
+
+### Tasca 1 — Crear la unitat de servei
+
+Les unitats systemd viuen a `/etc/systemd/system/`. Crea el fitxer:
+
+```bash
+sudo nano /etc/systemd/system/monitor-disco.service
+```
+
+Escriu això:
+
+```ini
+[Unit]
+Description=Monitor d'ús del disc
+Documentation=man:df(1)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/monitor_disco.sh
+
+[Install]
+WantedBy=multi-user.target
+```
+
+<Aside type="note" title="Què significa cada secció?">
+- `[Unit]`: descripció del servei i dependències  
+- `[Service]`: com executar el servei. `Type=oneshot` significa que el servei executa el comandament i acaba (no és un procés continu)  
+- `[Install]`: quan habilitar-lo. `multi-user.target` és el mode normal de funcionament del servidor
+</Aside>
+
+Prova que el servei funciona:
+
+```bash
+# Recarrega la configuració de systemd (sempre després de crear/editar una unitat)
+sudo systemctl daemon-reload
+
+# Executa el servei manualment
+sudo systemctl start monitor-disco.service
+
+# Verifica que s'ha executat
+systemctl status monitor-disco.service
+cat /var/log/monitor_disco.log
+# Hi ha d'haver una línia nova amb la data actual
+```
+
+### Tasca 2 — Crear el timer
+
+El timer defineix quan executar el servei. Crea:
+
+```bash
+sudo nano /etc/systemd/system/monitor-disco.timer
+```
+
+Escriu:
+
+```ini
+[Unit]
+Description=Timer per al monitor de disc (cada 5 minuts)
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+<Aside type="note" title="Què fa OnCalendar=*:0/5?">
+S'executa cada 5 minuts en qualsevol hora de qualsevol dia.  
+Altres exemples:
+- `OnCalendar=daily` → cada dia a mitjanit
+- `OnCalendar=Mon *-*-* 08:00:00` → cada dilluns a les 8:00
+- `OnCalendar=*-*-* 07:00:00` → cada dia a les 7:00
+</Aside>
+
+Activa i arrenca el timer:
+
+```bash
+sudo systemctl daemon-reload
+
+# Habilita el timer perquè arrenqui automàticament amb el sistema
+sudo systemctl enable monitor-disco.timer
+
+# Arrenca el timer ara mateix
+sudo systemctl start monitor-disco.timer
+
+# Verifica l'estat
+systemctl status monitor-disco.timer
+```
+
+Verifica que apareix a la llista de timers:
+
+```bash
+systemctl list-timers | grep monitor
+```
+
+Hauries de veure la propera execució programada.
+
+### Tasca 3 — Forçar una execució i verificar el log
+
+```bash
+# Força execució immediata del servei (no del timer)
+sudo systemctl start monitor-disco.service
+
+# Espera 5 minuts i comprova que el timer l'executa automàticament
+# Mentre esperes, pots veure el log en temps real:
+sudo tail -f /var/log/monitor_disco.log
+# (Prem Ctrl+C per sortir)
+
+# També pots veure l'historial d'execucions a journalctl
+journalctl -u monitor-disco.service -n 10 --no-pager
+```
+
+---
+
+## Exercici 4.2 — Reparar una unitat systemd amb errors
+
+### Context
+
+Algú va crear una unitat systemd amb errors tipogràfics. El servei no arrenca. La teva feina és trobar tots els errors i corregir-los.
+
+### Setup — crear el servei trencat
+
+```bash
+sudo nano /etc/systemd/system/app-demo.service
+```
+
+Copia això **exactament com està** (amb els errors):
+
+```ini
+[Unit]
+Description=Aplicació de demostració
+After=network.tarjet
+
+[Service]
+ExecSart=/usr/local/bin/app-demo
+Restart=always
+User=nobody
+
+[Instal]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+```
+
+### Diagnòstic — troba els errors
+
+systemd et donarà pistes, però has de saber interpretar-les. Segueix aquest procés:
+
+**Pas 1 — Intenta arrencar i observa l'error:**
+
+```bash
+sudo systemctl start app-demo.service
+systemctl status app-demo.service
+```
+
+Què diu l'error? Pot ser que systemd no trobi l'executable o que hi hagi errors de sintaxi.
+
+**Pas 2 — Verifica la sintaxi del fitxer:**
+
+```bash
+systemd-analyze verify /etc/systemd/system/app-demo.service
+```
+
+Aquest comandament mostra **tots** els problemes de sintaxi. Llegeix-lo amb cura.
+
+**Pas 3 — Revisa els logs per a més detalls:**
+
+```bash
+journalctl -u app-demo.service -n 20 --no-pager
+```
+
+**Pista:** hi ha exactament **3 errors tipogràfics** al fitxer i **1 problema addicional** (el binari no existeix). Localitza i corregeix cadascun:
+
+1. A `[Unit]`: hi ha una secció amb un typo
+2. A `[Service]`: hi ha una directiva amb un typo  
+3. A `[Install]`: hi ha un error en escriure el nom de la secció
+
+Un cop corregits els typos, crea el binari que falta:
+
+```bash
+sudo nano /usr/local/bin/app-demo
+```
+
+Escriu:
+
+```bash
+#!/bin/bash
+# Simula una aplicació en execució contínua
+while true; do
+  echo "$(date): app-demo en execució" >> /var/log/app-demo.log
+  sleep 30
+done
+```
+
+```bash
+sudo chmod +x /usr/local/bin/app-demo
+```
+
+**Pas 4 — Repara el fitxer i prova:**
+
+```bash
+sudo nano /etc/systemd/system/app-demo.service
+# Corregeix els 3 typos
+
+sudo systemctl daemon-reload
+sudo systemctl start app-demo.service
+systemctl status app-demo.service
+# Ha d'aparèixer com 'active (running)'
+```
+
+<Aside type="note" title="Solució (intenta no mirar-la)">
+Els errors són:
+1. `network.tarjet` → `network.target`
+2. `ExecSart` → `ExecStart`
+3. `[Instal]` → `[Install]`
+</Aside>
+
+---
+
+## 📤 Bloc de lliurament
+
+```bash
+echo "=== LLIURAMENT PRÀCTICA 4 ===" && \
+echo "" && \
+echo "--- 4.1: Estat del timer ---" && \
+systemctl status monitor-disco.timer && \
+echo "" && \
+echo "--- 4.1: Pròxima execució ---" && \
+systemctl list-timers | grep monitor && \
+echo "" && \
+echo "--- 4.1: Últimes entrades del log ---" && \
+tail -5 /var/log/monitor_disco.log && \
+echo "" && \
+echo "--- 4.1: Fitxer .service ---" && \
+cat /etc/systemd/system/monitor-disco.service && \
+echo "" && \
+echo "--- 4.1: Fitxer .timer ---" && \
+cat /etc/systemd/system/monitor-disco.timer && \
+echo "" && \
+echo "--- 4.2: Estat del servei reparat ---" && \
+systemctl status app-demo.service && \
+echo "" && \
+echo "--- 4.2: Fitxer .service corregit ---" && \
+cat /etc/systemd/system/app-demo.service
+```

@@ -1,0 +1,140 @@
+---
+title: 7.2 Confinament i MAC (AppArmor)
+description: Quan chmod 777 no n'hi ha prou. Aïlla processos vulnerables usant el Control d'Accés Obligatori.
+sidebar:
+  order: 3
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Diferenciaràs DAC (Permisos Normals) davant de MAC (Protocol Obligatori de
+  Kernel). - Sabràs utilitzar les ordres binàries d'AppArmor per veure quins
+  programes del teu equip estan encapsulats hermèticament. - Distingiràs entre
+  el modo "xevat" (`complain`) i el modo dictador (`enforce`).
+</PreCheck>
+
+## 1. El Fracàs dels Permisos Clàssics (DAC)
+
+Al Mòdul 2 d'aquest curs, vam invertir hores aprenent com usar `chmod` i `chown` per establir permisos "rwx" (Lectura, Escriptura, Execució) en fitxers. Tot aquest sistema arcaic mundialment utilitzat s'anomena **DAC (Discretionary Access Control o Control Discrecional)**.
+
+S'anomena "Discrecional" perquè la seguretat queda a **discreció dels usuaris**.
+_Imagina que ets un caixer de banc normal. Tens permís de Lectura per veure una caixa forta secreta. Usant els sistemes DAC habituals, com tu "posees" el fitxer, podries decidir discretament donar permís a tot l'univers (`chmod 777`) perquè qualsevol persona a internet pogués accedir a la caixa forta del banc._
+
+### El Risc amb els Dimonis (Serveis Hackejats)
+
+Si executes un servidor web com Nginx sota l'usuari arrel de sistema `root` i un hacker rus a internet esbrina un error en la programació de Nginx per trencar la pàgina web i injectar el seu propi codi... Nginx executarà el codi del Rus de bona fe amb el poder infinit dels permisos `root`, controlant absolutament tota la CPU i destruint-te.
+
+Per frenar els programes desbocats o els propis usuaris que es donen permisos perillosos, en alta seguretat corporativa usem **MAC**.
+
+---
+
+## 2. El Dictador de Kernel: MAC i AppArmor
+
+**MAC (Mandatory Access Control o Control Obligatori)** rebutja l'opinió dels usuaris. Aquí defineix les regles un dictador inqüestionable des del més profund del propi Kernel Linux.
+
+A Debian (i Ubuntu), aquest dictador s'anomena **AppArmor** (A RedHat s'anomena SELinux).
+
+Sota MAC/AppArmor, als programes se'ls posa una "Camisa de Força" especial matemàtica en forma de fitxer de text anomenada **Perfil**.
+Si el kernel de Debian té carregat un "Perfil d'Apparmor" especial per a Nginx que diu _"Nginx MAI sota cap circumstància pot usar eines del grup Bash"_, és igual que configuris el programa amb permisos Root, és igual que fiquis Nginx a usar eines d'administració, i és igual que el hackegin: en el moment en què Nginx intenti executar alguna cosa prohibida al Perfil, AppArmor invocarà el martell de Thor bloquejant l'acció a nivell Zero i enviant-te una alerta silenciosa.
+
+---
+
+## 3. Comandaments vitals com a Auditor LFCS
+
+AppArmor ja ve instal·lat en sistemes comercials en l'actualitat i porta "Perfils prefabricats" de camisa de força llistos i actius en RAM per encapsular al 90% del programari crític instal·lable de Debian.
+
+Els binaris d'auditoria comencen per `aa-` (App Armor).
+
+### Veure els tancaments actius
+
+La primera tasca d'un sysadmin al matí:
+
+```bash
+sudo aa-status
+```
+
+Això llançarà dues llistes molt diferenciades:
+
+1. **Perfils carregats en modo `Enforce`**: La seva camisa de força obliga físicament. Si un programa d'aquesta llista trepitja el prohibit, serà aniquilat instantàniament.
+2. **Perfils carregats en modo `Complain`**: Estan sent vigilats. Si creuen la línia, el perfil t'apuntarà silenciosament "Ei, aquest programa acaba de fer coses rares a la teva carpeta home", però **NO aturarà la seva execució**. (Generalment usat per programadors per diagnosticar els seus propis programes durant 1 setmana abans de posar la seva camisa local de fàbrica en Enforce).
+
+### Administrar els Modos dels Fitxers
+
+Si vols emmudir les regles letals d'un programa de bases de dades `mysqld` perquè no para de tirar-se i creus que un fals positiu ha trencat alguna cosa després d'una actualització, pots empènyer-lo temporalment i calmadament a modo "renocs" (Complain).
+
+```bash
+# Empenyent al modo Xevat/Renoc pacífic
+sudo aa-complain /usr/sbin/mysqld
+
+# Tornant a restablir la dictadura marcial castrense
+sudo aa-enforce /usr/sbin/mysqld
+```
+
+\*_(NOTA: Els perfils complets, escrits amb sintaxi arcana, solen allotjar-se tots junts estàtics a la caixa forta local a `/etc/apparmor.d/`)_.\*
+
+---
+
+## Comprova els teus coneixements
+
+1. El teu equip ha pujat un programari antiquat per renderitzar PDF en un clúster empresarial. Sabeu que el programari té molts bugs sense parchejar i és un risc. Un dels teus col·legues suggereix: "Instal·la'l normalment i associa-li com a usuari un grup local ranci mitjançant DAC convencional, i configura'ls amb ugo=rw. Amb això ja el controles perquè ningú el pugui usar a nivell root". Com a professional LFCS, quina crítica argumentada li refutes amb el protocol MAC modern?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Usar Seguretat Discrecional DAC (`chmod/chown`) resulta asombrosament
+       inútil per aturar vectors si aquest propi programari renderitzador de PDF
+       és vulnerat des de la mateixa xarxa externa i aconsegueixen un desbordament de búfer
+       (Buffer Overflow), obtenint accés dinàmic intern. Necessitem lligar-li
+       una camisa de força Obligatòria (MAC) perfilant-lo explícitament sense
+       importar qui és l'usuari amo a ulls del fitxer.
+     </Option>
+     <Option>
+       Que cal instal·lar-li un Tallafocs UFW local primer mitjançant DROP
+       universal.
+     </Option>
+     <Option>
+       Ensenyar-li que el comandament visudo fa exactament això mateix.
+     </Option>
+   </MultipleChoice>
+
+2. Acabes d'engegar l'última versió estable de Debian i vas instal·lar un paquet estrany anomenat "supervisor". Fas per investigar els teus perfils carregats executant valerosament a la consola: `sudo aa-status`. El llistat és clar i veus 45 perfils activats, dels quals adverteixes que el teu "supervisor" està encasellat en un contenidor categoritzat textualment com llistat en modo `Complain`. A altes hores de la nit, un atacant iranià compromet "supervisor" i intenta esborrar els teus certificats amb ell. ¿Actuarà el martell ferri de Thor d'AppArmor de Debian salvant-te de la desgràcia aturant aquest perjudicial comportament?
+
+   <MultipleChoice>
+     <Option>
+       Sí, destrossarà l'execució perquè les camises MAC mai fallen en modo
+       renoc (Complain) i s'anteposen agressivament.
+     </Option>
+     <Option>
+       Per a salvar-te cal executar un reload usant el comandament aa-enforce 3
+       vegades localment.
+     </Option>
+     <Option isCorrect>
+       ¡No et salvarà de cap manera! Estàs venut. Els perfils en modo
+       llistat com `complain` loguegen profusament "Queixes Administratives" al
+       gestor diari de logs avisant que el programari va violar perfils,
+       comportant-se com un Xevat/Renoc. PERÒ no intervenen ni exerceixen força
+       aturadora sobre l'acció destructora hostil. Exigeix intervenció
+       `enforce`.
+     </Option>
+   </MultipleChoice>
+
+3. Existeix un dimoni crític de control satel·litari gestionat per la Força Aèria que us llança constantment caigudes fatals i incomprensibles i corrupcions misterioses durant el processament. Els teus logs forenses de Kernel llancen línies com: `audit: type=1400 apparmor="DENIED" operation="open"`. Estàs enmig d'una auditoria i has de rebaixar temporalment a nivell 0 l'impacte blindador per veure tranquil·lament què està intentant fer aquest dimoni i recollir indicis abans d'aïllar-lo al tallafocs ¿Quin comandament és l'apropiat per empènyer aquest binari (`/usr/bin/satelite_server`) a estat inofensiu monitoritzat?
+   <MultipleChoice>
+     <Option isCorrect>
+       Instruirem l'ordre administrativa: `sudo aa-complain
+       /usr/bin/satelite_server`. Amb això cessaran els bloquejos físics
+       injectant purament registres valuosos de lectura en els registres
+       kernel logs sense trencar de nou.
+     </Option>
+     <Option>
+       Cal editar l' `/etc/apt/sources.list` injectant un parche no lliure
+       en main contrib.
+     </Option>
+     <Option>
+       L'empenyerem silenciant-lo executant `sudo aa-disable
+       /usr/bin/satelite_server`.
+     </Option>
+   </MultipleChoice>

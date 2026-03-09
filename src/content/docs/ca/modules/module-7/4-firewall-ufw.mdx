@@ -1,0 +1,158 @@
+---
+title: 7.4 Tallafocs (UFW)
+description: Tanca la frontera amb pany i clau de manera amable. Descarta iptables i implementa regles Limit, Allow i Deny amb UFW.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Comprendràs la monstruosa complexitat del tallafocs base de Linux (`iptables`/`nftables`).
+  - Aprendràs per què Ubuntu/Debian van inventar l' **Uncomplicated FireWall (`ufw`)** com a capa salvavides.
+  - Sabràs habilitar el tallafocs amb una política predeterminada Dictatorial (`deny`).
+  - Aprendràs a obrir fronteres específiques amb `allow` i a caçar bots d'SSH estirant cordes amb `limit`.
+</PreCheck>
+
+## 1. L'Horror d'Iptables vs la Pau d'UFW
+
+Com vam veure a la lliçó anterior (`ss -tulpn`), molts dimonis tendeixen per inèrcia o defecte a escoltar connexions dirigides cap a internet amb el perillós "0.0.0.0".  
+Per evitar que un hacker connecti a aquests ports si el servidor està en producció, Linux posseeix un dels subsistemes de Kernel de tallafocs de xarxa més sofisticats i militaritzats de la terra: **`Netfilter / Iptables`**.
+
+El problema radical corporatiu: la seva sintaxi és impossible de llegir i mantenir per a un humà amb pressa. (Tractar de tancar el port web implica comandaments infernals estil `iptables -A INPUT -p tcp --dport 80 -j DROP`).
+
+Si t'equivoques en una lletra d' `iptables`, derroques la connexió de 1000 usuaris de la teva empresa en dos segons. Per simplificar aquesta monstruositat universal, Canonical (els amos d'Ubuntu) van crear un senzill "traductor" d'anglès amable anomenat **`ufw`**, el qual s'ha instal·lat com la norma d'or LFCS general.
+
+---
+
+## 2. El Ritual d'Activació UFW (¡Perill de mort!)
+
+UFW ve apagat de forma nativa. La seva primera i principal configuració teòrica és la de tot guarda-barreres: **"Denegar TOT el tràfic entrant al PC, i Permetre TOT el tràfic sortint des del PC cap a internet"**.
+
+<Aside type="caution" title="La Sentència de Mort del Teleballador">
+Aprendràs l'error més llegendari (i còmic) que cometen el 100% dels Sysadmins Junior i Intermedis. 
+Estàs a casa teletreballant en pijama connectant-te màgicament per SSH. Encens el tallafocs mitjançant `ufw enable`, el qual per defecte talla totes les connexions entrants (com dèiem abans).
+
+¿Resultat? T'acabes de tallar el teu propi cordó umbilical i la teva pròpia connexió SSH cau per sempre al ser la teva sessió externa rebutjada instantàniament per UFW. Ja no pots accedir a treballar avui sense anar en persona al centre de dades (patint humiliació corporativa).
+**La regla d'or: Abans d'encendre la muralla, assegura't de perforar un forat per a la teva pròpia corda SSH sempre.**
+
+</Aside>
+
+### 1. Perforant la xarxa abans del desastre
+
+```bash
+# Instal·lem si no existeix al servidor mínim
+sudo apt install ufw
+
+# Fem el súper túnel blindat per no tallar-nos el dit
+sudo ufw allow ssh
+```
+
+### 2. Encesa Activa del Tallafocs
+
+```bash
+# Encens la muralla (es recordarà després de cada reinici també)
+sudo ufw enable
+
+# Veiem el nostre estat actual per confirmar quins túnels existeixen
+sudo ufw status verbose
+```
+
+---
+
+## 3. Esculpint les Defenses de Xarxa (Regles)
+
+Ara que la nostra muralla UFW rebotarà tota la brossa externa d'internet, ens toca permetre perforacions puntuals o forats (`allow`) perquè la gent de negocis pugui treballar en els ports dels Dimonis interns.
+
+**Permetre accés web general (`allow`)**
+Podem parlar-li mitjançant noms de serveis coneguts o mitjançant número de port i el protocol:
+
+```bash
+sudo ufw allow 80/tcp
+# Equivalent a:
+sudo ufw allow http
+```
+
+**Restringir orígens elitistes a IPs secretes**
+Suposa que instal·les una Base de Dades (`3306`). Mai de la vida sota cap circumstància la obris al públic universal amb un _allow 3306_ normal. Per a això, crees un forat làser que _només s'obri_ si la trucada a la porta procedeix de l'adreça IP del teu servidor web a la IP `10.0.0.5`:
+
+```bash
+# Només admetem el nostre amic al port 3306
+sudo ufw allow from 10.0.0.5 to any port 3306
+```
+
+**Bloquejos Explícits Selectius (`deny` o `reject`)**
+Hi ha un troll atacador al carrer a la màquina concreta `198.51.100.1` que et bombardeja la web i vols fer-lo fora independentment de la regla permesa:
+
+```bash
+sudo ufw deny from 198.51.100.1
+```
+
+---
+
+## 4. La Trampa Anti-Força Bruta: `limit`
+
+`ufw` porta incorporat un mòdul de defensa automàtica brutal per a dimonis ultra-sensibles (com SSH al `22`).
+Si usem la regla especial de `limit` en comptes d' `allow` o `deny`, UFW construirà matemàticament per darrere al Kernel una bossa contenidora. Si algú (tu o un bot xinès) intenta loguejar-se per SSH **6 o més vegades fallides en una diminuta finestra de 30 segons**, UFW ho catalogarà silenciosament com a bot de diccionari i li cremarà la IP negant-li futures connexions en els propers dies.
+
+```bash
+# El comandament defensiu suprem de l'administració professional remota
+sudo ufw limit ssh
+```
+
+---
+
+## Comprova els teus coneixements
+
+1. Examen directe: Com a administrador novell entres il·lusionat el primer matí al servidor acabat de desplegar al núvol d'Amazon (`ssh id@cloud-debian`), instal·les el teu Firewall Uncomplicated i immediatament tecleges l'ordre magna `sudo ufw enable` sentint-te segur, seguit d'un "Enter". Un segon després, els caràcters de Putty es congelen estranyament. El teu teclat no funciona; el servidor núvol ja no "respon a pings" ni et deixarà tornar a entrar mai més ni a la de tres. ¿Quin dictat mil·lenari vas desobeir?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       L'humiliació corporativa clàssica. Acabaves d'encendre una muralla
+       militar i no t'havies procurat una perforació explícita (forat al mur)
+       prèvia com per exemple fer un `sudo ufw allow ssh` salvavides ABANS de
+       l'activació. El tallafocs va denegar instantàniament TOT el que era extern,
+       inclòs el teu propi SSH.
+     </Option>
+     <Option>
+       Que ufw a Amazon requereix canviar temporalment a SELinux en comptes d'
+       AppArmor.
+     </Option>
+     <Option>Se'm va oblidar executar `update-grub` abans del dimoni ufw.</Option>
+   </MultipleChoice>
+
+2. Hem desplegat un ecosistema de monitorització interna exquisit (Nagios) que no té contrasenyes però ha d'estar viu escoltant informes d'equips interns. Sabem que un `allow / port` comú com es fa amb la Web seria catastròfic publicant-lo en un router perquè qualsevol llegiria la teva infraestructura. ¿Quina clàusula de control mil·limètrica d'UFW exigirÀs usar a l'arquitecte de xarxa si saps que el Nagios ha d'estar amagat i que NOMÉS s'ha de deixar tocar des de la IP directiva corporativa origen `10.8.0.50`?
+
+   <MultipleChoice>
+     <Option>`sudo ufw limit from 10.8.0.50 proto tcp `</Option>
+     <Option>`sudo ufw deny to 10.8.0.50`</Option>
+     <Option isCorrect>
+       La clàusula condicional d'obertura per Origen: `sudo ufw allow from
+       10.8.0.50 to any port nagios` (Garantint que les úniques peticions TCP
+       entrants admeses i validades a aquest socket seran únicament originàries
+       pures des de la caixa 10.8.0.50 i no d'internet fosc universal).
+     </Option>
+   </MultipleChoice>
+
+3. Existeixen bots especialitzats zombificats en botnets que rastregen i il·luminen rangs d'internet diaris. Tan bon punt detecten que tens el port 22 obert (`allow ssh`), disparen sorprenentment ràpid scripts programats pel seu creador injectant llistes filtrades de la Deep Web provant típicament la teva porta SSH fins a `50 paraules` en una finestreta de `10 mísers segons`. Acaben col·lapsant-te CPU per culpa de la Criptografia asimètrica o en el pitjor dels casos endevinant el combo (user/1234). ¿Quina ordre imposa UFW per dissuadir aquest model abismal d'atac matemàtic sense trencar el teu accés vital lícit?
+   <MultipleChoice>
+     <Option isCorrect>
+       Substituir la clàusula del tallafocs passiva `allow` per la defensora
+       proactiva de quotes: `sudo ufw limit ssh`. (Implementarà regles Iptables
+       "Recent" que dropejaran fredament agressors limitant-los taxadament a 6
+       intents legals en cada espai/temps de 30 segons, avorrint l'autòmata
+       xinès al mil·lisegon i inutilitzant-li la tàctica per robar
+       diccionaris pesats).
+     </Option>
+     <Option>
+       Esborrar el /etc/shadow del sistema perquè no compari el bot remot les
+       claus fallides.
+     </Option>
+     <Option>
+       Utilitzar l'ordre `ss -tulpn` per denegar-ho en memòria RAM i esborrar el
+       disc.
+     </Option>
+   </MultipleChoice>

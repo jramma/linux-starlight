@@ -1,0 +1,46 @@
+---
+title: Mòdul 3. Administració d'Usuaris i Xarxes
+description: Classe 3- Autenticació profunda, permisos Sudo, configuració de xarxa estàtica i túnels SSH en Debian.
+sidebar:
+  order: 1
+---
+
+Aquest mòdul marca el moment en què deixes de ser un mer usuari del sistema et converteixes en un genuí Administrador.
+
+En Linux, la seguretat no és un programa antivirus que instal·les després; està entretejida en el nucli mateix del sistema a través de les jerarquies d'Usuaris (UID), Grups (GID) i els seus permisos sobre els processos. A més, un servidor aïllat no serveix de res, per la qual cosa desmitificarem com Debian parla amb el món a través del protocol TCP/IP i com nosaltres parlem amb ell mitjançant túnels segurs.
+
+## Mentalitat LFCS per a aquest mòdul
+
+En un examen de certificació (i en la vida real), cometre un error en `/etc/sudoers` o esborrar accidentalment la porta d'enllaç de xarxa (`Gateway`) per defecte, significa que perdràs el control remot del servidor per sempre en qüestió de microsegons, forçant-te a un reinici físic o a suspendre l'examen.
+
+Aprendràs a operar amb la immensa responsabilitat de l'usuari `root`, sabent com delegar eixe poder a altres usuaris sense comprometre el servidor, i com lligar el teu Debian al teixit d'Internet usant comandaments moderns.
+
+---
+
+## Temes de la Classe 3
+
+### [3.1 Anatomia de l'Usuari Linux](/ca/modules/module-3/1-user-management/)
+
+- Què és realment un compte en Linux (UIDs, Shells i Home).
+- Destripant els fitxers crítics: `/etc/passwd` i `/etc/shadow`.
+- Composició i destrucció d'usuaris (`useradd`, `usermod`, `userdel`).
+
+### [3.2 Grups i el Poder del Sudo](/ca/modules/module-3/2-groups-sudo/)
+
+- Entendre el Grup Primari vs els Grups Secundaris.
+- Injecció d'usuaris a grups (`usermod -aG`).
+- El comandament interactiu `su` front a la delegació temporal de `sudo`.
+- El fitxer més perillós de Linux: edició a prova de bales de `/etc/sudoers` usant `visudo`.
+
+### [3.3 Xarxes: El Sistema Arterial](/ca/modules/module-3/3-basic-networking/)
+
+- Entendre interfícies (`eth0`, `ens33`, `lo`) i inspeccionar-les amb `ip a`.
+- Caçar problemes de connexió amb `ping` i diagnosticar ports oberts amb `ss`.
+- Comprovar la porta d'enllaç cap a internet (`ip r`).
+
+### [3.4 Criptografia Remota (SSH)](/ca/modules/module-3/4-ssh-keys/)
+
+- Entendre el venerable port 22.
+- Com abandonar les insegures contrasenyes i generar un parell de claus criptogràfiques asimètriques (`ssh-keygen`).
+- Operació d'exportació de clau pública a servidors remots (`ssh-copy-id`).
+- Securització nivell paranoia del servei `sshd_config`.

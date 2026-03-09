@@ -1,0 +1,156 @@
+---
+title: 3.1 Anatomia de l'Usuari Linux
+description: Destripant com Linux entén realment els comptes, el UID, /etc/passwd i /etc/shadow.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entendràs que per al sistema, tu no ets"juan", ets el nombre **1000**.
+  - Llegiràs els fitxers de text que suporten tota la identitat del sistema
+ (`/etc/passwd`). - Aprendràs per què les contrasenyes reals s'amaguen en l'
+ ombra (`/etc/shadow`). - Dominaràs la creació (`useradd`) i destrucció
+  (`userdel`) d'usuaris.
+</PreCheck>
+
+## 1. El Mite dels Noms d'Usuari
+
+Quan inicies sessió escrivint `juan`, Linux immediatament tradueix eixe text per al seu ús intern.
+Per al Kernel de Linux, els noms no existeixen, només existeixen els **UIDs** (User Identifiers), que són nombres enters.
+
+- **UID 0**: L'emperador del sistema (`root`). Té poder absolut.
+- **UIDs 1 al 999**: Usuaris "de sistema". Debian els reserva per a processos interns silenciosos, com l'usuari que corre el servidor Apache (`www-data`) o l'usuari d'una base de dades.
+- **UIDs 1000 endavant**: Els humans normals. El primer humà que instal·la Debian rep el UID `1000`.
+
+Pots saber exactament qui ets i quin nombre tens escrivint el comandament `id`:
+
+```bash
+id
+```
+
+---
+
+## 2. La Base de Dades Plana (`passwd`)
+
+Totes les comptes del sistema, sense excepció, estan documentats en text pla en un sol fitxer universalment llegible: `/etc/passwd`.
+_(Tranquil, les contrasenyes reals ja no viuen ací des de 1990)._
+
+Imprimeix el fitxer amb `cat /etc/passwd`. Veuràs línies estructurades amb dos punts `:`, com esta:
+
+`juan:x:1000:1000:Juan Perez:/home/juan:/bin/bash`
+
+Cada segment separat per `:` significa alguna cosa crítica:
+
+1. `juan`: El nom visual.
+2. `x`: Un indicador que la contrasenya està amagada en un altre fitxer més segur.
+3. `1000`: El codiciat **UID** de l'usuari.
+4. `1000`: El GID (Group ID) principal de l'usuari.
+5. `Juan Perez`: Comentaris amigables (nom real, telèfon, quart).
+6. `/home/juan`: El directori de treball personal on aterrarà en entrar.
+7. `/bin/bash`: El programa **Shell** per defecte que li donarà la interfície de consola. Si a un usuari li poses `/bin/false` o `/usr/sbin/nologin` ací, ¡mai podrà iniciar sessió!
+
+## 3. Les Ombres (`shadow`)
+
+Les contrasenyes no es guarden tal qual. Es "hashegen" (es xifren matemàticament en una sopa de caràcters indescifrable) i es guarden en `/etc/shadow`.
+Este fitxer està custodiat ferotgement amb permisos `600`, de forma que **solament el superusuari (root) pot llegir-ho**.
+
+Si uses `sudo cat /etc/shadow | grep juan`, veuràs alguna cosa com esta:
+
+`juan:$6$salaleatoria123$TextoCifradoLarguisimoYFeisim0.Qf7h/:19200:0:99999:7:::`
+
+_(El `$6$` inicial li diu a Debian que es va usar el poderós algoritme criptogràfic SHA-512 per codificar la contrasenya)._
+
+---
+
+## 4. Gestió de Comptes (Alta i Baixa)
+
+Per crear, alterar o esborrar comptes sempre necessitaràs ser administrador (anteosar `sudo`).
+
+### Crear Usuaris (`useradd`)
+
+En Debian Linux existeix un script hiper-amigable anomenat `adduser`, que és interactiu et fa totes les preguntes. Però**en l'examen LFCS l'ordre oficial que s'avalua per la seva predictibilitat en scripts és `useradd`**.
+
+```bash
+# Formar un usuari nou usant el comandament dur i professional
+# -m: Crea-li la seua carpeta HOME (/home/pedro)
+# -s: Assigna-li com a terminal programable Bash (/bin/bash)
+sudo useradd -m -s /bin/bash pedro
+
+# ¡Pedro encara no pot entrar perquè la seua contrasenya està bloquejada! Cal donar-li:
+sudo passwd pedro
+```
+
+### Alterar Usuaris (`usermod`)
+
+Si un usuari es casa, canvia de nom o el vols bloquejar.
+
+```bash
+# Canviar la carpeta HOME de pedro a una nova usant usermod
+sudo usermod -d /var/nueva_casa pedro
+
+# Bloquejar temporalment a pedro perquè no inicie sessió (Lock)
+sudo usermod -L pedro
+
+# Desbloquejar-lo per retornar-li l'accés (Unlock)
+sudo usermod -U pedro
+```
+
+### Eliminar Usuarios (`userdel`)
+
+```bash
+# Eliminar a Pedro, però conservar misteriosament tots els seus fitxers personals en el seu /home per si els necessitem auditar.
+sudo userdel pedro
+
+# Eliminar a Pedro i QUEMAR/DESTRUIR tot el que hi havia en la seua carpeta personal simultàniament (-r de Remove home).
+sudo userdel -r pedro
+```
+
+---
+
+## Comprova els teus coneixements
+
+1. Executes el comandament `cat /etc/passwd | grep nginx`. Et retorna la línia: `nginx:x:998:998::/var/cache/nginx:/usr/sbin/nologin`. ¿Què significa eixa trampa final en la línia?
+
+   <MultipleChoice>
+     <Option>Que la contrasenya és invàlida.</Option>
+     <Option isCorrect>
+       La shell assignada `/usr/sbin/nologin` impedeix expressament que este
+ "usuari limitatiu de sistema" puga iniciar una sessió de terminal
+ interactiva, millorant infinitament la seguretat del servidor web.
+     </Option>
+     <Option>
+       Que el compte va ser bloquejat temporalment usant usermod -L.
+     </Option>
+   </MultipleChoice>
+
+2. Ets un sysadmin i l'empresa ha acomiadat disciplinàriament a "manuel", per la qual cosa el seu contracte va ser terminat immediatament. RRHH et demana que Manuel **NO PUGA INICIAR SESSIÓ**, però que sota cap circumstància es borre en este moment ni el seu compte ni els seus valuosos fitxers de disseny, perquè el gerent els revise demà. ¿Quin comandament uses?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       `sudo usermod -L manuel` (El paràmet L de Lock bloqueja la contrasenya
+ de l'usuari temporalment en /etc/shadow impedint-li l'accés sense
+ esborrar res).
+     </Option>
+     <Option>`sudo userdel manuel`</Option>
+     <Option>`sudo passwd manuel` i la deixe en blanc.</Option>
+   </MultipleChoice>
+
+3. Et demanen amb urgència auditar si un atacant va lograr infiltrar-se ahir i elevar els seus permisos. Entres al servidor i fas un `grep` en `/etc/passwd`. El teu cor fa un salt i sonen les alarmes internes. ¿Què vas trobar que demostra indefectiblement que hi ha un usuari fals amb poder administratiu total i destructiu camuflant en el sistema?
+   <MultipleChoice>
+     <Option>
+       Vaig trobar un usuari anomenat misteriós amb el camp Shell en `/bin/bash`.
+     </Option>
+     <Option>
+       Vaig trobar que el UID de la base de dades mysql va saltar al 1000.
+     </Option>
+     <Option isCorrect>
+       Vaig trobar a un usuari en aparença inofensiu que en el tercer camp
+       (UID) té llistat el nombre `0`. El nombre UID 0 atorga un poder total
+       i sagrat als ulls del Kernel de Linux.
+     </Option>
+   </MultipleChoice>

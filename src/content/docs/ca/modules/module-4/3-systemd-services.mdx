@@ -1,0 +1,138 @@
+---
+title: 4.3 Serveis i Systemd
+description: Com dominar absolutament tot el que corre de fons al teu servidor amb systemctl.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entendràs el concepte de `Daemon` (Dimoni).
+  - Sabràs utilitzar `systemctl` per veure l'estat, reiniciar i aturar serveis com Apache o SSH.
+  - Aprendràs la vital diferència per a la producció entre `restart` i `reload`.
+  - Aprendràs a enganxar serveis perquè s'iniciïn automàticament (`enable`).
+</PreCheck>
+
+Hauràs notat que en engegar Linux, la xarxa funciona, el servidor SSH et deixa entrar, i el servidor Web funciona. Però tu no vas iniciar aquests programes a mà executant aplicacions.
+
+Aquests programes s'anomenen **Dimonis** (Daemons, que se sol abreujar amb una 'd' al final, com `sshd` o `systemd`). Són programes invisibles i sense interfície que viuen de fons a la memòria RAM. Al capatàs total de tots aquests programes que decideix qui neix, qui mor i qui reinicia se l'anomena **Systemd**.
+
+I a menys que instal·lis Linux des de 0 al teu smartwatch, usaràs el seu comandament principal: `systemctl`.
+
+---
+
+## 1. El Control de Comandament: `systemctl`
+
+El comandament Control de Systemd (`systemctl`) espera una ordre i el nom d'una Unitat (generalment finalitzada en `.service`).
+Usem d'exemple el servidor web de Debian (`nginx` o `apache2`).
+
+### Veure la Salut del Sistema (Status)
+
+```bash
+systemctl status nginx
+```
+
+Això t'imprimirà un quadre vital inestimable. D'una sola ullada veuràs:
+
+- Si està en verd (**active (running)**) o vermell (**failed**).
+- Si ha col·lapsat, imprimirà textualment les 10 últimes línies del fitxer d'error explicant-te _per què_.
+
+### Aturar i Engegar (Start / Stop)
+
+Per fer la modificació en calent de la memòria RAM.
+
+```bash
+sudo systemctl stop nginx
+sudo systemctl start nginx
+```
+
+### L'Art de Reiniciar vs Recarregar
+
+Si canvies un fitxer de configuració de Nginx (per exemple, afegeixes una pàgina web nova), el Dimoni que resideix a la memòria RAM no se n'assabenta perquè no està llegint el fitxer de text a cada segon. Has de forçar que el llegeixi. Tens dos enfocaments:
+
+- **La Ruleta Russa (`restart`)**:
+
+  ```bash
+  sudo systemctl restart nginx
+  ```
+
+  Això mata instantàniament el procés, talla la connexió de tots els clients que s'estan descarregant coses de la teva web, i engega un procés nou. És una animalada en Producció si no hi ha un error greu.
+
+- **El Toc Cuidat (`reload`)**:
+  ```bash
+  sudo systemctl reload nginx
+  ```
+  Li envia una senyal elegant al Dimoni: _"Ei, quan acabis d'atendre les descàrregues que tens a mitges, rellegeix el fitxer de configuració a veure si hi ha hagut canvis"_. Zero micro-talls, màxima professionalitat.
+
+---
+
+## 2. Immortalitzar un Servei (Enable / Disable)
+
+Que tu facis `start` a un servei web ara mateix, no assegura de cap manera que si el servidor pateix un tall elèctric i reinicia, el servei s'hagi d'auto-arrencar.
+
+Per enganxar profundament un Dimoni al cicle d'engegada de la Fase 5 del Sistema, i garantir la seva execució automàtica després de reiniciar, l'hem d'**Habilitar**:
+
+```bash
+# Enganchar l'arrencada automàtica ("Crear Symlink")
+sudo systemctl enable nginx
+
+# Retirar-lo de l'arrencada automàtica (Eliminar Symlink)
+sudo systemctl disable nginx
+
+# Si vols que s'engegui ARA MATEIX i a més enganxar-lo al futur
+# (Truc LFCS amb el modificador --now)
+sudo systemctl enable --now nginx
+```
+
+---
+
+## Comprova els teus coneixements
+
+1. Has editat el fitxer `/etc/ssh/sshd_config` tal com vam aprendre a la Classe 3 per desactivar els resetejos de contrasenya. Actualment hi ha uns altres 5 sysadmins de la teva empresa connectats al servidor simultàniament transferint grans configuracions crítiques i no els vols desconnectar de cop. ¿Com recomanes al dimoni SSH que acati els teus canvis a la configuració reduint la fricció a zero?
+
+   <MultipleChoice>
+     <Option>`sudo systemctl restart ssh`</Option>
+     <Option>
+       `sudo systemctl stop ssh` i esperar fins a l'hora de sopar per fer
+       `start`.
+     </Option>
+     <Option isCorrect>
+       `sudo systemctl reload ssh` (Recarrega "gràcilment" les línies modificades
+       del fitxer de configuració sense tallar (restart) o aturar els fils de
+       xarxa establerts).
+     </Option>
+   </MultipleChoice>
+
+2. Acabes d'instal·lar el gestor de bases de dades MariaDB (`apt install mariadb-server`). El teu pla és migrar bases de dades tot aquest mes, però encara no vols que la base de dades es posi a iniciar-se automàticament devorant 2GB de RAM cada vegada que reinicies la màquina. ¿Com atures l'inici automàtic desenganxant l'ordre d'auto-reinici?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       `sudo systemctl disable mariadb` (Deshabilita l'enllaç simbòlic d'arrencada
+       automàtica de Systemd. La BD podrà seguir engeguant-se i aturant-se
+       manualment usant start/stop).
+     </Option>
+     <Option>
+       `sudo systemctl stop mariadb` (Només el para avui a la memòria, però si
+       reinicies pot ser que arrenqui si està activat l''enable').
+     </Option>
+     <Option>Esborrant l'àlies de initramfs.</Option>
+   </MultipleChoice>
+
+3. Et queixes que la teva petita web no carrega. Executes `systemctl status apache2` i el CLI retorna un text dient: `Loaded: loaded (/lib/systemd/system/apache2.service; disabled; vendor preset: enabled)` i `Active: inactive (dead)`. Analitzant forensemente el missatge, quina deducció en traiem?
+
+   <MultipleChoice>
+     <Option>
+       A apache2 li falta memòria lliure al kernel per executar-se.
+     </Option>
+     <Option isCorrect>
+       Apache2 no corre perquè està inactiu (mort a la RAM), i el més probable
+       és que quan el servidor va ser apagat no va engegar sol avui perquè
+       addicionalment es troba explícitament `disabled` per autoarrencar
+       per Systemd.
+     </Option>
+     <Option>El servei no està instal·lat en aquest servidor Debian.</Option>
+   </MultipleChoice>

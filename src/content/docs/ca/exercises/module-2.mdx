@@ -1,0 +1,230 @@
+---
+title: "Pràctica 2 — Comandaments Bàsics"
+description: Analitza logs reals d'un servidor web, gestiona permisos de fitxers i automatitza tasques amb canonades i redireccions.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="tip" title="Abans de començar">
+Connecta't a la teva VM per SSH. Aquesta pràctica té dos exercicis independents. Llegeix-los sencers abans de començar.
+</Aside>
+
+---
+
+## Exercici 2.1 — Anàlisi de logs del servidor web
+
+### Context
+
+Un servidor web guarda un registre de totes les peticions que rep. La teva missió és analitzar aquell log amb eines de terminal per extreure informació útil: quines IPs es connecten més, quants errors hi ha, etc.
+
+### Setup — executar una sola vegada
+
+```bash
+# Crea els directoris de treball
+mkdir -p ~/practica2/logs ~/practica2/backup
+
+# Descarrega un log real d'un servidor nginx (~50.000 línies)
+wget -q \
+  "https://raw.githubusercontent.com/elastic/examples/master/Common%20Data%20Formats/nginx_logs/nginx_logs" \
+  -O ~/practica2/logs/access.log
+
+# Comprova que s'ha descarregat correctament
+wc -l ~/practica2/logs/access.log
+```
+
+Hauries de veure un número proper a **51.462 línies**. Si veus 0 o un error, el servidor de GitHub pot estar caigut — espera uns minuts i torna-ho a intentar.
+
+### Com és el log?
+
+Cada línia té aquest format:
+
+```
+216.46.173.126 - - [04/Jan/2015:05:13:42 +0000] "GET /blog/ HTTP/1.1" 200 9459 "-" "Mozilla/5.0"
+```
+
+Els camps són: `IP - - [data] "MÈTODE /ruta HTTP/versió" CODI bytes "referer" "agent"`
+
+### Tasca 1 — Comptar IPs úniques
+
+Quantes IPs diferents han accedit al servidor?
+
+```bash
+awk '{print $1}' ~/practica2/logs/access.log | sort -u | wc -l
+```
+
+`awk '{print $1}'` extrau el primer camp (la IP).  
+`sort -u` ordena i elimina duplicats.  
+`wc -l` compta les línies resultants.
+
+Anota el resultat.
+
+### Tasca 2 — Top 10 IPs més actives
+
+Qui ha fet més peticions?
+
+```bash
+awk '{print $1}' ~/practica2/logs/access.log | sort | uniq -c | sort -rn | head -10
+```
+
+`uniq -c` compta les repeticions de cada IP.  
+`sort -rn` ordena numèricament en ordre descendent.
+
+Desa el resultat en un fitxer:
+
+```bash
+awk '{print $1}' ~/practica2/logs/access.log | sort | uniq -c | sort -rn | head -10 \
+  > ~/practica2/backup/top10_ips.txt
+
+cat ~/practica2/backup/top10_ips.txt
+```
+
+### Tasca 3 — Comptar errors 404
+
+Els errors 404 signifiquen que el client va demanar una pàgina que no existeix:
+
+```bash
+grep ' 404 ' ~/practica2/logs/access.log | wc -l
+```
+
+Anota quants n'hi ha.
+
+### Tasca 4 — Veure quines rutes donen més 404
+
+```bash
+grep ' 404 ' ~/practica2/logs/access.log | awk '{print $7}' | sort | uniq -c | sort -rn | head -10
+```
+
+`$7` és el camp de la ruta (el URL).
+
+### Tasca 5 — Comprimir el log per arxivar
+
+```bash
+tar -czvf ~/practica2/backup/access.log.tar.gz ~/practica2/logs/access.log
+
+# Verifica que el fitxer existeix i la seva mida
+ls -lh ~/practica2/backup/
+```
+
+Un log de 10 MB comprimit se sol reduir a 1-2 MB. Comprova la diferència.
+
+---
+
+## Exercici 2.2 — Permisos i estructura de fitxers
+
+### Context
+
+Crearàs l'estructura de directoris d'un projecte web compartit entre dos desenvolupadors. Cada directori té requisits d'accés diferents.
+
+### Setup — executar una sola vegada
+
+```bash
+# Crea els usuaris (si ja existeixen, l'error és inofensiu)
+sudo useradd -m alice
+sudo useradd -m bob
+
+# Estableix contrasenyes simples per a les proves
+echo "alice:linux123" | sudo chpasswd
+echo "bob:linux123" | sudo chpasswd
+
+# Crea l'estructura de directoris del projecte
+sudo mkdir -p /var/www/proyecto/{public,private,logs}
+
+# Crea el grup de l'equip de desenvolupament
+sudo groupadd webdevs 2>/dev/null || echo "El grup ja existeix"
+
+# Verifica l'estat inicial (permisos per defecte)
+ls -la /var/www/proyecto/
+```
+
+### Objectiu de permisos
+
+| Directori | Propietari | Grup | Permisos | ¿SGID? | Per què? |
+|-----------|-------------|-------|----------|--------|-----------|
+| `public/` | root | webdevs | `775` | ✅ Sí | L'equip pot llegir i escriure; els fitxers nous hereten el grup |
+| `private/` | root | root | `700` | ❌ No | Només root pot entrar |
+| `logs/` | root | webdevs | `754` | ❌ No | L'equip només pot llegir els logs, no escriure'ls |
+
+### Tasca 1 — Afegir alice i bob al grup
+
+```bash
+sudo usermod -aG webdevs alice
+sudo usermod -aG webdevs bob
+
+# Verifica que estan al grup
+getent group webdevs
+```
+
+Hauries de veure quelcom com: `webdevs:x:1002:alice,bob`
+
+### Tasca 2 — Assignar propietaris i permisos
+
+```bash
+# public: propietari root, grup webdevs, permisos 775
+sudo chown root:webdevs /var/www/proyecto/public
+sudo chmod 775 /var/www/proyecto/public
+
+# private: només root
+sudo chmod 700 /var/www/proyecto/private
+
+# logs: el grup pot llegir però no escriure
+sudo chown root:webdevs /var/www/proyecto/logs
+sudo chmod 754 /var/www/proyecto/logs
+```
+
+### Tasca 3 — Activar el bit SGID a public/
+
+El bit SGID (Set Group ID) fa que qualsevol fitxer creat dins de `public/` hereti automàticament el grup `webdevs`, encara que el creï un usuari diferent:
+
+```bash
+sudo chmod g+s /var/www/proyecto/public
+
+# Verifica: ha d'aparèixer una 's' als permisos del grup
+ls -la /var/www/proyecto/
+```
+
+El resultat de `ls -la` per a `public/` ha de ser: `drwxrwsr-x root webdevs`  
+La `s` a la posició del bit d'execució del grup confirma que el SGID està actiu.
+
+### Tasca 4 — Verificar que els permisos funcionen
+
+```bash
+# Prova que alice pot escriure a public
+sudo -u alice touch /var/www/proyecto/public/prova-alice.txt
+ls -la /var/www/proyecto/public/
+# El grup del fitxer ha de ser 'webdevs', no 'alice'
+
+# Prova que alice NO pot escriure a private
+sudo -u alice touch /var/www/proyecto/private/intent.txt
+# Ha de donar: Permission denied
+
+# Prova que alice pot llegir logs però no escriure
+sudo -u alice ls /var/www/proyecto/logs/          # Ha de funcionar
+sudo -u alice touch /var/www/proyecto/logs/a.txt  # Ha de fallar
+```
+
+---
+
+## 📤 Bloc de lliurament
+
+Executa això i porta la sortida al professor:
+
+```bash
+echo "=== LLIURAMENT PRÀCTICA 2 ===" && \
+echo "" && \
+echo "--- 2.1: Top 10 IPs ---" && \
+cat ~/practica2/backup/top10_ips.txt && \
+echo "" && \
+echo "--- 2.1: Errors 404 ---" && \
+grep ' 404 ' ~/practica2/logs/access.log | wc -l && \
+echo "" && \
+echo "--- 2.1: Fitxer comprimit ---" && \
+ls -lh ~/practica2/backup/access.log.tar.gz && \
+echo "" && \
+echo "--- 2.2: Permisos del projecte ---" && \
+ls -la /var/www/proyecto/ && \
+echo "" && \
+echo "--- 2.2: Grups d'alice i bob ---" && \
+groups alice && groups bob
+```

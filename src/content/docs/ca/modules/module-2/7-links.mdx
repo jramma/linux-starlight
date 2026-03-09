@@ -1,0 +1,124 @@
+---
+title: 2.7 Enllaços (Links dur i tou)
+description: Entenent els inodes per crear accessos directes i respalls irrompibles a Linux.
+sidebar:
+  order: 7
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Comprendràs el concepte invisible de Linux: l' **Inode**. - Crearàs Enllaços
+  Durs (`Hard Links`) per protegir fitxers de borrats accidentals. -
+  Crearàs Enllaços Simbòlics (`Soft Links`) per fer accessos directes a
+  carpetes. - Aprendràs per què un enllaç es "trenca".
+</PreCheck>
+
+A Windows usem "Accessos Directes". A Linux usem **Enllaços** (_Links_), però l'arquitectura sota d'ells és infinitament més potent i perillosa si no s'entén.
+
+---
+
+## 1. El Secret de Linux: Els Inodes
+
+Per a Linux, el nom d'un fitxer no importa. Quan deses `foto.jpg`, el disc dur emmagatzema les dades reals en un bloc anomenat **Inode** (nòdul índex), el qual té un número únic (Ej: Inode 5512).
+
+El nom `foto.jpg` és simplement una "etiqueta visual" per als humans que apunta a l'Inode 5512.
+
+Sabent això, imagina que creem una segona etiqueta anomenada `vacances.jpg` que apunti al **mateix** Inode 5512. Tindries un sol fitxer físic al disc dur, però podries obrir-lo des de dos noms diferents. Això és un enllaç.
+
+---
+
+## 2. Enllaços Durs (Hard Links)
+
+Un Enllaç Dur és literalment **un segon nom real per al mateix fitxer físic**.
+
+- **Avantatge de Supervivència:** Si tens 3 enllaços durs apuntant al mateix fitxer i n'esborres 2, **les dades no es perden**. Les dades físiques del disc dur es destrueixen _únicament_ quan esborres l'últim enllaç dur existent.
+- **Limitacions vitals:**
+  1. No poden enllaçar a directoris (carpetes).
+  2. No poden creuar d'un disc dur o partició a una altra. Tot ha d'estar a la mateixa partició física.
+
+**Comandament (Link):**
+
+```bash
+# Crear un enllaç dur.
+# Sintaxi: ln [origen_existent] [nom_del_nou_enllaç]
+ln proyecto_final.docx copia_seguridad.docx
+```
+
+---
+
+## 3. Enllaços Simbòlics (Soft/Symbolic Links)
+
+Són l'equivalent exacte als accessos directes de Windows. Un enllaç simbòlic **no apunta a les dades, apunta a la ruta d'un altre nom**.
+
+- **Avantatges:**
+  1. Poden enllaçar a directoris sencers!
+  2. Poden creuar a diferents discs durs, pendrives, o xarxes.
+- **Feblesa mortal:**
+  - Si esborres o mous el fitxer o carpeta original al qual apunten, l'enllaç simbòlic es queda "orfe" apuntant al no-res i es trenca (_Broken Link_, apareixerà en vermell parpellejant a moltes terminals).
+
+**Comandament (Link Simbòlic):**
+Per crear-lo, afegim la bandera `-s` (Simbòlic).
+
+<Aside type="caution" title="Regla d'or dels Soft Links">
+  Usa SEMPRE rutes absolutes en crear Enllaços Simbòlics. Si uses rutes
+  relatives i després mous l'enllaç a una altra carpeta, es trencarà perquè intentarà
+  cercar el fitxer relatiu a la seva nova ubicació.
+</Aside>
+
+```bash
+# Crear un accés directe de la carpeta web cap a la carpeta del meu usuari
+ln -s /var/www/html/ /home/joan/acces_web
+```
+
+---
+
+## Comprova els teus coneixements
+
+1. Executes `ls -l` i observes a la primera columna que el fitxer comença amb una lletra `l`, així: `lrwxrwxrwx 1 root root 15 Jan 10 14:00 www -> /var/www/html`. Davant de quin tipus d'objecte estem?
+
+<MultipleChoice>
+  <Option>
+    És un Enllaç Dur (Hard Link), tots tenen absolutament tots els permisos oberts a '777'.
+  </Option>
+  <Option isCorrect>
+    És un Enllaç Simbòlic (Soft Link), la lletra 'l' inicial i la fletxa '->' ens indiquen a quina ruta apunta realment aquest accés directe.
+  </Option>
+  <Option>
+    És un Directori normal.
+  </Option>
+</MultipleChoice>
+
+2. Tens un fitxer gegant de base de dades de 50GB al Disc Dur A. Vols que una aplicació que està instal·lada de forma aïllada al Disc Dur B pugui accedir a aquest fitxer. Com li crees el pont?
+
+<MultipleChoice>
+     <Option isCorrect>
+       Usant un Enllaç Simbòlic (`ln -s`), ja que són els únics que poden
+       creuar entre diferents particions i discs físics.
+     </Option>
+     <Option>
+       Usant un Enllaç Dur (`ln`), perquè protegeixen la base de dades contra
+       borrats accidentals del Disc A.
+     </Option>
+     <Option>
+       Copiant el fitxer amb `cp` per generar l'enllaç entre tots dos discs.
+     </Option>
+</MultipleChoice>
+
+3. Tens un fitxer molt important anomenat `servidor.conf`. Uses el comandament `ln servidor.conf respalt.conf`. Si el teu company d'equip executa per error `rm servidor.conf`, què passa amb la configuració que hi havia dins?
+
+<MultipleChoice>
+     <Option>
+       Es perd totalment i l'enllaç `respalt.conf` es pinta de vermell i deixa
+       de funcionar (*Broken Link*).
+     </Option>
+     <Option>Tots dos fitxers s'esborren màgicament en cadena.</Option>
+     <Option isCorrect>
+       La informació segueix 100% intacta en disc. `respalt.conf` és un enllaç
+       dur, per la qual cosa actua com un escut; perquè Linux esborri la
+       informació, hauria d'haver esborrat tots els seus enllaços.
+     </Option>
+</MultipleChoice>

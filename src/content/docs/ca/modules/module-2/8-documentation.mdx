@@ -1,0 +1,30 @@
+---
+title: 2.8 Documentació del Sistema
+description: La bíblia del Sysadmin. Com trobar ajuda sense usar Google ni eixir de la terminal.
+sidebar:
+  order: 8
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Trobaràs la resposta a qualsevol bandera de comandament en segons usant
+`man`. - Sabràs com cercar eines quan no saps el nom del comandament
+ usant `apropos` / `man -k`. - Descobriràs on s'amaguen els exemples de
+ configuració i tutorials del sistema en Debian `/usr/share/doc`.
+</PreCheck>
+
+Quan rendisques un examen de certificació com el LFCS (Linux Foundation Certified Sysadmin), no tindràs accés a Google. Estaràs tu sol front a una terminal negra.**La teva vida dependrà de saber com llegir i cercar en el manual intern del sistema operatiu.**
+
+---
+
+## 1. El Manual de Comandaments (`man`)
+
+Gairebé tots els comandaments i programes en Linux venen amb un gigantesco manual hiperdetallat incorporat en el sistema.
+
+- **Sintaxi**: `man [comandament]`
+- **Exemple**:
+  ```bash\n man rsync\n  ```\n _(En executar això, la pantalla es netejarà i entraràs al visor interactiu de manuals, que és literalment el programa `less` que vam veure en la lliçó de Canonades)._ \n\n### Navegant pel Manual\n\nCom `man` usa `less` per dejajo, et mous exactament igual:\n\n- **Espai**: Baixar una pàgina entera.\n- **Lletra `b`**: Tornar a la pàgina anterior (Back).\n- **Fletxes amunt/avall**: Moure's línia a línia.\n- **Lletra `q`**: Sortir del manual (Quit) per tornar a la teva terminal.\n\n### El Súper-Poder: Cercar dins del Manual\n\nImagina que obres `man rsync`, el qual té mil línies de text, i intentes cercar com excloure carpetes. Baixar llegint línia per línia és una pèrdua de temps.\n\n1. Una vegada dins de `man`, prem la tecla de la barra inclinada**`/`**.\n2. Escriu una paraula, per exemple: `/exclude` i prem Enter.\n3. El manual saltarà immediatament a la primera aparició de la paraula i la ressaltarà.\n4. Prem la tecla**`n`**(Next) per saltar a la següent aparició en el document, o**`N`**(Shift+N) per tornar a l'aparició anterior.\n\n---\n\n## 2. Cercar Comandaments Desconeguts (Apropos)\n\n¿Què passa si necessites particionar un disc, però no recordes quin era el comandament per a fer-ho? Afortunadament, el sistema manual té un motor de cerca inversa de paraules clau en totes les descripcions dels milers de comandaments de Linux.\n\nPer cercar programes relacionats amb una paraula clau, usa `man-k` (Keyword) o el seu àlies `apropos` (A Propòsit de).

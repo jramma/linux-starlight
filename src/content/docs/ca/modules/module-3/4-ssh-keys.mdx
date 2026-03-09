@@ -1,0 +1,149 @@
+---
+title: 3.4 Connexions Remotes i SSH
+description: Tancant la porta de les contrasenyes per adoptar la criptografia de claus.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entendràs com el Dimoni SSH (`sshd`) atén les teues connexions en el port
+22. - Generaràs el teu propi parell de claus criptogràfiques asimètriques
+ (`ssh-keygen`). - Aprendràs a "exportar" la teua clau pública al servidor remot
+ (`ssh-copy-id`). - Securitzaràs el fitxer `sshd_config` contra atacs de
+ força bruta.
+</PreCheck>
+
+Rarament et sents físicament front a un servidor Linux amb un teclat connectat. El 99% del temps l'administraràs des de ta casa u oficina a través d'Internet usant**SSH**(Secure Shell).
+
+---
+
+## 1. Connectant-se per Contrasenya (Poc Segur)
+
+Per defecte, si un servidor Linux té el servei SSH instal·lat, pots connectar-te apuntant a la seua IP i proveint un usuari existent i la seua contrasenya.
+
+```bash
+# Connectar-se al servidor apuntant a la seua IPv4 local o pública
+ssh juan@192.168.1.50
+```
+
+El problema és que**el teu servidor està constantment sota atac**. Existeixen "bots" xinesos i russos que escanejen tot Internet les 24 hores del dia, intentant endevinar contrasenyes (`root/1234`, `admin/admin`) milions de vegades per segon. Això es diu Atac de Força Bruta. Si la teua contrasenya és dèbil, entraran i destruiran la teua empresa.
+
+---
+
+## 2. La Màgia de les Claus Criptogràfiques
+
+Per tornar una computadora in-hackejable, en Linux**desactivem l'ús de contrasenyes**i obliguem que l'accés remot es verifique matemàticament usant un Sistema de Claus Asimètriques.
+
+Funciona així:
+
+1. En**el teu ordinador personal**generes un parell matemàtic: Una**Clau Pública**(Un pany que pots compartir a tot el món) i una**Clau Privada**(La clau real per obrir eixe pany, que _mai_ ix de ta casa).
+2. Envies la teua Clau Pública al buzón del Servidor Linux.
+3. Ara, quan intentes entrar al Servidor, este examinarà matemàticament si el teu ordinador personal posseïx la Clau Privada correcta per a eixe pany.**Si no la tens, et talla la connexió immediatament.**
+
+### Pas A: Generar el teu parell de claus
+
+En**el teu ordinador personal**(no en el servidor), obri una terminal i executa:
+
+```bash
+# L'algoritme actual recomanat en 2024 és ED25519 (molt segur i ràpid)
+ssh-keygen -t ed25519
+```
+
+Això crearà dos fitxers ocults en el teu ordinador dins de la carpeta `~/.ssh/`:
+
+- `id_ed25519`: La teua clau privada (¡Secreta, no la perques, no la compartesques!).
+- `id_ed25519.pub`: La teua clau pública (El pany per exportar).
+
+### Pas B: Exportar el pany al Servidor
+
+Sabent la IP del teu servidor i el teu usuari, anem a "implantar" la teua clau pública dins d'ell. (Esta serà l'última vegada que necessites escriure la teua ridícula contrasenya analògica).
+
+```bash
+ssh-copy-id juan@192.168.1.50
+```
+
+Llist! A partir d'ara, si fas `ssh juan@192.168.1.50`, entraràs sense que el servidor et pregunte res.
+
+---
+
+## 3. Blindant el Servidor (`sshd_config`)
+
+Ara que tu pots entrar amb una clau in-hackejable, tenim que dir-li al servidor que**rebutge a qualsevol persona en la Terra que intente connectar-se usant una contrasenya normal**.
+
+Entra per SSH al servidor i edita el fitxer mestre del "Dimoni" (Servei de fons) SSH:
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+Busca les següents tres línies clau, descomenta-les llevat el `#` inicial si el tingueren, i posa-les exactament en estos valors preventius:
+
+1. `PermitRootLogin no` (Mai permetre que ningú inicie sessió directament escrivint el nom 'root'. Obliga a què la gent entre amb el seu usuari normal i després use `sudo`).
+2. `PasswordAuthentication no` (Tanca la porta de les contrasenyes normals. Adéu força bruta).
+3. `PubkeyAuthentication yes` (Confirma que solament admitixes claus criptogràfiques).
+
+Guarda el fitxer i reinicia el servei perquè aplique els canvis:
+
+```bash
+sudo systemctl restart ssh
+```
+
+<Aside type="caution">
+  Abans de reiniciar el servei SSH amb `PasswordAuthentication no`, assegura't
+ que la teua clau criptogràfica realment funciona obrint una segona terminal
+ i intentant entrar! Si l'apagues i la teua clau et falla,**et quedaràs
+  bloquejat fora del teu propi servidor per sempre**.
+</Aside>
+
+---
+
+## Comprova els teus coneixements
+
+1. Has generat el teu parell de claus i s'han guardat com `id_rsa` i `id_rsa.pub`. ¿Quin dels dos fitxers és el que has d'enviar i pegar en el servidor remot Linux que vols administrar i per què?
+
+   <MultipleChoice>
+     <Option>
+       El `id_rsa` perquè és la clau privada que obrirà les configuracions
+       internes del servidor de forma protegida.
+     </Option>
+     <Option isCorrect>
+       El `id_rsa.pub` perquè és la Clau Pública. És un "pany" segur de
+       compartir i el servidor l'usarà per retar matemàticament al meu
+       ordinador per veure si posseïx la clau privada genuïna.
+     </Option>
+     <Option>
+       Ambdós, perquè SSH requerix el parell complet per verificar la connexió de
+       origen a destí.
+     </Option>
+   </MultipleChoice>
+
+2. Treballes en una multinacional i han notat que en l'arxiu de "logs" del servidor hi ha 15.000 intents d'inici de sessió fallits per segon des de Rússia intentant entrar directament com a administrador absolut de la màquina. La teua clau criptogràfica ja està operativa. ¿Quines dos línies modifies dins de `sshd_config` usant Nano per erradicar completament esta amenaça?
+
+   <MultipleChoice>
+     <Option isCorrect>
+      Busque i establixc `PasswordAuthentication no` (Perquè no valguen les
+      combinacions de força bruta) i `PermitRootLogin no` (Per obligar als
+      administradors reals a entrar com els seus usuaris rasos abans de poder
+      executar 'sudo').
+    </Option>
+    <Option>
+      Busque i establixc `UseDNS no` i `PubkeyAuthentication no`.
+    </Option>
+    <Option>Lli canvie el 'ListenAddress' a la IPv4 russa.</Option>
+  </MultipleChoice>
+
+3. Acabes de terminar de modificar l'arxiu `/etc/ssh/sshd_config` a la perfecció. No obstant això, intentes entrar des d'un altre PC usant contrasenyes prohibides et dones compte que**el servidor et seguix deixant entrar com si no haguera fet absolutament res**. ¿Què t'ha faltat per fer perquè Debian processe la teua nova mentalitat LFCS?
+  <MultipleChoice>
+    <Option>Tancar la sessió escrivint `exit` i tornar a entrar.</Option>
+    <Option>Correr el comandament de recàrrega `ssh-keygen restart`.</Option>
+    <Option isCorrect>
+      Guardar l'arxiu en l'editor no fa res per si sol. És obligatori
+      reiniciar el procés dimoni que escolta en la xarxa (Systemd) usant `sudo
+      systemctl restart ssh`.
+    </Option>
+  </MultipleChoice>

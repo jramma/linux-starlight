@@ -1,0 +1,140 @@
+---
+title: 5.3 Volums Lògics (LVM)
+description: Trenca les barreres físiques. Aprèn a crear discs elàstics com si fossin xiclet amb pvcreate, vgcreate i lvcreate.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entendràs per què les particions clàssiques són una trampa mortal en servidors de producció.
+  - Dominaràs la jerarquia LVM pas a pas: `PV` -> `VG` -> `LV`.
+  - Sabràs estendre un disc ple (`lvextend`) sense perdre les dades ni apagar la màquina.
+</PreCheck>
+
+## 1. L'Ocap de les Particions Clàssiques
+
+Imagina que crees un servidor usant el mètode de la lliçó anterior: Compres un disc dur de 50GB i el formates (`/dev/sda1`). Mesos després, la base de dades d'usuaris de la teva empresa creix a 49GB. El teu cap compra espantat un disc de 100GB i te'l dóna perquè l'endollis.
+
+¿I ara què? La teva base de dades només sap escriure en una sola carpeta (`/var/lib/mysql`).
+Com que ambdós discs són trossos de plàstic aïllats l'un de l'altre, **no pots unir l'espai dels dos**. Hauries d'aturar el servidor, copiar 49GB d'un disc a l'altre, reconfigurar la base de dades, repassar muntatges i resar per no corrompre res.
+
+**Solució 100% vitalícia:** LVM (Logical Volume Management).
+LVM és una capa de màgia per programari. LVM agafa tots els discs físics de plàstic que tu li fiquis, els fon en una sola súper-piscina gegant de megabytes, i et permet "retallar" discs imaginaris (Volums Lògics) d'aquesta piscina. ¿Se t'omple la base de dades? Li afegeixes 20GB extres imaginaris sobre la marxa sense aturar-la.
+
+---
+
+## 2. La Tríada Estricta de LVM
+
+Sempre cal seguir tres passos matemàtics inqüestionables: Físic, Grup, i Lògic.
+
+Suposem que acabes de connectar dos discs durs totalment verges: `/dev/sdb` (10GB) i `/dev/sdc` (20GB).
+
+### Pas 1: Volums Físics (PV - Physical Volume)
+
+Agafem els discs verges i els "marquem" amb el segell de LVM per indicar-los que formaran part d'un ecosistema virtual.
+
+```bash
+sudo pvcreate /dev/sdb /dev/sdc
+
+# Comprovar la feina
+sudo pvs
+```
+
+### Pas 2: Grup de Volums (VG - Volume Group)
+
+Creem la "Piscina gegant". Crearem una piscina anomenada `magatzem_dades` i li llançarem els dos discs marcats.
+
+```bash
+sudo vgcreate magatzem_dades /dev/sdb /dev/sdc
+
+# Comprovar. Si mires la mida, veuràs que la piscina ara té 30GB totals (10+20).
+sudo vgs
+```
+
+### Pas 3: Volums Lògics (LV - Logical Volume)
+
+Ara som déus. Usem una escumadora per treure 15GB d'aquesta piscina (no importa físicament en quin disc acabin) per crear la nostra partició final invisible que li dóna a la base de dades.
+
+```bash
+# Crear un volum lògic (-n) anomenat BD de mida (-L) 15GB des del grup magatzem_dades.
+sudo lvcreate -n BD -L 15G magatzem_dades
+
+# Comprovar
+sudo lvs
+```
+
+¡Llest! Per a la fase de la lliçó anterior (`mkfs` i `mount`), a Linux ja no li importa `sdb`. Actuarà com si aquest xiclet virtual fos un disc sòlid anomenat: `/dev/magatzem_dades/BD`.
+
+---
+
+## 3. Màgia Negra Sysadmin: Lvextend
+
+Tornem a l'exemple: La base de dades, muntada sobre l'LVM, arriba a 14.9 GB de 15 GB. El servidor està a punt d'esclatar d'errors.
+
+Mirem amb `vgs` si ens sobra una mica de líquid màgic a la piscina `magatzem_dades`. Veiem que com que vam ficar 30GB originals i només en vam gastar 15GB, ens en sobren 15GB. Anem a injectar-li 5GB de rescat als discs de la base de dades, **mentre la base de dades insereix factures i sense muntar res**.
+
+```bash
+# Estenem la frontera del contenidor elàstic (+5G) al nostre Volum Lògic
+sudo lvextend -L +5G /dev/magatzem_dades/BD
+
+# Màgia profunda: LVM ha crescut en plàstic a 20GB. PERÒ el formatador ext4
+# segueix creient cecament que la seva casa mesura 15GB. Obliguem al Format a recalcular:
+sudo resize2fs /dev/magatzem_dades/BD
+```
+
+_(Si vas formatar amb XFS, el segon comandament màgic de forçat no és `resize2fs`, és `xfs_growfs`)._
+
+---
+
+## Comprova els teus coneixements
+
+1. El teu gerent ha comprat una controladora de 8 Discs durs NVMe verges. Et demana qu en un d'ells fiquis les dades de marketing, i li expliques pacientment que l'any 2024 un Sysadmin no particiona a pèl una cosa que hagi de canviar de mida amb el temps. ¿Quin dels següents és el comandament que "bateja" i infon la doctrina de virtualització a aquest disc dur brut per declarar-lo terreny propietat d'LVM abans de poder tirar-lo a una piscina superior?
+
+<MultipleChoice>
+     <Option>`vgcreate`</Option>
+     <Option>`mount`</Option>
+     <Option isCorrect>
+       El mandat de Creació Física: `sudo pvcreate /dev/nvme0n1`
+     </Option>
+</MultipleChoice>
+
+2. Acabes de crear un flamant "Logical Volume" de 10GB anomenat `vol_apache` partint del teu Volume Group anomenat `vg_servidor`. Immediatament et disposes a muntar-lo usant `mount`, però Linux et llança una fallada fatal indicant que el volum manca d'un SuperBloc vàlid, arruïnant-te la tarda. ¿Què has oblidat fer entre la creació amb lvcreate i el subsegüent intent de mount?
+
+<MultipleChoice>
+     <Option isCorrect>
+       L'oblit catastròfic de la lliçó anterior. Per molt màgic que sigui LVM
+       i hagi retallat la capacitat... el disc per dins està cru, verge i
+       sense estructura. Se t'ha oblidat donar-li format estampant un Sistema de
+       Fitxers amb el comandament `sudo mkfs.ext4 /dev/vg_servidor/vol_apache`.
+     </Option>
+     <Option>Haver executat lvextend just abans.</Option>
+     <Option>
+       Que el seu fitxer s'ha de introduir primer a /etc/fstab abans del muntatge
+       en RAM.
+     </Option>
+</MultipleChoice>
+
+3. Escenari d'alt estrès: El Volum Lògic `storage` muntat a `/mnt/arxius` ha arribat al 99% de capacitat. Ràpidament li indiques a l'LVM que s'estiri injectant-li 20GB frescos (`sudo lvextend -L +20G /dev/vg_dades/storage`). ¡Tot ha anat bé! Fas un comprovant `df -h` però inexplicablement... Linux et segueix jurant que la carpeta `/mnt/arxius` segueix al 99% i que la mida original de GBs no ha variat ni un mil·límetre. ¿Què ha fallat en l'elasticitat l’LVM?
+   
+<MultipleChoice>
+     <Option isCorrect>
+       El plàstic elàstic (LVM) efectivament ha crescut. El que ha fallat és el teu
+       Formatador Intern (`ext4` usualment). Aquest és estúpid per naturalesa
+       i desconeix que les parets de la seva casa s'han enderrocat i mogut 20
+       Gigabytes més enllà. Et falta encaixar la peça del trencaclosques llançant en viu
+       el comandament de recalcul matemàtic d'inodes: `sudo resize2fs
+       /dev/vg_dades/storage`.
+     </Option>
+     <Option>
+       El comandament blkid ja no reconeix el volum i s'ha de reconstruir amb
+       GRUB.
+     </Option>
+     <Option>
+       LVM no funciona en calent. Cal usar `sudo systemctl restart linux`.
+     </Option>
+</MultipleChoice>

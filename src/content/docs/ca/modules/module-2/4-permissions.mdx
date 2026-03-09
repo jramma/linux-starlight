@@ -1,0 +1,138 @@
+---
+title: 2.4 Gestió de Permisos i Propietat
+description: Com funciona la seguretat base de Linux (rwx), el sistema Octal i la gestió de dueus.
+sidebar:
+  order: 4
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Aprendràs a llegir la matriu de permisos `rwxr-xr-x` en l'eixida de `ls -l`.
+  - Dominaràs el Mode Octal (números) per configurar permisos a la velocitat de
+ la llum. - Coneixeràs com canviar el dueu d'un fitxer usant `chown` com
+ superusuari. - Entendràs per què el permís `777` és el major pecat d'un
+  Sysadmin.
+</PreCheck>
+
+En Linux, tot fitxer i directori és propietat absoluta d'un **Usuari** específic i pertany a un **Grup**. El nucli del sistema decideix qui pot veure, modificar o executar un fitxer avaluant tres nivells d'accés: **Usuari (Propietari)**, **Grup** i **Altres (La resta del món)**.
+
+---
+
+## 1. La Matriu de Permisos (`ls -l`)
+
+Quan executes el comandament `ls -l`, la primera columna que veus és una cadena de 10 caràcters aparentment críptica, com `-rwxr-xr--` o `drwxrwxr-x`.
+
+Desgranem `-rwxr-xr--` (10 caràcters):
+
+- **El 1r caràcter (Tipus):**Indica què és. Un guió `-` significa que és un fitxer regular. Una `d` significa que és un directori. Una `l` significa que és un enllaç simbòlic.
+- **Els següents 3 (`rwx`):** Permisos de l'**Usuari Propietari** (User/ `u`). En aquest cas, pot Llegir (Read = `r`), Escriure/Modificar (Write = `w`), i Executar com a programa (eXecute = `x`).
+- **Els següents 3 (`r-x`):** Permisos del **Grup** (Group / `g`). Poden Llegir, NO poden escriure (marcat amb `-`), i sí poden Executar.
+- **Els últims 3 (`r--`):** Permisos d'**Altres** (Others / `o`). La resta d'usuaris del sistema només poden Llegir.
+
+## 2. Canviant Permisos (`chmod`)
+
+El comando **ch**ange **mod**e altera els permisos. Existen dos formes de fer-ho: la simbòlica (amigable) i la octal (profesional).
+
+### Mode Simbòlica (Lletres)
+
+Uses matemàtiques simples sumant (`+`), restant (`-`) o igualant (`=`) permisos a les categories `u`, `g`, `o`, o `a` (All/Tots).
+
+```bash
+# Darle permiso de execució al dueño (Usuari)
+chmod u+x script.sh
+
+# Quitarle permiso d'escriptura a els Altres
+chmod o-w archivo_secreto.txt
+
+# Forzar que el Grup només tingui permís de Lectura (eliminant w o x si els tinguera)
+chmod g=r documento.pdf
+```
+
+### Mode Octal (L'Atall Sysadmin)
+
+Sumes el valor dels permisos que vols assignar.
+
+- **Lectura (`r`) = 4**
+- **Escriptura (`w`) = 2**
+- **Execució (`x`) = 1**
+
+Per a cada bloc (Usuari, Grup, Altres), sumes els valors:
+
+- Permís `rwx` (Lectura+Escriptura+Ejecució): 4 + 2 + 1 = **7**
+- Permís `rw-` (Lectura+Escriptura): 4 + 2 + 0 = **6**
+- Permís `r-x` (Lectura+Ejecució): 4 + 0 + 1 = **5**
+- Permís `r--` (Només Lectura): 4 + 0 + 0 = **4**
+- Sense permís `---`: **0**
+
+**Exemples Mítics:**
+
+- `chmod 755 script.sh` -> El dueño té `7` (Lectura, Escriptura, Ejecució). El Grup i Altres tenen `5` (Lectura i Ejecució). És l'estàndar absolut per a programes i scripts web.
+- `chmod 644 archivo.txt` -> Dueño `6` (Lectura, Escriptura). Reste `4` (Només lectura). L'estàndar per a qualsevol text o configuració.
+- `chmod 600 llave.pem` -> Dueño `6`. Reste `0`. Màxima privacitat, estàndar per a claus privades SSH.
+- `chmod 777 publico` -> **PELIGRO**. Tot el món (`7`,`7`,`7`) pot alterar, borrar i executar fitxers. Jamàs uses això en producció per "arreglar un problema que no et deixa guardar".
+
+---
+
+## 3. Canviant de Dueu (`chown`)
+
+El comando **ch**ange **own**er canvia el propietari i/o grup d'un fitxer. Per motius evidents de seguretat, **només el superusuari (`root`) pot regalar la propietat d'un fitxer a un altre**, per lo que sempre hauràs de usar `sudo`.
+
+```bash
+# Canviar només el propietari a l'usuari 'juan'
+sudo chown juan archivo.txt
+
+# Canviar el propietari a 'juan' i el grup a 'desarrolladores' (usant dos punts :)
+sudo chown juan:desarrolladores archivo.txt
+
+# Canviar TOT el contingut d'una carpeta sencera remotament (Recursiu -R)
+sudo chown -R www-data:www-data /var/www/html/
+```
+
+<Aside type="caution" title="Carpetes vs Archius">
+  El permís de Execució (`x`) en un fitxer permet correr-lo com a programa.
+  ¡Però en un Directori, la `x` significa **"Permís per Entrar/Atravesar"**
+  (`cd`)!. Si li treus la `x` a una carpeta amb `chmod -x`, ningú podrà entrar
+  en ella ni llistar el seu contingut per dins, encara tingués la `r`.
+</Aside>
+
+---
+
+## Comproba els teus coneixements
+
+1. Si utilitzes el comando `ls -l` i observes que un fitxer té els permisos `-rw-r--r--`, quin és el seu equivalent exacte usant la notació numèrica Octal?
+
+   <MultipleChoice>
+     <Option>
+       `755` (Usuari Llegeix, Escriu, Executa. Reste Llegeix i Executa).
+     </Option>
+     <Option isCorrect>`644` (Usuari 4+2=6. Grup 4. Altres 4).</Option>
+     <Option>`777` (Mode accés total).</Option>
+   </MultipleChoice>
+
+2. Acabes de crear un script en Bash maravilloso anomenat `limpiar.sh`. Eres el seu creador, per lo que tens permisos de lectura i escriptura (`rw-`), però al internar correr-lo et diu "Permís Denegat". Quin d'aquests comandos soluciona el problema de la forma més segura usant el Mode Simbòlic?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       `chmod u+x limpiar.sh` (Afegir a mi Usuari el permís eXecute).
+     </Option>
+     <Option>
+       `chmod 777 limpiar.sh` (Dar permisos d'execució a tot el món).
+     </Option>
+     <Option>
+       `chown root limpiar.sh` (Dare'l script a l'administrador).
+     </Option>
+   </MultipleChoice>
+
+3. Has montat un servidor Web Apache en Debian. L'usuari que executa el servidor web es diu `www-data`. Sinòver, pujest els arxius de la pàgina web usant la teva compte personal `juan`. El servidor lanza error 403 Forbidden perquè no és propietari dels arxius de la web. Què comanda arregla tota la web de golpe?
+   <MultipleChoice>
+     <Option>`chmod -R 777 /var/www/html`</Option>
+     <Option>`sudo chmod www-data /var/www/html`</Option>
+     <Option isCorrect>
+       `sudo chown -R www-data:www-data /var/www/html` (Canviar Propietari i Grup
+       Recursivament).
+     </Option>
+   </MultipleChoice>

@@ -1,0 +1,178 @@
+---
+title: 2.1 Navegació i Gestió de Fitxers
+description: Com moure's i manipular fitxers en la terminal.
+sidebar:
+  order: 1
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entendràs la diferència crítica entre rutes absolutes i relatives. -
+  Dominaràs el llistat de fitxers avançats i comodins (`ls`, `*`). -
+  Aprendràs el kit de supervivència per manipular fitxers (`cp`, `mv`, `rm`).
+  - Coneixeràs com trobar qualsevol fitxer perdut amb `find`.
+</PreCheck>
+
+## Jerarquia
+
+Recorda que tot comença a `/`.
+
+### Conceptes de rutes (path)
+
+- **Ruta absoluta**: Comença amb `/`. Sempre funciona, no importa on estiguis. (ex.: `/home/user/docs/file.txt`).
+- **Ruta relativa**: _No_ comença amb `/`. Depèn de la teva ubicació actual. (ex.: `docs/file.txt` o `../file.txt`).
+
+<Aside type="note">
+  No confonguis les **rutes de fitxers** amb la variable d'entorn **`$PATH`**.
+  Les rutes descriuen on estan els fitxers al sistema; `$PATH` és la
+  llista de directoris on el shell busca executables quan escrius una
+  ordre. Pots veure-ho amb `echo $PATH`.
+</Aside>
+
+## Comandaments de navegació
+
+| Comandament | Nom                    | Funció                                        |
+| :------ | :---------------------- | :-------------------------------------------- |
+| `pwd`   | Print Working Directory | Et diu on ets ara mateix.              |
+| `cd`    | Change Directory        | Et mou a una nova carpeta.                 |
+| `cd ..` |                         | Puja un nivell.                                |
+| `cd ~`  |                         | Va al teu directori personal (home).           |
+| `cd -`  |                         | Torna al directori anterior.                |
+| `ls`    | List                    | Mostra els fitxers en el directori actual. |
+
+### Opcions de `ls`
+
+Rarament executes només `ls`. Opcions habituals:
+
+- `ls -l`: Llistat **llarg** (permisos, propietari, mida, data).
+- `ls -a`: **Tots** els fitxers (mostra fitxers ocults que comencen per `.`).
+- `ls -lh`: Llistat llarg amb mides **legibles per a humans** (MB, GB).
+- `ls -la`: Llistat llarg de **tots** els fitxers (incloent ocults).
+- `ls -ltr`: Ordena per data (els més recents al final).
+
+### Patrons glob (comodins)
+
+Els comodins ajuden a seleccionar múltiples fitxers:
+
+- `*.txt`: Tots els `.txt`.
+- `file?.txt`: Coincideix `file1.txt`, `fileA.txt`, etc.
+- `docs/*/index.md`: Qualsevol `index.md` dins d'un subdirectori de `docs/`.
+
+## Gestió de fitxers
+
+| Comandament | Funció                             | Exemple                            |
+| :------ | :---------------------------------- | :--------------------------------- |
+| `mkdir` | Crear directori                    | `mkdir projects`                   |
+| `touch` | Crear fitxer buit                 | `touch notes.txt`                  |
+| `cp`    | Copiar                              | `cp notes.txt backup.txt`          |
+| `cp -r` | Copiar de forma recursiva (carpeta) | `cp -r projects/ projects-backup/` |
+| `mv`    | Moure (o reanomenar)                 | `mv notes.txt doc.txt`             |
+| `rm`    | Eliminar (esborrar)                   | `rm file.txt`                      |
+| `rmdir` | Eliminar directori **buit**       | `rmdir old-empty-dir`              |
+| `rm -i` | Confirmació interactiva            | `rm -i file.txt`                   |
+
+<Aside type="tip">
+  Si una ruta conté espais, **embolica-la amb cometes**: `mv "Informe
+  Final.txt" informes/`.
+</Aside>
+
+<Aside type="caution">
+  **`rm -rf /`**: El `rm -r` (recursiu) combinat amb `-f` (forçar) és
+ perillós. Esborra carpetes i el seu contingut sense preguntar. Revisa sempre la ruta
+  abans de prémer Enter.
+</Aside>
+
+## Recerca de fitxers
+
+Eines habituals per localitzar fitxers en el sistema:
+
+### `find`
+
+Cerca fitxers en una jerarquia de directoris.
+
+- **Sintaxi**: `find [ruta] [expressió]`
+- **Exemples**:
+  - `find /etc -name"*.conf"`: Cerca tots els fitxers a `/etc` que acabin en `.conf`.
+  - `find . -type f`: Cerca només fitxers en el directori actual.
+  - `find . -type d`: Cerca només directoris.
+  - `find /var/log -size +10M`: Cerca fitxers majors de 10 MB.
+  - `find . -perm 777`: Cerca fitxers amb permisos 777.
+  - `find . -mtime -1`: Cerca fitxers modificats en les últimes 24 hores.
+  - `find . -user alice`: Cerca fitxers el propietari dels quals sigui l'usuari `alice`.
+  - `find . -iname"*.jpg"`: Recerca sense distingir majúscules/minúscules.
+  - `find . -maxdepth 2 -name"*.md"`: Limita la profunditat de recerca.
+  - `find . -not -path "*/node_modules/*`": Exclou directoris no desitjats.
+  - `find . -type f -name"*.log" -exec ls -l {} \;`: Executa una acció per cada resultat.
+
+### `locate`
+
+Troba fitxers per nom usant una base de dades preconstruïda (més ràpid que `find`, però pot estar desactualitzada).
+
+- **Sintaxi**: `locate [patró]`
+- **Actualitzar la BD**: `sudo updatedb` (actualitza la base de dades que utilitza `locate`).
+
+### `which`
+
+Localitza un comandament.
+
+- **Exemple**: `which python` (mostra la ruta de l'executable de Python).
+
+### `whereis`
+
+Localitza el binari, el codi font i les pàgines de manual d'un comandament.
+
+- **Exemple**: `whereis ls`
+
+## `$PATH` i resolució de comandaments
+
+Quan escrius una ordre, el shell busca l'executable en cada directori de `$PATH` (separats per `:`).
+
+- **Veure el teu PATH**: `echo $PATH`
+- **Afegir temporalment un directori**: `export PATH="$HOME/bin:$PATH"`
+- **Fer-ho persistent**:
+  - En `bash`: afegeix l'export a `~/.bashrc` o `~/.profile`
+  - En `zsh`: afegeix-lo a `~/.zshrc`
+
+<Aside type="tip">
+  Si `which` no troba una ordre però l'executable existeix, verifica que el seu
+  directori estigui a `$PATH` o invoca'l amb la**ruta absoluta**
+  (`/usr/local/bin/foo`) o una **ruta relativa** (`./foo`).
+</Aside>
+
+---
+
+## Comprova els teus coneixements
+
+1. Estàs a `/home/juan/docs` i vols copiar el fitxer `informe.txt` directament a la carpeta pare `/home/juan`. ¿Quin és el comandament amb ruta relativa correcte?
+
+<MultipleChoice>
+     <Option>`cp informe.txt /home/juan`</Option>
+     <Option isCorrect>`cp informe.txt ..`</Option>
+     <Option>`cp informe.txt ~/`</Option>
+</MultipleChoice>
+
+2. Has descarregat un script d'internet i necessites trobar un fitxer de log vell que sigui major a 100MB allotjat en algun lloc de `/var/log`. ¿Quin és el comandament més idoni?
+
+<MultipleChoice>
+  <Option>
+    `ls -la /var/log | grep "100MB"`
+  </Option>
+  <Option>
+    `whereis log > 100M`
+  </Option>
+  <Option isCorrect>
+    `find /var/log -size +100M`
+  </Option>
+</MultipleChoice>
+
+3. Vols llistar tots els fitxers, incloent els ocults (que comencen per punt), ordenats per data per veure els més recents al fons de la pantalla. ¿Quina combinació de banderes de `ls` usaries?
+
+<MultipleChoice>
+     <Option isCorrect>`ls -latr`</Option>
+     <Option>`ls -lh`</Option>
+     <Option>`ls -a -hidden`</Option>
+</MultipleChoice>

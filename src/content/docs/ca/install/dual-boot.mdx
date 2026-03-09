@@ -1,0 +1,221 @@
+---
+title: Dual Boot — Linux al costat de Windows
+description: Guia pas a pas per instal·lar Ubuntu Linux al costat de Windows utilitzant el gestor d'arrencada GRUB, conservant ambdós sistemes operatius.
+sidebar:
+  order: 2
+---
+
+import Checklist from "@/components/Checklist.astro";
+import { Aside, Steps } from "@astrojs/starlight/components";
+
+La instal·lació en **dual boot** et permet tenir Windows i Linux al mateix ordinador i triar quin arrencar cada vegada que l'encens. Cap dels dos s'elimina.
+
+> **Temps estimat:** 45-90 minuts depenent de l'ordinador.
+
+---
+
+## Abans de començar — llista de comprovació
+
+Fes aquestes verificacions **abans de tocar res**:
+
+<Checklist key="dual-boot-prereqs">
+- [ ] He fet una **còpia de seguretat de Windows** (o accepto el risc).
+- [ ] Tinc mínim **40 GB lliures al disc** — ho he comprovat a Administració de discs.
+- [ ] Tinc el **USB d'Ubuntu llest** (mínim 8 GB, amb la ISO gravada).
+- [ ] El **carregador està endollat** — no instal·laré amb bateria.
+- [ ] Sé que el meu PC usa **UEFI** (ho he verificat a msinfo32 → "Mode BIOS: UEFI").
+</Checklist>
+
+---
+
+## Pas 1 — Desactivar Fast Startup a Windows
+
+Windows té una funció anomenada "Inici Ràpid" que deixa el disc en un estat semisuspès. Si Linux intenta accedir a aquest disc, pot corrompre dades.
+
+<Steps>
+1. Obre el **Panel de Control → Opcions d'energia**
+2. Fes clic a **"Tria el comportament del botó d'inici/apagat"**
+3. Fes clic a **"Canvia la configuració actualment no disponible"**
+4. **Desmarca** la casella "Activa inici ràpid"
+5. Desa els canvis
+</Steps>
+---
+
+## Pas 2 — Desactivar Secure Boot (en alguns equips)
+
+Secure Boot és una mesura de seguretat UEFI que impedeix arrencar sistemes operatius no signats. Ubuntu modern funciona amb Secure Boot actiu, però en alguns equips dona problemes.
+
+<Aside>
+**Prova primer amb Secure Boot activat.** Només desactiva'l si l'instal·lador d'Ubuntu no arrenca.
+</Aside>
+
+Para desactivarlo si es necesario:
+<Steps>
+1. Entra a la BIOS/UEFI (normalment prement `F2`, `F10`, `Del` o `Esc` en encendre)
+2. Busca la secció **Security** o **Boot**
+3. Localitza **Secure Boot** i canvia-lo a **Disabled**
+4. Desa i surt (`F10` normalment)
+</Steps>
+
+---
+
+## Pas 3 — Crear espai al disc des de Windows
+
+L'instal·lador d'Ubuntu pot redimensionar la partició de Windows, però és més segur fer-ho des de Windows primer.
+
+<Steps>
+1. Prem `Win + X` i obre **Administració de discs**
+2. Fes clic dret a la partició de Windows (`C:`) → **Reduir volum...**
+3. A "Quin espai vols reduir?" introdueix l'espai per a Linux en MB:
+   - Mínim recomanat: `40960` (40 GB)
+   - Còmode: `61440` (60 GB)
+4. Fes clic a **Reduir**
+</Steps>
+
+Veuràs un bloc gris d'"Espai no assignat". És l'espai que usarà Linux. **No toquis aquest espai des de Windows**, l'instal·lador d'Ubuntu l'utilitzarà.
+
+---
+
+## Pas 4 — Arrencar des del USB
+
+<Steps>
+1. Insereix el USB d'Ubuntu
+2. Reinicia l'ordinador
+3. Accedeix al **menú d'arrencada** prement la tecla del teu fabricant en encendre el PC:
+   - **Dell / Acer / Lenovo:** `F12`
+   - **HP:** `F9` o `Esc`
+   - **ASUS:** `F8` o `Esc`
+   - **MSI:** `F11`
+4. Selecciona el USB (apareix com a "USB"o el nom del teu pendrive)
+</Steps>
+
+Si arrenques des del USB correctament, veuràs el menú de GRUB o directe l'instal·lador d'Ubuntu.
+
+---
+
+## Pas 5 — Instal·lar Ubuntu al costat de Windows
+
+### 5.1 — Pantalles inicials
+
+<Steps>
+1. Selecciona el idioma: **Español**
+2. En "Tipo de instalación", elige el teclado que usas
+3. En "Actualizaciones y otro software":
+   - ✅ Instalar software de terceros (drivers wifi, codecs)
+   - La conexión a internet durante la instalación es opcional
+</Steps>
+
+### 5.2 — Tipus d'instal·lació ← **la pantalla més important**
+
+Aquí és on decideixes com s'instal·la:
+
+**Selecciona: "Instal·lar Ubuntu al costat de Windows Boot Manager"**
+
+Aquesta opció apareix automàticament si Ubuntu va detectar Windows al disc i hi ha espai no assignat. L'instal·lador configurarà GRUB perquè puguis triar en arrencar.
+
+> ⚠️ **NO seleccionis "Esborrar disc i instal·lar Ubuntu"** — això eliminaria Windows.
+
+Si no apareix l'opció de dual boot:
+- Selecciona **"Alguna cosa més"** (instal·lació manual) i crea una partició `ext4` a l'espai no assignat amb punt de muntatge `/`
+
+### 5.3 — Lliscant d'espai
+
+Si vas utilitzar l'opció automàtica, apareixerà un lliscant per ajustar quant espai va a cada sistema. Ajusta'l segons el que vas deixar lliure al Pas 3.
+
+### 5.4 — Configuració d'usuari
+
+- **El teu nom:** nom complet
+- **Nom de l'equip:** tria'n un sense espais (ex: `ubuntu-pc`)
+- **Usuari:** en minúscules sense espais (ex: `alumno`)
+- **Contrasenya:** tria'n una de segura i memoritzable
+
+### 5.5 — Instal·lació
+
+Fes clic a **Instal·lar ara** i confirma l'escriptura al disc.
+
+La instal·lació triga entre 15 i 30 minuts. En acabar, l'instal·lador demanarà reiniciar. Retira el USB quan t'ho indiqui.
+
+---
+
+## Pas 6 — El menú GRUB
+
+En encendre l'ordinador ara apareixerà el **menú de GRUB** amb opcions com:
+
+```
+Ubuntu
+Opcions avançades per a Ubuntu
+Windows Boot Manager
+```
+
+Utilitza les fletxes del teclat per seleccionar i prem **Enter**.
+
+- Si no prems res, arrencarà l'opció per defecte (Ubuntu) després de 10 segons
+- Per canviar el sistema per defecte: a Ubuntu, edita `/etc/default/grub` (veure més avall)
+
+---
+
+## Ajustos post-instal·lació
+
+### Canviar el sistema operatiu per defecte
+
+Si vols que Windows arrenqui per defecte en lloc d'Ubuntu:
+
+```bash
+sudo nano /etc/default/grub
+```
+
+Canvia la línia:
+
+```
+GRUB_DEFAULT=0
+```
+
+Pel nombre que correspon a Windows al menú GRUB (compta des de 0). Si Windows és la tercera opció, posa `GRUB_DEFAULT=2`.
+
+Aplica el canvi:
+
+```bash
+sudo update-grub
+```
+
+### Sincronitzar el rellotge entre Windows i Linux
+
+Windows guarda l'hora a la BIOS en hora local. Linux la guarda en UTC. Això fa que el rellotge canviï en canviar de sistema. Solució: fes que Linux també utilitzi hora local:
+
+```bash
+timedatectl set-local-rtc 1 --adjust-system-clock
+```
+
+### Accedir als fitxers de Windows des d'Ubuntu
+
+Ubuntu munta les particions Windows automàticament. Apareixen a l'explorador de fitxers com **"Disc de X GB"** o a `/media/teuusari/`.
+
+---
+
+## Resolució de problemes freqüents
+
+| Problema | Causa probable | Solució |
+|---------|---------------|---------|
+| GRUB no apareix, arrenca Windows directe | UEFI ignora GRUB | Entra a la BIOS, canvia l'ordre d'arrencada: posa "ubuntu" primer |
+| Ubuntu no detecta Windows a la instal·lació | Fast Startup actiu | Torna al Pas 1 des de Windows i desactiva'l |
+| El wifi no funciona a Ubuntu | Controladors propietaris | Connecta per cable i executa `sudo ubuntu-drivers autoinstall` |
+| Error "no es pot accedir a la partició de Windows" | Fast Startup actiu | Desactiva Fast Startup a Windows i reinicia a Windows abans d'accedir des d'Ubuntu |
+| GRUB desapareix després d'una actualització de Windows | Windows va sobreescriure el bootloader | Arrenca des del USB Ubuntu → selecciona "Try Ubuntu" → utilitza Boot-Repair |
+
+---
+
+## Vols desinstal·lar Linux i tornar només a Windows?
+
+<Steps>
+1. Arrenca a Windows
+2. Obre **Administració de discs**
+3. Elimina les particions de Linux (les que no tenen lletra d'unitat)
+4. Expandeix la partició de Windows sobre l'espai alliberat
+5. Per restaurar el bootloader de Windows (si GRUB impedeix arrencar):
+   ```cmd
+   bootrec /fixmbr
+   bootrec /fixboot
+   bootrec /rebuildbcd
+   ```
+   Executa des de la consola de recuperació de Windows (arrenca des del USB de Windows → Reparar l'equip → Símbol del sistema).
+</Steps>

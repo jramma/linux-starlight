@@ -1,0 +1,143 @@
+---
+title: 7.1 Principis de Seguretat
+description: La filosofia Zero Trust. Protegeix el teu servidor fins i tot del contacte físic afegint una contrasenya al carregador GRUB.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entendràs el Principi del Privilegi Mínim.
+  - Sabràs per què iniciar sessió com a `root` està prohibit corporativament.
+  - Aprendràs la tècnica LFCS per assegurar físicament el servidor posant-li un cadenat a **GRUB**.
+</PreCheck>
+
+## 1. La Filosofia "Zero Trust" (Confiança Zero)
+
+En el passat, la seguretat consistia a posar un tallafocs al router de l'empresa, i assumir que tots els ordinadors de dins de l'oficina (la Intranet) eren amics de total i absoluta confiança.
+Avui dia, un empleat endolla un USB infectat al seu portàtil de RRHH, i el virus viatja per la Intranet amiga assaltant lliurement tots els servidors de bases de dades de l'empresa sense oposició.
+
+**Zero Trust** significa que el teu servidor Debian no confia ni en internet, ni en els altres servidors de l'oficina del costat, ni en els propis usuaris que tenen compte a la màquina.
+
+### Regla 1: El Principi del Mínim Privilegi
+
+Si crees un compte d'usuari perquè un humà faci còpies de seguretat de la carpeta `/var/www/`, aquest usuari hauria de rebre permís de lectura, però **no** permís d'escriptura, ni permisos per entrar a les carpetes de correus dels seus companys.
+Si hackegen la contrasenya d'aquest usuari humà, el hacker només podrà llegir la web, mitigant en un 99% el desastre.
+
+### Regla 2: La Mort de l'inici de sessió Root
+
+Mai, en tot aquest curs de 30 hores, se t'ha demanat obrir el teu PuTTY / Terminal i iniciar sessió escrivint d'usuari `root`.
+Als hackers els encanten els sistemes Linux que permeten loguejar-se com a administrador per SSH, perquè ja saben que el nom d'usuari és `root`, així que dediquen tots els seus diccionaris d'atac automàtic a endevinar únicament la teva contrasenya.
+Al iniciar sessió amb un usuari normal com `jramma` i emprar `sudo` intermitentment, forces el hacker a haver d'endevinar **dos** secrets letals: el teu nom d'usuari i la teva contrasenya per aconseguir una bretxa.
+
+---
+
+## 2. Defensa Física Extrema (Cadenat a GRUB)
+
+Recordes el **Mòdul 4: Arrencada**? Allà et vaig ensenyar a salvar la teva pròpia vida: si oblidaves la contrasenya del servidor, a la pantalla de GRUB premies la tecla `e`, injectaves `init=/bin/bash` i Linux t'obria un terminal màgic de Root perdonant-te totes les contrasenyes.
+
+Aquesta tàctica, encara que és màgia pura per a Sysadmins legals que obliden claus, és un **Atac Físic Crític** si l'usa un vigilant jurat de la teva empresa al qual fan fora a les 3:00 am, se cola a la sala de servidors armat amb un teclat vell de 5 dòlars, i et rebenta el disc dur usant aquest mateix vell truc de l' `init=/bin/bash`.
+
+Per aprovar el rescat però blindar l'assalt físic a l'examen LFCS, **cal posar-li una contrasenya al gestor d'arrencada GRUB**.
+
+### 1. Generar el Hash Impossible
+
+GRUB és un programa tonto sense base de dades. Necessita desar la contrasenya xifrada en un fitxer.
+
+```bash
+# Escriu aquest comandament i tecleja una clau que mai oblidaràs
+grub-mkpasswd-pbkdf2
+```
+
+La consola t'escopirà una clau gegantina sorprenentment llarga xifrada hiper-segura que comença típicament per `grub.pbkdf2.sha512...` copia-la al teu porta-retalls.
+
+### 2. Injectar el Hash a la Configuració
+
+```bash
+# Anem als scripts de forja del menú de GRUB
+sudo nano /etc/grub.d/40_custom
+```
+
+Al final del fitxer, a sota de totes les línies, afegeix aquestes dues, establint l'usuari general històric `root` (no confondre amb el del kernel, això és només local de grub) i enganxant la teva cadena gegant generada abans.
+
+```text
+set superusers="root"
+password_pbkdf2 root grub.pbkdf2.sha512...[ENGANTXALATEVAAAAAAAAAAAAAAAAAAALARGACLAAU AQUI]...
+```
+
+### 3. Forjar l'Espasa
+
+Com vam aprendre al Mòdul 4, editar coses de grub en fitxers de text no fa literalment res al gestor binari ubicat al metall. Actualitza el binari:
+
+```bash
+sudo update-grub
+```
+
+¡Llest! A partir de demà, si engeguem el servidor i seleccionem arrencar "Debian", el PC ens deixarà continuar amb normalitat en silenci. **PERÒ**, si algú maliciós (o tu mateix) decideix al menú pressionar la tecla `e` d' "Editar" en un intent de manipular i injectar un bash d'emergència sense cadenats, **GRUB es negarà** exigint-li escriure el súper usuari (`root`) i la súper contrasenya física que vas indicar, aturant el hacker local en sec.
+
+---
+
+## Comprova els teus coneixements
+
+1. El teu gerent vol justificar una partida de pressupost per aïllar els servidors en una "VLAN" apartada dels ordinadors del departament de Recursos Humans. Et pregunta per què es fa això si ambdós departaments estan sota el mateix teulada, i afirmes que és un mecanisme derivat de la filosofia Zero Trust. ¿En què consisteix purament el model Zero Trust davant les xarxes internes a l'hora d'aixecar murs?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El vell paradigma confiava cecament en qualsevol connexió originada
+       "dins" de l'edifici. Zero Trust destrueix les zones segures dictant que
+       tota màquina és un enemic potencial infectat, pel que tot tràfic
+       intern creuat s'ha d'avaluar, limitar, aïllar i repel·lir amb
+       tallafocs com si d'internet es tractés des del nivell 0.
+     </Option>
+     <Option>
+       Consisteix a forçar a canviar de contrasenya cada 15 dies eliminant el
+       risc.
+     </Option>
+     <Option>
+       És una política per usar antivirus Open Source a Windows en lloc de
+       defendre servidors.
+     </Option>
+   </MultipleChoice>
+
+2. Hem protegit fèrriament el nostre servidor corporatiu generant un hash invencible de 512 bits llançant el generador `grub-mkpasswd-pbkdf2`. Acte seguit, hem obert com a sysadmins el generador estàtic personalitzable annexant la clàusula cadenat a l'inici editant `nano /etc/grub.d/40_custom`. Un cop desat el fitxer estem satisfets i ens anem a l'Starbucks a seguir treballant. Un noi de manteniment del banc ens la torna a embolicar al cap de mitja hora colant-se físicament al servidor usant el truc de la tecla `e`. ¡Has fallat! ¿Per què?
+
+   <MultipleChoice>
+     <Option>
+       L'algorisme hash pbkdf2 no és segur contra teclats USB genèrics.
+     </Option>
+     <Option>
+       Perquè falta incloure el fitxer estàtic a l' `/etc/fstab`
+     </Option>
+     <Option isCorrect>
+       Editar la recepta temporal a la branca de fitxers `grub.d` o a
+       `default/grub` en memòria i text humà... no altera gens el binari
+       assemblador que despatxa la fase del carregador BIOS d'arrencada dura que
+       resideix a les primeres cel·les del disc. Se t'ha oblidat estampar, soldar i
+       compilar la configuració perquè el disc dur la reconegui llançant el
+       vital i irrevocable comandament `sudo update-grub`.
+     </Option>
+   </MultipleChoice>
+
+3. Coneixes profundament el Principi de Mínim Privilegi. Has de concedir permisos a un Analista de Dades acabat d'arribar perquè comprovi els logs generats en brut a la ruta `/var/log/app_financera/`. Un vell administrador et diu "és súper fàcil, fica-li a aquest usuari els permisos complets del grup root i així podrà bussejar per totes i qualsevol de les carpetes de log hagudes i per haver sense molestar-te el cap de setmana per falta de permisos". Avalua aquesta aserció segons els principis Sysadmin LFCS.
+   <MultipleChoice>
+     <Option isCorrect>
+       Aquesta aserció és abominable i contrària a qualsevol regulació de
+       seguretat global (com la ISO 27001). Donar-li permisos holístics
+       superiors a un usuari sobre "totes i qualsevol de les carpetes" en
+       nom de la vagància, atorga accés col·lateral, incrementa
+       exponencialment el risc atòmic en cas de robatori d'aquest compte i trenca
+       frontalment el Mínim Privilegi de garantir l'Accés Just i
+       Necessari (Just In Time - Només a la seva aplicació en específic).
+     </Option>
+     <Option>
+       És l'opció temporal òptima perquè AppArmor encapsularà i aturarà a
+       root també si fa coses dolentes.
+     </Option>
+     <Option>
+       Està perfecte i accelerarà les tasques de Big Data de l'equip.
+     </Option>
+   </MultipleChoice>

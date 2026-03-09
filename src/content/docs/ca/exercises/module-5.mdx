@@ -1,0 +1,219 @@
+---
+title: "Pràctica 5 — Emmagatzematge i LVM"
+description: Configura un disc addicional amb LVM des de zero, crea volums lògics, formateja particions i configura el muntatge automàtic.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="tip" title="Abans de començar">
+Per a aquesta pràctica necessites afegir un segon disc a la teva VM. El professor ho farà per tu a VirtualBox abans de la sessió, o segueix el Pas 0 si no el tens.
+</Aside>
+
+---
+
+## Pas 0 — Afegir un segon disc a la VM (si no està fet)
+
+Fes això amb la **VM apagada**:
+
+1. A VirtualBox, selecciona la teva VM i obre **Configuració → Emmagatzematge**
+2. Fes clic a la **icona del disc amb un +** al costat del controlador SATA
+3. Selecciona **Crear un nou disc** → VDI → Reservat dinàmicament → **10 GB**
+4. Fes clic a **Finalitza** i després a **OK**
+5. Arrenca la VM
+
+Verifica que el disc apareix al sistema:
+
+```bash
+lsblk
+```
+
+Hauries de veure `/dev/sda` (disc del sistema) i `/dev/sdb` (disc nou, buit, sense particions).  
+Si veus `/dev/nvme0n1` en lloc de `sda`, el nou disc serà `/dev/sdb` igualment.
+
+---
+
+## Context — Què és LVM?
+
+LVM (Logical Volume Manager) afegeix una capa d'abstracció entre els discos físics i els sistemes de fitxers. Et permet:
+
+- Redimensionar particions sense apagar el servidor
+- Combinar diversos discos en un únic espai
+- Ampliar l'emmagatzematge afegint discos en calent
+
+Hi ha tres conceptes clau:
+
+```
+Disc físic (/dev/sdb)
+    ↓ pvcreate
+Physical Volume (PV) — el disc inicialitzat per a LVM
+    ↓ vgcreate
+Volume Group (VG) — pool d'emmagatzematge (pot tenir diversos PVs)
+    ↓ lvcreate
+Logical Volume (LV) — equivalent a una partició flexible
+    ↓ mkfs / mount
+Sistema de fitxers muntat i accessible
+```
+
+---
+
+## Tasca 1 — Instal·lar les eines LVM
+
+```bash
+sudo apt update && sudo apt install -y lvm2
+
+# Verifica que les eines estan disponibles
+pvs --version
+```
+
+---
+
+## Tasca 2 — Crear el Physical Volume
+
+```bash
+# Inicialitza el disc /dev/sdb per al seu ús amb LVM
+sudo pvcreate /dev/sdb
+
+# Verifica el resultat
+sudo pvs
+# Has de veure /dev/sdb a la llista amb ~10 GiB de capacitat
+```
+
+Si `pvcreate` demana confirmació perquè el disc té dades, escriu `y` per confirmar.
+
+---
+
+## Tasca 3 — Crear el Volume Group
+
+```bash
+# Crea el Volume Group 'datos-vg' usant el PV
+sudo vgcreate datos-vg /dev/sdb
+
+# Verifica el resultat
+sudo vgs
+# Veuràs datos-vg amb ~10 GiB disponibles
+```
+
+---
+
+## Tasca 4 — Crear el Logical Volume
+
+```bash
+# Crea un LV de 8 GB anomenat 'proyectos-lv' dins del VG
+sudo lvcreate -L 8G -n proyectos-lv datos-vg
+
+# Verifica el resultat
+sudo lvs
+# Veuràs proyectos-lv amb 8 GiB
+
+# El LV és accessible com a dispositiu:
+ls -la /dev/datos-vg/proyectos-lv
+```
+
+---
+
+## Tasca 5 — Crear el sistema de fitxers i muntar-lo
+
+```bash
+# Formateja el LV amb ext4
+sudo mkfs.ext4 /dev/datos-vg/proyectos-lv
+
+# Crea el punt de muntatge
+sudo mkdir -p /srv/proyectos
+
+# Munta el LV
+sudo mount /dev/datos-vg/proyectos-lv /srv/proyectos
+
+# Verifica que està muntat
+df -h /srv/proyectos
+# Ha de mostrar ~7.9 GB disponibles a /srv/proyectos
+```
+
+Prova que pots escriure-hi:
+
+```bash
+sudo touch /srv/proyectos/prueba.txt
+ls /srv/proyectos/
+```
+
+---
+
+## Tasca 6 — Muntatge automàtic amb /etc/fstab
+
+El muntatge actual desapareixeria en reiniciar. Perquè sigui permanent, afegeix una entrada a `/etc/fstab`.
+
+**IMPORTANT:** usa l'UUID del LV, no el nom del dispositiu. L'UUID mai canvia encara que afegeixis discos:
+
+```bash
+# Obtén l'UUID del LV
+sudo blkid /dev/datos-vg/proyectos-lv
+```
+
+Copia el valor `UUID="xxxxx-xxxx-..."` (amb les cometes).
+
+```bash
+# Edita /etc/fstab
+sudo nano /etc/fstab
+```
+
+Afegeix aquesta línia al final (substitueix l'UUID pel teu):
+
+```
+UUID=tu-uuid-aqui  /srv/proyectos  ext4  defaults,noatime  0  2
+```
+
+<Aside type="note" title="Què signifiquen els últims dos números?">
+- El primer `0` → no es fa dump (backup clàssic) d'aquesta partició
+- El `2` → es comprova amb `fsck` en l'arrencada, però després del disc arrel (que és `1`)
+</Aside>
+
+Verifica que l'entrada de fstab és correcta abans de reiniciar:
+
+```bash
+# Desmunta primer
+sudo umount /srv/proyectos
+
+# Munta tot el que apareix a fstab
+sudo mount -a
+
+# Si no hi ha errors, verifica que s'ha muntat
+df -h /srv/proyectos
+```
+
+Si hi ha un error a fstab, el sistema pot no arrencar. Si alguna cosa surt malament, edita el fstab i elimina la línia.
+
+---
+
+## Tasca 7 — Verificar el muntatge després de reiniciar (opcional)
+
+```bash
+sudo reboot
+```
+
+Després de reconnectar per SSH:
+
+```bash
+df -h /srv/proyectos
+# S'ha de muntar automàticament sense fer res
+```
+
+---
+
+## 📤 Bloc de lliurament
+
+```bash
+echo "=== LLIURAMENT PRÀCTICA 5 ===" && \
+echo "" && \
+echo "--- LVM: resum ---" && \
+sudo pvs && sudo vgs && sudo lvs && \
+echo "" && \
+echo "--- Muntatge ---" && \
+df -h /srv/proyectos && \
+echo "" && \
+echo "--- fstab ---" && \
+grep proyectos /etc/fstab && \
+echo "" && \
+echo "--- lsblk ---" && \
+lsblk -f | grep -A3 sdb
+```

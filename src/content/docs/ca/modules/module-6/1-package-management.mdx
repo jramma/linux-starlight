@@ -1,0 +1,165 @@
+---
+title: 6.1 Repositoris i APT
+description: L'ecosistema de programari a Debian. Diferències entre dpkg, apt, i l'edició manual de sources.list.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Comprendràs la filosofia de seguretat extrema dels "Repositoris" oficials.
+  - Dominaràs el cirurgià de baix nivell `dpkg` per instal·lar fitxers locals solts.
+  - Sabràs utilitzar el gestor d'alt nivell `apt` per resoldre inferns de dependències.
+  - Aprendràs a amputar programari netejant la configuració (`purge`).
+  - Auditaràs orígens externs editant `/etc/apt/sources.list`.
+</PreCheck>
+
+## 1. La Filosofia del Repositori
+
+A Windows o macOS, la norma és obrir el navegador, cercar "Baixar Firefox", entrar a una web aleatòria, baixar un `.exe` o `.dmg` i resar perquè no tingui virus.
+A Linux empresarial, aquesta pràctica està **estrictament desaconsellada**.
+
+El programari a Debian es baixa des d'immenses biblioteques centrals verificades criptogràficament per la comunitat anomenades **Repositoris**. El cicle de vida del programari passa per dues eines que tot LFCS ha de dominar: `dpkg` (el cirurgià local) i `apt` (el cercador global amb internet).
+
+---
+
+## 2. El Cirurgià Cec: `dpkg`
+
+Debian Package (dpkg) és l'eina fonamental de baix nivell. Només serveix per manipular fitxers d'instal·lació empaquetats (amb l'extensió `.deb`) que ja tinguis físicament desats al teu disc dur.
+
+Imagina que algú et passa un pendrive amb el fitxer `google-chrome.deb`.
+
+```bash
+# Instal·lar un paquet .deb local
+sudo dpkg -i google-chrome.deb
+
+# Llistar absolutament tot el programari que hi ha a la teva màquina
+dpkg -l
+```
+
+**La Ceguera de DPKG**:
+`dpkg` és estúpid. Si intentes instal·lar Chrome però el teu servidor no té instal·lada la llibreria gràfica de fonts `libfontconfig`, `dpkg` col·lapsarà escopint un error gegant vermell anomenat **"Fallada de Dependències"** i deixarà la instal·lació a mitges (trencada). Com que `dpkg` no té internet, no sap d'on baixar-se `libfontconfig` per arreglar-ho.
+
+Per solucionar això van inventar `apt`.
+
+---
+
+## 3. El Déu del Programari: `apt` (Advanced Package Tool)
+
+`apt` envolta a `dpkg`. Quan uses `apt`, aquest es connecta a internet, cerca al repositori oficial de Debian, baixa el programa, **baixa automàticament tots els centenars de requisits i llibreries que aquest programa necessiti (resolució de dependències)**, i finalment els passa a `dpkg` llistos en safata de plata perquè els instal·li sense errors.
+
+### El cicle de vida diari d'un Sysadmin amb APT
+
+**1. Sincronitzar l'Índex Diàriament (`update`)**
+`apt` té una llibreta local amb els noms del programari que existeix. Abans d'instal·lar res, cal actualitzar aquesta llibreta perquè sàpiga si avui ha sortit una versió nova.
+
+```bash
+sudo apt update
+```
+
+**2. Descobrir Programari (`search` / `show`)**
+
+```bash
+# Cercar programes relacionats amb bases de dades
+apt search mariadb
+
+# Veure la fitxa tècnica profunda d'un programa abans d'instal·lar-lo
+apt show nginx
+```
+
+**3. Instal·lar (`install) i Actualitzar (upgrade`)**
+
+```bash
+# Instal·lar un programa (resol dependències sol)
+sudo apt install nginx
+
+# Actualitzar TOTS els programes del teu servidor a la versió d'avui
+sudo apt upgrade
+```
+
+---
+
+## 4. L'Art d'Eliminar Programari
+
+Si executes `sudo apt remove nginx`, el programa es desinstal·la, sí. **Però deixa enrere al disc dur tots els fitxers de configuració (`/etc/nginx`) intactes** per si te'n penedeixes "l'any que ve" i el tornes a instal·lar.
+
+En producció, sovint volem eliminar les empremtes absolutes d'un programari mal configurat per començar totalment de zero. Per a amputacions totals, mai usem _remove_, usem el Purgant:
+
+```bash
+# Purga: Desinstal·la i addicionalment destrueix tota empremta de configuració.
+sudo apt purge nginx
+
+# Escombrat general: Un comandament vital que audita si han quedat llibreries òrfenes
+# que es van baixar fa mesos per a un programari que ja vas esborrar, i les elimina per alliberar disc dur.
+sudo apt autoremove
+```
+
+---
+
+## 5. Hackejant els Orígens (`sources.list`)
+
+"¿I de quines webs es baixa l'apt les seves coses amagades?"
+Tot resideix en un diminut i perillós fitxer de text. Si l'buides per error, `apt` morirà i creurà que no existeix l'internet.
+
+```bash
+sudo nano /etc/apt/sources.list
+```
+
+Dins veuràs línies semblants a aquesta:
+`deb http://deb.debian.org/debian/ bookworm main contrib non-free`
+
+- **`deb`**: Significa que d'aquí baixem executables compilats llistos per usar (si posés `deb-src`, baixaria només codi font per a programadors).
+- **`bookworm`**: És el nom en clau de la teva versió de Debian.
+- **`main contrib non-free`**: Com que Debian és radical amb el "Programari Lliure", per defecte un servidor nou només baixa programari Open Source (`main`). Si vols poder baixar drivers propietaris (per exemple d'Nvidia), has d'entrar a aquest fitxer i escriure a mà la paraula `non-free-firmware` al final de la línia, desar i executar `sudo apt update`.
+
+---
+
+## Comprova els teus coneixements
+
+1. Un company et dóna un fitxer baixat d'internet anomenat `teams-linux.deb`. L'executes amb `sudo dpkg -i teams-linux.deb` i immediatament el terminal vomita línies vermelles indicant "Unmet dependencies" arruïnant la instal·lació. El teu company et diu que no et preocupis, que usis un altre comandament màgic d' `apt` que escaneja les catàstrofes de `dpkg` instal·lades a mitges, viatja a internet, baixa les dependències que faltaven i parcheja la instal·lació trencada sanant-la completament. Quin és aquest comandament?
+
+   <MultipleChoice>
+     <Option>`sudo apt upgrade --force`</Option>
+     <Option isCorrect>
+       El mandat sanador: `sudo apt install -f` (Fix-broken). Aquest invaluable
+       paràmetre revisa el cau de paquets trencats caiguts de `dpkg`, extrau les
+       peces faltants d'internet i les alinea.
+     </Option>
+     <Option>`sudo dpkg --heal`</Option>
+   </MultipleChoice>
+
+2. Editant el fitxer `/etc/apt/sources.list` has substituït la paraula "bookworm" (Debian 12) per "trixie" (l'inestable i futur Debian 13). Has desat el fitxer. Emocionat, als deu segons escrius `sudo apt install firefox` esperant tenir la versió experimental moderna d'aquest Firefox, però el servidor t'instal·la la vella que ja tenies ahir. Per què va fallar el teu experiment?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Se't va oblidar l'enllaç de sincronització vital: Executar `sudo apt
+       update`. Editar el fitxer sources.list és inútil si no li ordenes al
+       índex local d'APT que viatgi a aquesta nova URL escrita i es baixi el
+       nou catàleg de productes actualitzat.
+     </Option>
+     <Option>
+       Perquè havies d'haver usat `dpkg` al tractar-se de branques experimentals.
+     </Option>
+     <Option>
+       Perquè vas canviar a "trixie" en lloc de canviar "main" per "non-free".
+     </Option>
+   </MultipleChoice>
+
+3. Existeix un servei web crític de backend que està fallant per estar mal configurat a `/etc/`. El teu cap t'ordena "desinstal·lar-lo i tornar-lo a instal·lar completament net i de fàbrica" per esborrar les empremtes del desastre. Fas un `sudo apt remove backend` per després fer-li un `sudo apt install backend`. El programa arrenca i... ¡torna a fallar usant la configuració vella! Quin ordre vas errar?
+   <MultipleChoice>
+     <Option isCorrect>
+       T'has equivocat amputant. La clàusula `remove` preserva egoistament
+       tots els fitxers del directori /etc/ per disseny per no enfadar els
+       sysadmins en desinstal·lacions accidentals. Per matar el seu codi I la
+       seva configuració de fàbrica en un sol holocaust havies d'usar
+       forçosament `sudo apt purge backend`.
+     </Option>
+     <Option>
+       Havies d'haver reiniciat el Pc amb Systemd durant l'intermedi.
+     </Option>
+     <Option>Vas oblidar usar --hard al remove.</Option>
+   </MultipleChoice>

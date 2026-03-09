@@ -1,0 +1,54 @@
+---
+title: 4.5 Muntatges Persistents i NFS
+description: Fer que els muntatges sobrevisquin a un reinici.
+sidebar:
+  order: 6
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+## /etc/fstab
+
+Els muntatges de línia de comandaments (`sudo mount`) desapareixen quan reinicies. Per fer-los permanents, edita `/etc/fstab`.
+
+<Aside type="danger">
+  Un error a `/etc/fstab` pot causar que el teu sistema falli en arrencar.
+  Verifica sempre abans de reiniciar!
+</Aside>
+
+### Millor Pràctica: Utilitzar UUIDs
+
+Els noms de dispositiu (`/dev/sdb1`) poden canviar si desconnectes/connectes discs. Els **UUIDs** (Identificidors Únics Universals) no canvien mai.
+
+1. Trobar UUID: `sudo blkid`
+2. Editar fitxer: `sudo nano /etc/fstab`
+
+**Format**:
+`<UUID Dispositiu> <Punt Muntatge> <Sistema Fitxers> <Opcions> <Bolcat> <Pas>`
+
+**Exemple**:
+
+```text
+UUID=1234-abcd-5678  /mnt/data  ext4  defaults  0  2
+```
+
+1. **Verificar**: executa `sudo mount -a`. Si no dóna errors, estàs segur.
+
+## Sistema de Fitxers en Xarxa (NFS)
+
+Accedir a l'emmagatzematge a través de la xarxa.
+
+**Configuració del Client**:
+
+1. Instal·lar comuns: `sudo apt install nfs-common` (Ubuntu) o `sudo dnf install nfs-utils` (Rocky).
+2. Provar muntatge:
+
+   ```bash
+   sudo mount ip_servidor:/recurs/compartit /mnt/punt_muntatge_local
+   ```
+
+3. Afegir a `fstab` per a persistència:
+
+   ```text
+   ip_servidor:/recurs  /mnt/local  nfs  defaults  0  0
+   ```

@@ -1,0 +1,173 @@
+---
+title: 8.1 L'Amfitrió (Nginx)
+description: Desplega el motor web asintrònic líder al món. Configura Virtual Hosts i obre forats a la teva muralla UFW.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entendràs per què Nginx domina sobre el vell Apache.
+  - Instal·laràs i orquestraràs el Dimoni Web usant `systemctl`.
+  - Sabràs obrir la frontera 80/tcp permanentment a UFW.
+  - Crearàs un bloc "Server" (`VirtualHost`) corporatiu a `/etc/nginx/sites-available`.
+</PreCheck>
+
+## 1. El Triomf de Nginx
+
+Històricament, el rei d'internet era "Apache". Apache funcionava contractant un "cambrer" (Procés) per cada client que entrava a la teva pàgina web. Si entraven 10.000 clients alhora (Efecte Slashdot), Apache contractava 10.000 cambrers, rebentant literalment la memòria RAM del teu servidor i forçant un reinici letal.
+
+**Nginx** és un servidor asintrònic impulsat per "Esdeveniments". Utilitza un sol cambrer matemàtic (Worker) capaç de servir àgilment les comandes de 10.000 clients simultanis sense suar ni parpellejar i consumint 3 mísers Megabytes de RAM. Per això Nginx és l'estàndard daurat al núvol modern LFCS.
+
+### Desplegament del Dimoni
+
+```bash
+# Sincronitzem orígens i instal·lem
+sudo apt update
+sudo apt install nginx
+
+# Ens assegurem que arrenqui si el PC pateix una apagada
+sudo systemctl enable --now nginx
+
+# Comprovem el seu estat viu i llegim els seus últims 10 logs
+sudo systemctl status nginx
+```
+
+---
+
+## 2. Perforant la Muralla (Integrant Mòdul 7)
+
+Nginx ja està encès i intentant servir la pàgina web de benvinguda a l'univers exterior al port 80... **però el nostre Tallafocs UFW de la classe anterior ho està denegant a nivell Kernel**.
+
+Hem de crear el forat quirúrgic permanent a la muralla per habilitar el tràfic d'internet:
+
+```bash
+# Permetem peticions al port estandarditzat Web (HTTP)
+sudo ufw allow 80/tcp
+
+# Reiniciem l'armadura
+sudo ufw reload
+```
+
+Si ara vas al teu navegador i tecleges la IP del teu servidor (`http://tu-ip-publica`), veuràs un gegantí cartell blanc dictaminant "Welcome to nginx!".
+
+---
+
+## 3. Allotjament Múltiple (Virtual Hosts)
+
+El cartell de benvinguda és bonic, però les empreses no paguen servidors per tenir 1 sola pàgina web. Un sol servidor Debian amb Nginx pot allotjar _infinites pàgines web diferents_ posseint una IP única, discernint intel·ligentment la web a despatxar depenent del nom de domini (URL) que hagi escrit el client a la seva barra de Google Chrome.
+
+A aquesta màgia divisòria se la coneix com a "Blocs Server" o Host Virtual.
+
+Anem a crear la casa de la nostra primera web fictícia anomenada `mi-empresa.com`.
+
+### 1. Forjant la carpeta de documents
+
+```bash
+# Creem la carpeta esquelet per als HTMLs
+sudo mkdir -p /var/www/mi-empresa.com/html
+
+# Li regalem la propietat de la carpeta a l'usuari fosc mestre web (Mòdul 2 chown)
+sudo chown -R www-data:www-data /var/www/mi-empresa.com/html
+
+# Escrivim un diminut HTML de prova
+echo "<h1>La web de l'empresa</h1>" | sudo tee /var/www/mi-empresa.com/html/index.html
+```
+
+### 2. Ensenyar-li els plànols a Nginx
+
+Nginx té una carpeta on desa totes les webs "disponibles". Hem de crear-li un perfil:
+
+```bash
+sudo nano /etc/nginx/sites-available/mi-empresa.com
+```
+
+Dins, escriurem el seu perfil estricte indicant-li a quin domini atén i en quina carpeta del disc dur resideix.
+
+```nginx
+server {
+    listen 80;
+    server_name mi-empresa.com www.mi-empresa.com;
+
+    root /var/www/mi-empresa.com/html;
+    index index.html;
+}
+```
+
+### 3. L'Enllaç Simbòlic i el Reinici (Integrant Mòdul 2)
+
+Nginx separa elegantment els llocs "Disponibles" (`sites-available`) dels que de debò estaran "Encesos al públic" (`sites-enabled`).
+Per encendre la nostra web, Sysadmin LFCS mai copia el fitxer. Crea un Accés Directe Inqüestionable (Enllaç Simbòlic suau `ln -s`) apuntant des de la carpeta de disponibilitat cap a la carpeta d'encesa.
+
+```bash
+# Forjant l'enllaç simbòlic
+sudo ln -s /etc/nginx/sites-available/mi-empresa.com /etc/nginx/sites-enabled/
+
+# El comandament VITAL: Nginx revisa les teves faltes d'ortografia a nano
+sudo nginx -t
+
+# Si el test diu "Syntax OK", recarreguem Nginx pacíficament en calent
+sudo systemctl reload nginx
+```
+
+Felicitats. Acabes d'allotjar una web professional nivell LFCS.
+
+---
+
+## Comprova els teus coneixements
+
+1. Has editat febrilment el Virtual Host /etc/nginx/sites-available/banc.com canviant-li el server_name a un domini més llarg. Has desat el fitxer amb Nano. Sabent que qualsevol falta d'espaiat o una falta de punt i coma `;` al seu interior rebentarà Nginx matant els altres dominis durant el reinici, i el teu cap t'està mirant. Quin comandament estàs forçat i OBLIGAT a executar abans d'atrevir-te a reiniciar els dimonis web a Producció?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El Validador Estàtic: Mai es reinicia Nginx cecament. Executarem
+       en sec `sudo nginx -t` (Test). Nginx no es reiniciarà, però escanejarà la
+       sintaxi de tots els fitxers .conf, verificarà que els directoris root
+       existeixen i, si tot és perfecte, t'escopirà un alleviador `syntax is ok /
+       test is successful`, donant-te llum verda absoluta al reinici amb garanties
+       de no trencar el negoci.
+     </Option>
+     <Option>`sudo systemctl test nginx`</Option>
+     <Option>`sudo ufw status`</Option>
+   </MultipleChoice>
+
+2. Hem ficat una plantilla bellíssima corporativa de Bootstrap plena de css i imatges al flamant Document Root `/var/www/superempresa/html`. Però al entrar des del navegador, en comptes de veure la web, obtenim un gegantí codi HTTP `"403 Forbidden"` (Prohibit el pas). Sabent que tu vas iniciar sessió com a root, vas crear la carpeta com a root i vas ficar els fitxers per SSH com a root... Per què el motor asintrònic Nginx s'oposa obstinadament a llegir i despatxar a l'exterior el contingut d'aquella carpeta a l'internauta?
+
+   <MultipleChoice>
+     <Option>
+       Perquè Nginx requereix que converteixis tots els HTMLs a executables amb
+       `chmod +x`.
+     </Option>
+     <Option isCorrect>
+       Col·lisió de la Política Discrecional (DAC). Tu vas crear la carpeta i els
+       htmls, per tant l'amo dels fitxers és `root` o el teu usuari
+       personal. PERÒ el dimoni treballador `nginx` a Debian NO s'executa com a
+       root (està prohibit), s'executa operativament assumint la inofensiva
+       identitat del fantasma `www-data`. Nginx (`www-data`) va anar a llegir la
+       carpeta de root mancant de privilegis per llegir els fitxers d'un
+       usuari superior i va ser rebutjat. Has de regalar-li la tutela estricta
+       a Nginx tirant `chown -R www-data:www-data /var/www/superempresa/html`.
+     </Option>
+     <Option>
+       El Tallafocs UFW et va tallar la lectura per culpa de no tenir la regla ssh
+       activada.
+     </Option>
+   </MultipleChoice>
+
+3. Coneixes profundament l'anatomia de Nginx a Debian i la seva estructura binària de carpetes al `/etc/`. Se t'ordena "apagar temporalment" la web principal (pepito.com) perquè està en manteniment per uns ajustos de 2 hores. Podries esborrar el seu fitxer de configuració amb `rm`, però el necessites després. Per realitzar una apagada professional LFCS en aquesta arquitectura... Quin fitxer (o tipus de fitxer) de quina ruta exacta eliminaries procedint després a fer `nginx -t` i un `systemctl reload`?
+   <MultipleChoice>
+     <Option>Esborro /etc/nginx/sites-available/pepito.com</Option>
+     <Option>Esborro el /var/www/pepito/html/index.html</Option>
+     <Option isCorrect>
+       La purga de l'Enllaç. Tallo netament l'accés directe suau esborrant
+       `rm /etc/nginx/sites-enabled/pepito.com`. Al fer això, Nginx desconeix
+       la web en el següent reinici. El fitxer mestre original de
+       configuració es manté inqüestionable, segur i emmagatzemat apagat a
+       `sites-available` llest per encendre's de nou quan se li fabriqui el seu
+       enllaç simbòlic.
+     </Option>
+   </MultipleChoice>

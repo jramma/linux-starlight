@@ -1,0 +1,304 @@
+---
+title: "Pràctica 7 — Seguretat i Tallafocs"
+description: Configura UFW per gestionar el trànsit de xarxa, instal·la fail2ban per protegir SSH i usa lynis per auditar la seguretat del servidor.
+sidebar:
+  order: 7
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="tip" title="Abans de començar">
+Aquesta pràctica part d'un servidor en estat insegur. El professor haurà executat l'script de setup a la teva VM. Si ho fas pel teu compte, el Pas 0 ho explica.
+</Aside>
+
+---
+
+## Pas 0 — Estat inicial (servidor insegur)
+
+El servidor comença així (el professor ho estableix):
+
+```bash
+# (Per al professor)
+sudo apt install -y nginx ufw fail2ban
+sudo ufw disable
+sudo systemctl stop fail2ban
+sudo sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sudo sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sudo systemctl reload sshd
+```
+
+Verifica en quin estat està el servidor ara mateix:
+
+```bash
+# El tallafocs està actiu?
+sudo ufw status
+# Esperat: Status: inactive
+
+# fail2ban està corrent?
+systemctl is-active fail2ban
+# Esperat: inactive
+
+# Es permet el login de root per SSH?
+grep "PermitRootLogin" /etc/ssh/sshd_config
+# Esperat: PermitRootLogin yes  (insegur)
+
+# S'accepta autenticació per contrasenya?
+grep "PasswordAuthentication" /etc/ssh/sshd_config
+# Esperat: PasswordAuthentication yes  (insegur)
+```
+
+El teu objectiu: passar d'aquest estat insegur a un servidor correctament protegit.
+
+---
+
+## Exercici 7.1 — Configurar el tallafocs amb UFW
+
+### Context
+
+UFW (Uncomplicated Firewall) és la interfície simplificada d'iptables a Ubuntu. Per defecte, un servidor nou no té tallafocs actiu — qualsevol port exposat és accessible des d'internet.
+
+<Aside type="caution" title="⚠ Llegeix això abans d'activar UFW">
+Si actives UFW sense permetre SSH primer (port 22), perdràs la connexió SSH i necessitaràs accedir des de la consola de VirtualBox. Segueix l'ordre dels passos exactament.
+</Aside>
+
+### Tasca 1 — Política per defecte: denegar tot
+
+```bash
+# Denega tot el trànsit entrant per defecte
+sudo ufw default deny incoming
+
+# Permet tot el trànsit sortint (perquè el servidor pugui fer peticions)
+sudo ufw default allow outgoing
+```
+
+### Tasca 2 — Permetre els ports necessaris ABANS d'activar
+
+```bash
+# PRIMER: permet SSH (si el perds, et quedes sense connexió)
+sudo ufw allow ssh
+# O de forma equivalent:
+sudo ufw allow 22/tcp
+
+# Permet HTTP (perquè el servidor web funcioni)
+sudo ufw allow 80/tcp
+
+# Permet HTTPS
+sudo ufw allow 443/tcp
+```
+
+### Tasca 3 — Activar UFW
+
+```bash
+sudo ufw enable
+# Escriu 'y' quan pregunti si continuar
+```
+
+<Aside type="note" title="Encara funciona SSH?">
+Després d'activar UFW, intenta obrir una nova terminal i connectar-te per SSH. Si funciona, perfecte. Si no, revisa que vas permetre el port 22 en el pas anterior.
+</Aside>
+
+```bash
+# Verifica l'estat complet del tallafocs
+sudo ufw status verbose
+```
+
+Has de veure:
+```
+Status: active
+Default: deny (incoming), allow (outgoing), disabled (routed)
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+```
+
+### Tasca 4 — Provar que UFW bloqueja ports no permesos
+
+```bash
+# Llista els ports en escolta al servidor
+sudo ss -tlnp
+
+# Intenta connectar a un port no permès (per exemple, el 8080)
+# Des del teu ordinador (fora de la VM):
+nc -zv 192.168.56.X 8080
+# Ha de donar timeout o "Connection refused"
+```
+
+---
+
+## Exercici 7.2 — Protegir SSH amb fail2ban
+
+### Context
+
+fail2ban monitoritza els logs del sistema i bloqueja automàticament les IPs que realitzen massa intents fallits d'autenticació. És la defensa estàndard contra atacs de força bruta.
+
+### Tasca 1 — Instal·lar i activar fail2ban
+
+```bash
+sudo apt install -y fail2ban
+
+# Inicia el servei
+sudo systemctl start fail2ban
+sudo systemctl enable fail2ban
+
+# Verifica que està corrent
+systemctl status fail2ban
+```
+
+### Tasca 2 — Configurar la jail de SSH
+
+fail2ban usa "jails" (celdes) per definir què monitoritzen i quina IP bloquejar. La configuració principal està a `/etc/fail2ban/jail.conf` però **no l'has d'editar directament** — es sobreescriu en actualitzar. Usa un fitxer local:
+
+```bash
+sudo nano /etc/fail2ban/jail.local
+```
+
+Escriu:
+
+```ini
+[DEFAULT]
+# temps de banejament en segons (1 hora = 3600)
+bantime  = 3600
+# finestra de temps per comptar intents (10 minuts)
+findtime = 600
+# nombre d'intents fallits abans de banejar
+maxretry = 3
+
+[sshd]
+enabled = true
+port    = ssh
+logpath = /var/log/auth.log
+```
+
+Aplica la configuració:
+
+```bash
+sudo systemctl restart fail2ban
+
+# Verifica l'estat de la jail SSH
+sudo fail2ban-client status sshd
+```
+
+Ha de mostrar que la jail `sshd` està activa amb 0 IPs banejades (a menys que algú ja hagi intentat entrar).
+
+### Tasca 3 — Simular un atac per veure fail2ban en acció
+
+Des d'un **terminal diferent** al teu ordinador (no a la VM):
+
+```bash
+# Intenta connectar-te amb una contrasenya incorrecta 4 vegades seguides
+# (canvia la IP a la de la teva VM)
+ssh -o ConnectTimeout=5 usuario_falso@192.168.56.X
+# Escriu qualsevol contrasenya incorrecta i repeteix fins que deixi de respondre
+```
+
+Després comprova a la VM:
+
+```bash
+# Hi ha IPs banejades?
+sudo fail2ban-client status sshd
+
+# Apareix el banejament al log?
+sudo tail -20 /var/log/auth.log | grep "Ban\|Failed"
+```
+
+Desbaneja la teva IP si t'has banejat accidentalment:
+```bash
+sudo fail2ban-client set sshd unbanip LA_TEVA_IP
+```
+
+---
+
+## Exercici 7.3 — Hardening d'SSH
+
+### Tasca 1 — Desactivar el login de root per SSH
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+Cerca aquestes línies i assegura't que tenen aquests valors:
+
+```
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+```
+
+<Aside type="caution" title="Abans de desactivar contrasenyes">
+Assegura't que el teu usuari té les claus SSH configurades (de la pràctica 3). Si desactives contrasenyes sense tenir claus, et quedes sense accés SSH.
+</Aside>
+
+```bash
+# Aplica els canvis
+sudo systemctl reload sshd
+
+# Prova que root no es pot connectar:
+# (des del teu terminal fora de la VM)
+ssh root@192.168.56.X
+# Ha de dir: Permission denied, please try again
+```
+
+---
+
+## Exercici 7.4 — Auditoria amb Lynis
+
+### Tasca 1 — Instal·lar i executar Lynis
+
+```bash
+sudo apt install -y lynis
+
+# L'auditoria completa triga uns minuts
+sudo lynis audit system
+```
+
+Lynis puntua la seguretat del servidor. Busca la línia:
+
+```
+Hardening index : XX [############            ]
+```
+
+### Tasca 2 — Revisar els suggeriments
+
+```bash
+# Les advertències de lynis (les més importants)
+sudo grep "warning\|suggestion" /var/log/lynis.log | head -20
+```
+
+Lynis classifica les troballes en:
+- **WARNING** (groc) → problema de seguretat important, corregeix-lo
+- **SUGGESTION** (blau) → millora recomanable però no crítica
+
+Implementa almenys **2 correccions** de les que suggereixi lynis. Dos suggeriments habituals:
+
+```bash
+# 1. Restringir permisos de /etc/crontab (sol suggerir-ho)
+sudo chmod 600 /etc/crontab
+
+# 2. Configurar umask més restrictiu
+# Lynis sol demanar umask 027 en comptes del 022 per defecte
+# Afegeix al final de /etc/profile:
+echo "umask 027" | sudo tee -a /etc/profile
+```
+
+---
+
+## 📤 Bloc de lliurament
+
+```bash
+echo "=== LLIURAMENT PRÀCTICA 7 ===" && \
+echo "" && \
+echo "--- Tallafocs UFW ---" && \
+sudo ufw status verbose && \
+echo "" && \
+echo "--- fail2ban SSH ---" && \
+sudo fail2ban-client status sshd && \
+echo "" && \
+echo "--- Config SSH ---" && \
+grep "PermitRootLogin\|PasswordAuthentication\|PubkeyAuthentication" /etc/ssh/sshd_config && \
+echo "" && \
+echo "--- Lynis (hardening index) ---" && \
+sudo lynis show version && \
+sudo grep "Hardening index" /var/log/lynis.log | tail -1
+```

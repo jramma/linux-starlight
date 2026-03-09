@@ -1,7 +1,6 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import starlightThemeNova from "starlight-theme-nova";
 import { rehypeTasklistEnhancer } from "./config/plugins/rehype-tasklist-enhancer";
 import { sidebar } from "./astro.sidebar";
 
@@ -18,7 +17,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/jramma/linux-starlight",
+          href: "https://github.com/jramma",
         },
       ],
       defaultLocale: "es",

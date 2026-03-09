@@ -1,0 +1,216 @@
+---
+title: "Pràctica 1 — Instal·lació i Entorn"
+description: Instal·la Ubuntu Server a VirtualBox, configura la xarxa i connecta't per SSH. Primer contacte real amb un servidor Linux.
+sidebar:
+  order: 1
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="tip" title="Com usar aquesta pràctica">
+Llegeix cada pas **abans** d'executar-lo. Si alguna cosa no funciona, revisa el pas anterior. Quan acabis, executa el bloc de **Lliurament** i porta la sortida al professor.
+</Aside>
+
+---
+
+## Objectiu
+
+En acabar aquesta pràctica tindràs un servidor Ubuntu Server 24.04 corrent a VirtualBox, accessible per SSH des del teu ordinador com si fos un servidor remot real.
+
+---
+
+## Requisits previs
+
+- VirtualBox instal·lat ([descarregar aquí](https://www.virtualbox.org/wiki/Downloads))
+- ISO d'Ubuntu Server 24.04 LTS ([descarregar aquí](https://ubuntu.com/download/server)) — tria l'opció **Get Ubuntu Server**
+
+---
+
+## Pas 1 — Crear la màquina virtual
+
+1. Obre VirtualBox i fes clic a **Nova**
+2. Omple la configuració:
+   - **Nom:** `servidor-linux`
+   - **Tipus:** Linux
+   - **Versió:** Ubuntu (64-bit)
+3. Fes clic a **Següent** a cada pantalla amb aquests valors:
+   - **Memòria RAM:** 2048 MB (2 GB)
+   - **Disc dur:** Crear un de nou → VDI → Reservat dinàmicament → **20 GB**
+4. Fes clic a **Crear**
+
+<Aside type="note" title="Per què 20 GB?">
+El servidor real usarà uns 5-8 GB. Els 20 GB són el màxim que pot créixer el fitxer, però al ser dinàmic només ocupa en disc el que realment usi.
+</Aside>
+
+---
+
+## Pas 2 — Configurar la xarxa (dos adaptadors)
+
+Això és clau: necessites **dos adaptadors de xarxa**:
+
+- **NAT** → perquè la VM tingui accés a internet
+- **Host-Only** → per connectar-te per SSH des del teu ordinador
+
+A VirtualBox, amb la VM seleccionada:
+
+1. **Configuració → Xarxa → Adaptador 1**
+   - Connectat a: **NAT**
+   - ✅ Activar la interfície de xarxa
+
+2. **Adaptador 2**
+   - ✅ Habilitar adaptador de xarxa
+   - Connectat a: **Adaptador només-amfitrió**
+   - Nom: `vboxnet0` (si no existeix, crea'l a VirtualBox → Eines → Xarxa → Crear)
+
+---
+
+## Pas 3 — Instal·lar Ubuntu Server
+
+1. Selecciona la VM i fes clic a **Inicia**
+2. Quan demani disc d'arrencada, selecciona la ISO que vas descarregar
+3. A l'instal·lador:
+   - **Language:** English (l'instal·lador en anglès evita problemes de codificació)
+   - **Keyboard:** Spanish → Spanish
+   - **Type of install:** Ubuntu Server *(no la versió minimized)*
+   - **Network:** deixa la configuració automàtica (DHCP); l'adaptador NAT obtindrà IP automàticament
+   - **Storage:** Use an entire disk → continua amb els valors per defecte
+   - **Profile setup:**
+     - Your name: `Alumne Linux`
+     - Server name: `servidor-linux` *(sense espais ni majúscules)*
+     - Username: `alumne`
+     - Password: tria una que recordis (mínim 8 caràcters)
+   - **SSH:** ✅ Install OpenSSH server — **MOLT IMPORTANT, activa aquesta opció**
+   - **Featured snaps:** no seleccionis res, fes clic a Done
+4. Espera que acabi la instal·lació (~10-15 minuts)
+5. Quan aparegui **"Reboot Now"**, fes clic i retira la ISO si ho demana
+
+---
+
+## Pas 4 — Primera sessió al servidor
+
+Quan la VM arrenqui veuràs un prompt de login. Inicia sessió amb `alumne` i la teva contrasenya.
+
+Executa aquests comandaments per comprovar que tot funciona:
+
+```bash
+# Veure informació del sistema
+uname -a
+
+# Veure les interfícies de xarxa
+ip addr show
+
+# Actualitzar la llista de paquets
+sudo apt update
+
+# Instal·lar actualitzacions disponibles
+sudo apt upgrade -y
+```
+
+<Aside type="caution" title="Si sudo demana contrasenya">
+És normal la primera vegada. Escriu la teva contrasenya (la que vas posar en instal·lar). No es veuran els caràcters mentre escrius.
+</Aside>
+
+---
+
+## Pas 5 — Connectar-te per SSH des del teu ordinador
+
+L'objectiu és no usar la finestra de VirtualBox, sinó connectar-te igual que a un servidor remot real.
+
+### 5.1 Trobar la IP de l'adaptador Host-Only
+
+A la VM, executa:
+
+```bash
+ip addr show
+```
+
+Busca la interfície `enp0s8` (o `eth1`). La seva IP començarà per `192.168.56.X`. Anota-la.
+
+Si no apareix, l'adaptador Host-Only no es va configurar. Solució:
+
+```bash
+# Editar la configuració de xarxa
+sudo nano /etc/netplan/00-installer-config.yaml
+```
+
+Afegeix l'adaptador si falta (el fitxer ja tindrà `enp0s3` per a NAT):
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    enp0s3:
+      dhcp4: true
+    enp0s8:
+      dhcp4: true
+```
+
+Aplica els canvis:
+
+```bash
+sudo netplan apply
+ip addr show enp0s8
+```
+
+### 5.2 Connectar-te des del teu terminal (Windows/Mac/Linux)
+
+**Windows:** obre PowerShell o Windows Terminal  
+**Mac/Linux:** obre Terminal
+
+```bash
+ssh alumne@192.168.56.X
+```
+
+*(substitueix la X per la IP de la teva VM)*
+
+La primera vegada preguntarà si confies en el servidor — escriu `yes`.  
+Introdueix la teva contrasenya.
+
+Si tot va bé, veuràs el prompt del servidor:
+
+```
+alumne@servidor-linux:~$
+```
+
+**🎉 Estàs connectat per SSH al teu propi servidor Linux.**
+
+---
+
+## Pas 6 — Configurar el hostname i la zona horària
+
+```bash
+# Canviar el hostname (nom del servidor)
+sudo hostnamectl set-hostname servidor-linux
+
+# Configurar la zona horària a Espanya
+sudo timedatectl set-timezone Europe/Madrid
+
+# Verificar
+timedatectl
+```
+
+---
+
+## 📤 Bloc de lliurament
+
+Quan acabis tots els passos, executa aquest comandament **des de la sessió SSH** (no des de la finestra de VirtualBox):
+
+```bash
+echo "=== LLIURAMENT PRÀCTICA 1 ===" && \
+echo "Hostname: $(hostname)" && \
+echo "Usuari: $(whoami)" && \
+uname -a && \
+echo "--- Xarxa ---" && \
+ip addr show | grep "inet " && \
+echo "--- Zona horària ---" && \
+timedatectl | grep "Time zone" && \
+echo "--- Sistema actualitzat ---" && \
+sudo apt list --upgradable 2>/dev/null | wc -l && \
+echo "paquets pendents (0 = actualitzat)"
+```
+
+Copia tota la sortida i porta-la al professor.
+
+<Aside type="tip" title="Snapshot abans de continuar">
+Abans de la propera pràctica, fes un snapshot de la VM en aquest estat: **VirtualBox → Màquina → Pren una instantània → "Base neta M1"**. Si alguna cosa surt malament en futures pràctiques, pots tornar aquí.
+</Aside>
