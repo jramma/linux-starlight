@@ -128,7 +128,7 @@ export default defineConfig({
               translations: {
                 ca: "Recursos",
               },
-              slug: "resources",
+              slug: "clean-install",
             },
             {
               label: "Instalación en máquina virtual",

@@ -1,182 +1,299 @@
 ---
-title: "Ejercicios: Módulo 4 — Arranque y Servicios"
-description: Ejercicios prácticos sobre el proceso de arranque de Linux, GRUB, systemd, servicios y gestión de logs con journalctl.
+title: "Práctica 4 — Arranque y Servicios"
+description: Crea una unidad systemd y un timer desde cero. Repara un servicio roto encontrando los errores de configuración.
 sidebar:
   order: 4
 ---
 
 import { Aside } from "@astrojs/starlight/components";
-import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
-import Option from "@/components/tutorial/Option.astro";
+
+<Aside type="tip" title="Antes de empezar">
+Esta práctica tiene dos ejercicios. El primero es de creación (construyes una unidad desde cero). El segundo es de reparación (hay errores intencionales que debes localizar). Trabaja en orden.
+</Aside>
 
 ---
 
-## Ejercicio 4.1 — El proceso de arranque
+## Ejercicio 4.1 — Crear una unidad systemd y un timer
 
-**¿Cuál es el orden correcto del proceso de arranque en un sistema Linux con UEFI?**
+### Contexto
 
-<MultipleChoice>
-  <Option>Kernel → UEFI/BIOS → GRUB → systemd → Login</Option>
-  <Option isCorrect>UEFI/BIOS → GRUB → Kernel Linux → initramfs → systemd → Login</Option>
-  <Option>systemd → GRUB → Kernel → UEFI → Login</Option>
-</MultipleChoice>
+systemd es el sistema de init de Linux: gestiona todos los servicios del sistema. Cualquier programa puede convertirse en un servicio systemd creando un archivo de unidad (`.service`). Los timers son la alternativa moderna a cron, integrada con el sistema de logging.
 
----
+### Setup — preparar el script que vamos a automatizar
 
-**¿Cuál es la función del `initramfs` en el arranque?**
+```bash
+# Crea el script que el servicio ejecutará
+sudo nano /usr/local/bin/monitor_disco.sh
+```
 
-<MultipleChoice>
-  <Option>Es el gestor de arranque que reemplaza a GRUB en sistemas modernos.</Option>
-  <Option isCorrect>Es un sistema de archivos temporal en RAM que contiene los drivers y herramientas mínimas para montar el sistema de archivos raíz real.</Option>
-  <Option>Es el primer proceso que inicia el sistema de init al arrancar.</Option>
-</MultipleChoice>
+Escribe exactamente este contenido:
 
----
+```bash
+#!/bin/bash
+# monitor_disco.sh — registra el uso del disco en un log
 
-## Ejercicio 4.2 — GRUB
+LOGFILE="/var/log/monitor_disco.log"
+FECHA=$(date '+%Y-%m-%d %H:%M:%S')
+USO=$(df -h / | tail -1 | awk '{print $5}')
 
-**¿En qué archivo se configura el tiempo de espera y las opciones de arranque de GRUB?**
+echo "[$FECHA] Uso del disco raíz: $USO" >> "$LOGFILE"
+```
 
-<MultipleChoice>
-  <Option>`/boot/grub/grub.cfg` (este se genera, no se edita directamente)</Option>
-  <Option isCorrect>`/etc/default/grub` (este es el que se edita)</Option>
-  <Option>`/etc/grub.d/00_header`</Option>
-</MultipleChoice>
+Guarda y dale permisos de ejecución:
 
----
+```bash
+sudo chmod +x /usr/local/bin/monitor_disco.sh
 
-**Tras editar `/etc/default/grub`, ¿qué comando debes ejecutar para que los cambios surtan efecto?**
+# Prueba manual que funciona
+sudo /usr/local/bin/monitor_disco.sh
+cat /var/log/monitor_disco.log
+# Debe aparecer una línea con la fecha y el porcentaje de uso del disco
+```
 
-<MultipleChoice>
-  <Option>`grub-install /dev/sda`</Option>
-  <Option isCorrect>`update-grub` (en Debian/Ubuntu) o `grub2-mkconfig -o /boot/grub2/grub.cfg` (en RHEL)</Option>
-  <Option>`systemctl restart grub`</Option>
-</MultipleChoice>
+### Tarea 1 — Crear la unidad de servicio
 
----
+Las unidades systemd viven en `/etc/systemd/system/`. Crea el archivo:
 
-**¿Qué parámetro en `/etc/default/grub` controla cuántos segundos espera el menú antes de arrancar la opción por defecto?**
+```bash
+sudo nano /etc/systemd/system/monitor-disco.service
+```
 
-<MultipleChoice>
-  <Option>`GRUB_DEFAULT`</Option>
-  <Option isCorrect>`GRUB_TIMEOUT`</Option>
-  <Option>`GRUB_WAIT`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 4.3 — systemd y servicios
-
-**¿Qué comando muestra el estado del servicio `nginx`?**
-
-<MultipleChoice>
-  <Option>`service nginx status` (funciona pero es legado)</Option>
-  <Option isCorrect>`systemctl status nginx`</Option>
-  <Option>`ps aux | grep nginx`</Option>
-</MultipleChoice>
-
----
-
-**¿Cómo habilitas el servicio `postgresql` para que arranque automáticamente en cada reinicio?**
-
-<MultipleChoice>
-  <Option>`systemctl start postgresql`</Option>
-  <Option isCorrect>`systemctl enable postgresql`</Option>
-  <Option>`systemctl daemon-enable postgresql`</Option>
-</MultipleChoice>
-
----
-
-**¿Qué diferencia hay entre `systemctl stop` y `systemctl disable`?**
-
-<MultipleChoice>
-  <Option>No hay diferencia, ambos hacen lo mismo.</Option>
-  <Option isCorrect>`stop` detiene el servicio ahora mismo. `disable` evita que arranque automáticamente en el próximo reinicio, pero no lo para.</Option>
-  <Option>`stop` elimina el servicio del sistema; `disable` solo lo pausa temporalmente.</Option>
-</MultipleChoice>
-
----
-
-**Analiza este archivo de unidad systemd:**
+Escribe esto:
 
 ```ini
 [Unit]
-Description=Mi Aplicación Web
-After=network.target
+Description=Monitor de uso del disco
+Documentation=man:df(1)
 
 [Service]
-ExecStart=/usr/local/bin/miapp --port 8080
-Restart=always
-User=webuser
+Type=oneshot
+ExecStart=/usr/local/bin/monitor_disco.sh
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-**¿Qué significa `Restart=always`?**
+<Aside type="note" title="¿Qué significa cada sección?">
+- `[Unit]`: descripción del servicio y dependencias  
+- `[Service]`: cómo ejecutar el servicio. `Type=oneshot` significa que el servicio ejecuta el comando y termina (no es un proceso continuo)  
+- `[Install]`: cuándo habilitarlo. `multi-user.target` es el modo normal de funcionamiento del servidor
+</Aside>
 
-<MultipleChoice>
-  <Option>El servicio se reinicia cada vez que reinicias el sistema.</Option>
-  <Option isCorrect>systemd reiniciará automáticamente el servicio si muere o falla, independientemente del código de salida.</Option>
-  <Option>El servicio se reinicia solo cuando termina correctamente (código 0).</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 4.4 — Logs y journalctl
-
-**¿Qué comando muestra los logs del servicio `sshd` en tiempo real?**
-
-<MultipleChoice>
-  <Option>`tail -f /var/log/sshd.log`</Option>
-  <Option isCorrect>`journalctl -u sshd -f`</Option>
-  <Option>`systemctl logs sshd --follow`</Option>
-</MultipleChoice>
-
----
-
-**¿Cómo filtras en journalctl solo los errores y mensajes críticos del arranque actual?**
-
-<MultipleChoice>
-  <Option>`journalctl --level=error`</Option>
-  <Option isCorrect>`journalctl -b -p err` (boot actual, prioridad error o superior)</Option>
-  <Option>`journalctl --critical -b0`</Option>
-</MultipleChoice>
-
----
-
-**¿Qué significa la flag `-b` en `journalctl -b`?**
-
-<MultipleChoice>
-  <Option>Muestra los logs en modo binario comprimido.</Option>
-  <Option isCorrect>Filtra los logs del arranque actual (current boot). Con `-b -1` verías el arranque anterior.</Option>
-  <Option>Muestra solo los logs del módulo `boot` del kernel.</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 4.5 — Caso práctico: servicio caído
-
-Tu servidor de producción tiene el servicio `mariadb` caído. Diagnostica y resuélvelo:
+Prueba que el servicio funciona:
 
 ```bash
-# 1. Verifica el estado
-systemctl status mariadb
+# Recarga la configuración de systemd (siempre después de crear/editar una unidad)
+sudo systemctl daemon-reload
 
-# 2. Ve los últimos logs detallados
-journalctl -u mariadb -n 50 --no-pager
+# Ejecuta el servicio manualmente
+sudo systemctl start monitor-disco.service
 
-# 3. Intenta reiniciar
-sudo systemctl start mariadb
-
-# 4. Si falla, busca el error específico en los logs
-journalctl -u mariadb -b -p err
+# Verifica que se ejecutó
+systemctl status monitor-disco.service
+cat /var/log/monitor_disco.log
+# Debe haber una línea nueva con la fecha actual
 ```
 
-**¿Qué flag de `journalctl` usarías para ver solo los logs de los últimos 10 minutos?**
+### Tarea 2 — Crear el timer
 
-<MultipleChoice>
-  <Option>`journalctl --last=10m`</Option>
-  <Option isCorrect>`journalctl --since "10 minutes ago"`</Option>
-  <Option>`journalctl -t 10min`</Option>
-</MultipleChoice>
+El timer define cuándo ejecutar el servicio. Crea:
+
+```bash
+sudo nano /etc/systemd/system/monitor-disco.timer
+```
+
+Escribe:
+
+```ini
+[Unit]
+Description=Timer para el monitor de disco (cada 5 minutos)
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+<Aside type="note" title="¿Qué hace OnCalendar=*:0/5?">
+Se ejecuta cada 5 minutos en cualquier hora de cualquier día.  
+Otros ejemplos:
+- `OnCalendar=daily` → cada día a medianoche
+- `OnCalendar=Mon *-*-* 08:00:00` → cada lunes a las 8:00
+- `OnCalendar=*-*-* 07:00:00` → cada día a las 7:00
+</Aside>
+
+Activa y arranca el timer:
+
+```bash
+sudo systemctl daemon-reload
+
+# Habilita el timer para que arranque automáticamente con el sistema
+sudo systemctl enable monitor-disco.timer
+
+# Arranca el timer ahora mismo
+sudo systemctl start monitor-disco.timer
+
+# Verifica el estado
+systemctl status monitor-disco.timer
+```
+
+Verifica que aparece en la lista de timers:
+
+```bash
+systemctl list-timers | grep monitor
+```
+
+Deberías ver la próxima ejecución programada.
+
+### Tarea 3 — Forzar una ejecución y verificar el log
+
+```bash
+# Fuerza ejecución inmediata del servicio (no del timer)
+sudo systemctl start monitor-disco.service
+
+# Espera 5 minutos y comprueba que el timer lo ejecuta automáticamente
+# Mientras esperas, puedes ver el log en tiempo real:
+sudo tail -f /var/log/monitor_disco.log
+# (Pulsa Ctrl+C para salir)
+
+# También puedes ver el historial de ejecuciones en journalctl
+journalctl -u monitor-disco.service -n 10 --no-pager
+```
+
+---
+
+## Ejercicio 4.2 — Reparar una unidad systemd con errores
+
+### Contexto
+
+Alguien creó una unidad systemd con errores tipográficos. El servicio no arranca. Tu trabajo es encontrar todos los errores y corregirlos.
+
+### Setup — crear el servicio roto
+
+```bash
+sudo nano /etc/systemd/system/app-demo.service
+```
+
+Copia esto **exactamente como está** (con los errores):
+
+```ini
+[Unit]
+Description=Aplicación de demostración
+After=network.tarjet
+
+[Service]
+ExecSart=/usr/local/bin/app-demo
+Restart=always
+User=nobody
+
+[Instal]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+```
+
+### Diagnóstico — encuentra los errores
+
+systemd te dará pistas, pero debes saber interpretarlas. Sigue este proceso:
+
+**Paso 1 — Intenta arrancar y observa el error:**
+
+```bash
+sudo systemctl start app-demo.service
+systemctl status app-demo.service
+```
+
+¿Qué dice el error? Puede que systemd no encuentre el ejecutable o que haya errores de sintaxis.
+
+**Paso 2 — Verifica la sintaxis del archivo:**
+
+```bash
+systemd-analyze verify /etc/systemd/system/app-demo.service
+```
+
+Este comando muestra **todos** los problemas de sintaxis. Léelo con cuidado.
+
+**Paso 3 — Revisa los logs para más detalles:**
+
+```bash
+journalctl -u app-demo.service -n 20 --no-pager
+```
+
+**Pista:** hay exactamente **3 errores tipográficos** en el archivo y **1 problema adicional** (el binario no existe). Localiza y corrige cada uno:
+
+1. En `[Unit]`: hay una sección con un typo
+2. En `[Service]`: hay una directiva con un typo  
+3. En `[Install]`: hay un error al escribir el nombre de la sección
+
+Una vez corregidos los typos, crea el binario que falta:
+
+```bash
+sudo nano /usr/local/bin/app-demo
+```
+
+Escribe:
+
+```bash
+#!/bin/bash
+# Simula una aplicación en ejecución continua
+while true; do
+  echo "$(date): app-demo en ejecución" >> /var/log/app-demo.log
+  sleep 30
+done
+```
+
+```bash
+sudo chmod +x /usr/local/bin/app-demo
+```
+
+**Paso 4 — Repara el archivo y prueba:**
+
+```bash
+sudo nano /etc/systemd/system/app-demo.service
+# Corrige los 3 typos
+
+sudo systemctl daemon-reload
+sudo systemctl start app-demo.service
+systemctl status app-demo.service
+# Debe aparecer como 'active (running)'
+```
+
+<Aside type="note" title="Solución (intenta no mirarla)">
+Los errores son:
+1. `network.tarjet` → `network.target`
+2. `ExecSart` → `ExecStart`
+3. `[Instal]` → `[Install]`
+</Aside>
+
+---
+
+## 📤 Bloque de entrega
+
+```bash
+echo "=== ENTREGA PRÁCTICA 4 ===" && \
+echo "" && \
+echo "--- 4.1: Estado del timer ---" && \
+systemctl status monitor-disco.timer && \
+echo "" && \
+echo "--- 4.1: Próxima ejecución ---" && \
+systemctl list-timers | grep monitor && \
+echo "" && \
+echo "--- 4.1: Últimas entradas del log ---" && \
+tail -5 /var/log/monitor_disco.log && \
+echo "" && \
+echo "--- 4.1: Archivo .service ---" && \
+cat /etc/systemd/system/monitor-disco.service && \
+echo "" && \
+echo "--- 4.1: Archivo .timer ---" && \
+cat /etc/systemd/system/monitor-disco.timer && \
+echo "" && \
+echo "--- 4.2: Estado del servicio reparado ---" && \
+systemctl status app-demo.service && \
+echo "" && \
+echo "--- 4.2: Archivo .service corregido ---" && \
+cat /etc/systemd/system/app-demo.service
+```

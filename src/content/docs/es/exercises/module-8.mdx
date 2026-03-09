@@ -1,236 +1,395 @@
 ---
-title: "Ejercicios: Módulo 8 — Servidor Web Final"
-description: Ejercicios prácticos sobre NGINX, la pila LEMP, resolución de problemas y preparación para el examen LFCS.
+title: "Práctica 8 — Proyecto Final: Servidor Web"
+description: Proyecto integrado — despliega una pila LEMP completa (nginx + MariaDB + PHP), configura seguridad, backups automáticos y deja el servidor listo para producción.
 sidebar:
   order: 8
 ---
 
 import { Aside } from "@astrojs/starlight/components";
-import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
-import Option from "@/components/tutorial/Option.astro";
+
+<Aside type="tip" title="Proyecto final">
+Esta práctica integra todo lo aprendido en los módulos anteriores. Léela completa antes de empezar. Deberías tardar entre 2 y 4 horas. Al terminar, el servidor estará funcionando como un servidor de producción real.
+</Aside>
 
 ---
 
-## Ejercicio 8.1 — NGINX
+## Contexto — ¿Qué es la pila LEMP?
 
-**¿Cuál es la diferencia principal entre NGINX y Apache en cuanto a arquitectura?**
+LEMP es el acrónimo de:
+- **L**inux — el sistema operativo (ya lo tienes)
+- **E**ngine-X (nginx) — el servidor web que recibe las peticiones HTTP
+- **M**ariaDB — la base de datos relacional
+- **P**HP — el lenguaje que genera las páginas dinámicas
 
-<MultipleChoice>
-  <Option>NGINX es más antiguo y solo funciona en servidores de alto rendimiento.</Option>
-  <Option isCorrect>Apache crea un proceso/hilo por conexión (bloqueante). NGINX usa un modelo asíncrono y no bloqueante con un número fijo de workers, siendo más eficiente con muchas conexiones simultáneas.</Option>
-  <Option>NGINX no soporta PHP; Apache sí de forma nativa.</Option>
-</MultipleChoice>
-
----
-
-**¿Dónde se almacenan los archivos de configuración de los sitios disponibles en NGINX?**
-
-<MultipleChoice>
-  <Option>`/etc/nginx/conf.d/` (válido) y `/etc/nginx/sites-available/` (Debian/Ubuntu)</Option>
-  <Option isCorrect>En Debian/Ubuntu: `/etc/nginx/sites-available/` (disponibles) y `/etc/nginx/sites-enabled/` (activos, mediante symlinks)</Option>
-  <Option>`/var/www/nginx/vhosts/`</Option>
-</MultipleChoice>
+Es una de las combinaciones más usadas en servidores web de producción. WordPress, Drupal y muchas aplicaciones corren sobre LEMP.
 
 ---
 
-**¿Qué comando verifica la sintaxis de la configuración de NGINX sin reiniciarlo?**
+## Paso 1 — Preparar el servidor
 
-<MultipleChoice>
-  <Option>`systemctl check nginx`</Option>
-  <Option isCorrect>`nginx -t`</Option>
-  <Option>`nginx --validate-config`</Option>
-</MultipleChoice>
+```bash
+# Asegúrate de que el sistema está actualizado
+sudo apt update && sudo apt upgrade -y
+
+# Crea los directorios de trabajo
+sudo mkdir -p /var/www/misite
+sudo mkdir -p /backup/db
+
+# Verifica el estado del firewall (debe estar activo desde la práctica 7)
+sudo ufw status
+```
 
 ---
 
-**Analiza este bloque de configuración de NGINX:**
+## Paso 2 — Instalar nginx
+
+```bash
+sudo apt install -y nginx
+
+# Inicia y habilita el servicio
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+# Verifica que responde
+curl -s -o /dev/null -w "nginx responde: HTTP %{http_code}\n" http://localhost
+# Debe devolver: HTTP 200
+```
+
+Si el firewall está activo, permite el tráfico web:
+
+```bash
+sudo ufw allow 'Nginx Full'
+# Esto abre los puertos 80 (HTTP) y 443 (HTTPS)
+```
+
+---
+
+## Paso 3 — Instalar MariaDB
+
+```bash
+sudo apt install -y mariadb-server
+
+# Inicia y habilita
+sudo systemctl start mariadb
+sudo systemctl enable mariadb
+
+# Asegurar la instalación: establece contraseña de root, elimina usuarios anónimos
+sudo mysql_secure_installation
+```
+
+Durante `mysql_secure_installation`:
+- Enter current password for root: presiona **Enter** (no hay contraseña aún)
+- Switch to unix_socket authentication: **n**
+- Change the root password: **y** → elige una contraseña segura y anótala
+- Remove anonymous users: **y**
+- Disallow root login remotely: **y**
+- Remove test database: **y**
+- Reload privilege tables: **y**
+
+Verifica que funciona:
+
+```bash
+sudo mysql -u root -p
+# Introduce la contraseña que acabas de crear
+# Debe aparecer el prompt: MariaDB [(none)]>
+exit
+```
+
+---
+
+## Paso 4 — Crear la base de datos y el usuario
+
+```bash
+sudo mysql -u root -p
+```
+
+En el prompt de MariaDB, ejecuta estos comandos uno a uno:
+
+```sql
+-- Crea la base de datos
+CREATE DATABASE cursodb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Crea el usuario (pon tu propia contraseña)
+CREATE USER 'cursouser'@'localhost' IDENTIFIED BY 'CursoLinux2024!';
+
+-- Concede todos los permisos sobre la base de datos al usuario
+GRANT ALL PRIVILEGES ON cursodb.* TO 'cursouser'@'localhost';
+
+-- Aplica los cambios
+FLUSH PRIVILEGES;
+
+-- Verifica que la BD existe
+SHOW DATABASES;
+
+-- Verifica que el usuario existe
+SELECT user, host FROM mysql.user WHERE user = 'cursouser';
+
+exit
+```
+
+Prueba que el usuario puede conectarse:
+
+```bash
+mysql -u cursouser -p cursodb
+# Introduce la contraseña del usuario cursouser
+# Debe aparecer el prompt: MariaDB [cursodb]>
+exit
+```
+
+---
+
+## Paso 5 — Instalar PHP-FPM
+
+```bash
+sudo apt install -y php-fpm php-mysql php-cli
+
+# Verificar la versión instalada y guardarla (la necesitarás después)
+php --version
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+echo "Versión PHP: $PHP_VERSION"
+
+# El servicio se llama php8.X-fpm (X varía según la versión)
+sudo systemctl start php${PHP_VERSION}-fpm
+sudo systemctl enable php${PHP_VERSION}-fpm
+
+systemctl is-active php${PHP_VERSION}-fpm
+# Debe decir: active
+```
+
+---
+
+## Paso 6 — Crear la página de prueba PHP
+
+```bash
+sudo nano /var/www/misite/index.php
+```
+
+Escribe:
+
+```php
+<?php
+// Información del sistema PHP y la conexión a BD
+
+echo "<h1>Servidor Linux — Práctica Final</h1>";
+
+// Información PHP
+phpinfo();
+?>
+```
+
+Asigna el propietario correcto:
+
+```bash
+sudo chown -R www-data:www-data /var/www/misite
+sudo chmod -R 755 /var/www/misite
+```
+
+---
+
+## Paso 7 — Configurar el virtualhost de nginx
+
+```bash
+sudo nano /etc/nginx/sites-available/misite
+```
+
+Escribe (reemplaza `8.X` por tu versión de PHP real, por ejemplo `8.3`):
 
 ```nginx
 server {
     listen 80;
-    server_name ejemplo.com www.ejemplo.com;
-    root /var/www/ejemplo;
-    index index.html index.php;
+    listen [::]:80;
+
+    server_name misite.local;
+    root /var/www/misite;
+
+    index index.php index.html;
 
     location / {
         try_files $uri $uri/ =404;
     }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
 }
 ```
 
-**¿Qué hace la directiva `try_files $uri $uri/ =404`?**
-
-<MultipleChoice>
-  <Option>Redirige todas las peticiones a `/404.html`.</Option>
-  <Option isCorrect>Intenta servir el archivo `$uri`, si no existe intenta `$uri/` (como directorio), y si tampoco existe devuelve un error 404.</Option>
-  <Option>Comprime todos los archivos del sitio antes de servirlos.</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 8.2 — Pila LEMP
-
-**¿Qué componentes forman la pila LEMP?**
-
-<MultipleChoice>
-  <Option>Linux, Express, MySQL, PHP</Option>
-  <Option isCorrect>Linux, nginx (**E** por su pronunciación), MySQL/MariaDB, PHP/Python/Perl</Option>
-  <Option>Linux, Elasticsearch, MongoDB, Python</Option>
-</MultipleChoice>
-
----
-
-**Para conectar NGINX con PHP, ¿qué componente es imprescindible?**
-
-<MultipleChoice>
-  <Option>El módulo `mod_php` de Apache</Option>
-  <Option isCorrect>PHP-FPM (FastCGI Process Manager) que gestiona los procesos PHP separados de NGINX</Option>
-  <Option>`libphp5-nginx` del repositorio oficial</Option>
-</MultipleChoice>
-
----
-
-**¿Qué comando crea una base de datos MySQL/MariaDB llamada `produccion` y otorga todos los permisos al usuario `webuser`?**
-
-```sql
--- Completa los comandos SQL:
-CREATE DATABASE _________;
-GRANT ALL PRIVILEGES ON _________.* TO '_______'@'localhost' IDENTIFIED BY 'password';
-FLUSH PRIVILEGES;
-```
-
-<MultipleChoice>
-  <Option>`CREATE DATABASE web; GRANT ALL ON web.* TO 'admin'@'%';`</Option>
-  <Option isCorrect>`CREATE DATABASE produccion; GRANT ALL PRIVILEGES ON produccion.* TO 'webuser'@'localhost' IDENTIFIED BY 'password'; FLUSH PRIVILEGES;`</Option>
-  <Option>`MAKE DATABASE produccion; ALLOW webuser ALL ON produccion;`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 8.3 — Resolución de problemas (troubleshooting)
-
-**Un servicio no arranca. ¿Cuál es el primer comando que ejecutarías?**
-
-<MultipleChoice>
-  <Option>`reboot`</Option>
-  <Option isCorrect>`systemctl status nombre-servicio` seguido de `journalctl -u nombre-servicio -n 50`</Option>
-  <Option>`ps aux | grep servicio`</Option>
-</MultipleChoice>
-
----
-
-**NGINX devuelve error 502 Bad Gateway. ¿Cuál es la causa más probable?**
-
-<MultipleChoice>
-  <Option>El dominio DNS no está correctamente configurado.</Option>
-  <Option isCorrect>El backend al que NGINX hace proxy (PHP-FPM, una aplicación Node.js, etc.) no está corriendo o no es accesible en el socket/puerto configurado.</Option>
-  <Option>Los permisos de los archivos estáticos son incorrectos.</Option>
-</MultipleChoice>
-
----
-
-**¿Cómo verificas qué proceso está usando el puerto 80?**
-
-<MultipleChoice>
-  <Option>`ps aux | grep ":80"`</Option>
-  <Option isCorrect>`ss -tlnp | grep :80` o `lsof -i :80`</Option>
-  <Option>`netstat --port 80 --show-pid`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 8.4 — Preparación LFCS
-
-**En el examen LFCS, recibes este escenario: "El servicio SSH del servidor no responde en el puerto 22". ¿Cuáles son los pasos metódicos para diagnosticarlo?**
-
-<Aside type="note" title="Metodología de diagnóstico">
-
-```bash
-# 1. Verifica si el servicio está corriendo
-systemctl status sshd
-
-# 2. Comprueba si hay errores en los logs
-journalctl -u sshd -n 30
-
-# 3. Verifica si está escuchando en el puerto
-ss -tlnp | grep :22
-
-# 4. Comprueba el firewall
-ufw status
-iptables -L INPUT -n
-
-# 5. Revisa la configuración
-sshd -t   # Verifica la sintaxis de sshd_config
-
-# 6. Si el servicio no arranca, reinícialo
-sudo systemctl restart sshd
-```
+<Aside type="note" title="¿Cómo sé mi versión de PHP?">
+Ejecuta `php --version` y mira el número. Si es PHP 8.3, usa `php8.3-fpm.sock`. Si es 8.2, usa `php8.2-fpm.sock`.
 </Aside>
 
----
-
-**¿Qué significa el código de salida `0` al ejecutar un comando en Bash?**
-
-<MultipleChoice>
-  <Option>El comando falló y devolvió un error genérico.</Option>
-  <Option isCorrect>El comando se ejecutó con éxito sin errores.</Option>
-  <Option>El comando está en ejecución en segundo plano (background).</Option>
-</MultipleChoice>
-
----
-
-**¿Cuál de estos comandos muestra el uso de CPU, memoria y procesos de forma interactiva y actualizada?**
-
-<MultipleChoice>
-  <Option>`ps aux --top`</Option>
-  <Option isCorrect>`top` (estándar) o `htop` (versión mejorada si está instalada)</Option>
-  <Option>`vmstat --interactive`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 8.5 — Caso práctico final integrador
-
-Tienes que desplegar un sitio web WordPress en un servidor Debian. Enumera los pasos en el orden correcto:
-
-<Aside type="note" title="Solución completa">
+Activa el virtualhost y desactiva el de por defecto:
 
 ```bash
-# 1. Actualizar sistema
-apt update && apt upgrade -y
+# Crea el enlace simbólico para activar el sitio
+sudo ln -s /etc/nginx/sites-available/misite /etc/nginx/sites-enabled/
 
-# 2. Instalar la pila LEMP
-apt install nginx mariadb-server php-fpm php-mysql -y
+# Desactiva el sitio por defecto (opcional pero recomendado)
+sudo rm /etc/nginx/sites-enabled/default
 
-# 3. Asegurar MariaDB
-mysql_secure_installation
+# Verifica que la configuración de nginx es correcta (sin errores de sintaxis)
+sudo nginx -t
+# Debe decir: syntax is ok / test is successful
 
-# 4. Crear base de datos para WordPress
-mysql -u root -p <<EOF
-CREATE DATABASE wordpress;
-GRANT ALL ON wordpress.* TO 'wpuser'@'localhost' IDENTIFIED BY 'contraseña_segura';
-FLUSH PRIVILEGES;
-EOF
-
-# 5. Descargar WordPress
-cd /var/www
-wget https://wordpress.org/latest.tar.gz
-tar -xzf latest.tar.gz
-chown -R www-data:www-data wordpress/
-
-# 6. Configurar NGINX para el sitio
-# Crear /etc/nginx/sites-available/wordpress con el bloque server
-
-# 7. Activar el sitio y recargar NGINX
-ln -s /etc/nginx/sites-available/wordpress /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
-
-# 8. Configurar el firewall
-ufw allow 'Nginx Full'
-ufw enable
-
-# 9. Certificado SSL con Certbot
-apt install certbot python3-certbot-nginx -y
-certbot --nginx -d tudominio.com
+# Recarga nginx para aplicar la nueva configuración
+sudo systemctl reload nginx
 ```
+
+---
+
+## Paso 8 — Configurar el dominio local
+
+Para que `misite.local` resuelva a tu servidor sin necesidad de DNS, añádelo al archivo `/etc/hosts`:
+
+```bash
+echo "127.0.0.1 misite.local" | sudo tee -a /etc/hosts
+
+# Verifica que se puede resolver
+ping -c 1 misite.local
+```
+
+Prueba que la web responde con PHP:
+
+```bash
+curl -s http://misite.local | head -20
+# Debe mostrar HTML, incluyendo información de PHP
+```
+
+---
+
+## Paso 9 — Verificar la suma completa
+
+```bash
+# Los tres servicios deben estar activos
+for svc in nginx mariadb php8.3-fpm; do
+  echo "$svc: $(systemctl is-active $svc)"
+done
+
+# La web responde con HTTP 200
+curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://misite.local
+
+# La BD y el usuario existen
+sudo mysql -e "SHOW DATABASES; SELECT user FROM mysql.user WHERE user='cursouser';"
+```
+
+---
+
+## Paso 10 — Backup automático de la base de datos
+
+```bash
+# Prueba manual primero
+sudo mysqldump -u root cursodb > /backup/db/cursodb_$(date '+%F').sql
+
+# Verifica que el archivo se creó
+ls -lh /backup/db/
+```
+
+Automatiza con cron:
+
+```bash
+# Edita el crontab del usuario root
+sudo crontab -e
+```
+
+Añade esta línea al final (ejecuta a las 2:00 AM todos los días):
+
+```
+0 2 * * * mysqldump -u root cursodb > /backup/db/cursodb_$(date '+\%F').sql
+```
+
+<Aside type="note" title="¿Por qué \%F y no %F en cron?">
+En crontab, el carácter `%` tiene significado especial y debe escaparse como `\%`.
 </Aside>
+
+Verifica que el cron está guardado:
+
+```bash
+sudo crontab -l
+```
+
+---
+
+## Paso 11 — Securizar el servidor
+
+Aplica las medidas de seguridad aprendidas:
+
+```bash
+# 1. Verifica UFW (de la práctica 7)
+sudo ufw status verbose
+
+# 2. Verifica fail2ban
+sudo fail2ban-client status sshd
+
+# 3. Verifica que root no puede conectarse por SSH
+grep "PermitRootLogin" /etc/ssh/sshd_config
+
+# 4. Establece permisos correctos en el directorio web
+sudo find /var/www/misite -type f -exec chmod 644 {} \;
+sudo find /var/www/misite -type d -exec chmod 755 {} \;
+sudo chown -R www-data:www-data /var/www/misite
+```
+
+---
+
+## 📤 Bloque de entrega (script de corrección)
+
+Ejecuta este script completo. El profesor lo revisará contigo:
+
+```bash
+#!/bin/bash
+echo "=========================================="
+echo "    ENTREGA PRÁCTICA 8 — PROYECTO FINAL"
+echo "=========================================="
+echo ""
+
+# Servicios
+echo "--- SERVICIOS ---"
+for svc in nginx mariadb fail2ban; do
+  echo "$svc: $(systemctl is-active $svc)"
+done
+PHP_VER=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;" 2>/dev/null)
+echo "php${PHP_VER}-fpm: $(systemctl is-active php${PHP_VER}-fpm 2>/dev/null)"
+
+echo ""
+echo "--- WEB ---"
+curl -s -o /dev/null -w "HTTP misite.local: %{http_code}\n" http://misite.local
+
+echo ""
+echo "--- BASE DE DATOS ---"
+sudo mysql -e "SHOW DATABASES;" 2>/dev/null | grep cursodb && echo "BD cursodb: OK" || echo "BD cursodb: FALTA"
+sudo mysql -e "SELECT user FROM mysql.user WHERE user='cursouser';" 2>/dev/null | grep -q cursouser && echo "Usuario cursouser: OK" || echo "Usuario cursouser: FALTA"
+
+echo ""
+echo "--- VIRTUALHOST ---"
+test -f /etc/nginx/sites-enabled/misite && echo "Virtualhost activo: OK" || echo "Virtualhost activo: FALTA"
+test -f /var/www/misite/index.php && echo "index.php: OK" || echo "index.php: FALTA"
+
+echo ""
+echo "--- SEGURIDAD ---"
+sudo ufw status | grep "Status:"
+grep "PermitRootLogin" /etc/ssh/sshd_config
+
+echo ""
+echo "--- BACKUP ---"
+sudo crontab -l 2>/dev/null | grep mysqldump && echo "Cron backup: OK" || echo "Cron backup: FALTA"
+ls -lh /backup/db/ 2>/dev/null | head -5
+
+echo ""
+echo "=========================================="
+```
+
+Ejecuta con:
+
+```bash
+bash <(cat << 'SCRIPT'
+# (pega aquí el script de arriba)
+SCRIPT
+)
+```
+
+O simplemente ejecuta los comandos uno a uno y copia toda la salida.

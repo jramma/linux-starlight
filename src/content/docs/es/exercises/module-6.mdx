@@ -1,187 +1,279 @@
 ---
-title: "Ejercicios: Módulo 6 — Software y Tareas"
-description: Ejercicios sobre gestión de paquetes, compilación de software, sincronización horaria y programación de tareas con cron y systemd timers.
+title: "Práctica 6 — Software y Tareas Automáticas"
+description: Gestiona paquetes con apt, crea un script de informe del sistema y prográmalo con un systemd timer para ejecución automática diaria.
 sidebar:
   order: 6
 ---
 
 import { Aside } from "@astrojs/starlight/components";
-import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
-import Option from "@/components/tutorial/Option.astro";
 
 ---
 
-## Ejercicio 6.1 — Gestión de paquetes (apt)
+## Ejercicio 6.1 — Gestión de paquetes con apt
 
-**¿Qué diferencia hay entre `apt update` y `apt upgrade`?**
+### Contexto
 
-<MultipleChoice>
-  <Option>Son sinónimos; ambos actualizan el sistema completo.</Option>
-  <Option isCorrect>`apt update` refresca la lista de paquetes disponibles desde los repositorios. `apt upgrade` instala las versiones nuevas de los paquetes ya instalados.</Option>
-  <Option>`apt update` actualiza el kernel; `apt upgrade` actualiza las aplicaciones.</Option>
-</MultipleChoice>
+`apt` es el gestor de paquetes de Ubuntu/Debian. Cualquier software del sistema operativo —desde servidores web hasta herramientas de terminal— se instala, actualiza y elimina con apt.
 
----
+### Tarea 1 — Buscar, instalar y eliminar paquetes
 
-**¿Cómo instalas el paquete `build-essential` sin que el sistema pida confirmación?**
+```bash
+# Actualiza la lista de paquetes disponibles (no instala nada)
+sudo apt update
 
-<MultipleChoice>
-  <Option>`apt install build-essential --confirm`</Option>
-  <Option isCorrect>`apt install build-essential -y`</Option>
-  <Option>`dpkg --install build-essential`</Option>
-</MultipleChoice>
+# Busca información sobre un paquete antes de instalarlo
+apt show htop
 
----
+# Instala htop (monitor de recursos mejorado)
+sudo apt install -y htop
 
-**¿Qué comando elimina un paquete y también sus archivos de configuración?**
-
-<MultipleChoice>
-  <Option>`apt remove nginx`</Option>
-  <Option isCorrect>`apt purge nginx`</Option>
-  <Option>`dpkg --delete-config nginx`</Option>
-</MultipleChoice>
-
----
-
-**¿Para qué sirve `apt autoremove`?**
-
-<MultipleChoice>
-  <Option>Elimina automáticamente los paquetes desactualizados.</Option>
-  <Option isCorrect>Elimina paquetes que se instalaron como dependencias y ya no son necesarios porque el paquete principal fue desinstalado.</Option>
-  <Option>Actualiza automáticamente todos los paquetes del sistema por la noche.</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 6.2 — Compilación desde código fuente
-
-**¿Cuál es el orden correcto para compilar e instalar software desde código fuente en Linux?**
-
-<MultipleChoice>
-  <Option>`make → ./configure → make install`</Option>
-  <Option isCorrect>`./configure → make → sudo make install`</Option>
-  <Option>`install → configure → make`</Option>
-</MultipleChoice>
-
----
-
-**¿Qué paquetes son imprescindibles para compilar software C/C++ en Debian/Ubuntu?**
-
-<MultipleChoice>
-  <Option>`gcc`, `python3` y `cmake`</Option>
-  <Option isCorrect>`build-essential` (incluye `gcc`, `g++`, `make`) y las `libdevheaders` de las dependencias del proyecto</Option>
-  <Option>`llvm`, `clang` y `automake`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 6.3 — Sincronización horaria
-
-**¿Qué servicio gestiona la sincronización NTP en sistemas modernos con systemd?**
-
-<MultipleChoice>
-  <Option>`ntpd` (el demonio NTP clásico)</Option>
-  <Option isCorrect>`systemd-timesyncd` (viene integrado en systemd) o `chrony` (más preciso)</Option>
-  <Option>`clockd` del kernel de Linux</Option>
-</MultipleChoice>
-
----
-
-**¿Cómo compruebas el estado de la sincronización horaria con `timedatectl`?**
-
-<MultipleChoice>
-  <Option>`timedatectl --sync-status`</Option>
-  <Option isCorrect>`timedatectl status` (muestra si NTP está sincronizado, la hora local y UTC)</Option>
-  <Option>`systemctl status ntp`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 6.4 — Programación de tareas (cron)
-
-**Analiza esta expresión cron:**
-
-```
-30 2 * * 1-5 /usr/local/bin/backup.sh
+# Pruébalo
+htop
+# Pulsa Q para salir
 ```
 
-**¿Con qué frecuencia se ejecuta?**
+```bash
+# Instala varias herramientas de una vez
+sudo apt install -y tree curl wget
 
-<MultipleChoice>
-  <Option>Cada 30 minutos todos los días de la semana.</Option>
-  <Option isCorrect>A las 02:30 de lunes a viernes (días 1-5 de la semana).</Option>
-  <Option>El día 30 de cada mes a las 2 de la madrugada solo los lunes.</Option>
-</MultipleChoice>
+# Prueba tree (muestra árbol de directorios)
+tree /etc/apt/
 
----
+# Elimina curl pero conserva su configuración
+sudo apt remove curl
 
-**¿Cómo editas el crontab del usuario actual?**
+# Elimina curl y su configuración (purge)
+sudo apt purge curl
 
-<MultipleChoice>
-  <Option>`nano /etc/crontab`</Option>
-  <Option isCorrect>`crontab -e`</Option>
-  <Option>`vi /var/spool/cron/usuario`</Option>
-</MultipleChoice>
+# Elimina paquetes huérfanos (instalados como dependencias y ya no necesarios)
+sudo apt autoremove -y
+```
 
----
+### Tarea 2 — Instalar un paquete .deb manualmente
 
-**¿Qué expresión cron ejecuta una tarea cada 15 minutos?**
+A veces un paquete no está en los repositorios y debes descargarlo como `.deb`:
 
-<MultipleChoice>
-  <Option>`15 * * * *`</Option>
-  <Option isCorrect>`*/15 * * * *`</Option>
-  <Option>`0 15 * * *`</Option>
-</MultipleChoice>
+```bash
+# Descarga el paquete .deb de bat (un cat mejorado con sintaxis coloreada)
+wget "https://github.com/sharkdp/bat/releases/download/v0.24.0/bat_0.24.0_amd64.deb" \
+  -O /tmp/bat.deb
 
----
+# Instálalo con dpkg
+sudo dpkg -i /tmp/bat.deb
 
-## Ejercicio 6.5 — Systemd Timers
+# Pruébalo
+bat /etc/hosts
+```
 
-**¿Cuál es la ventaja de usar un systemd timer frente a cron?**
-
-<MultipleChoice>
-  <Option>Los systemd timers son más rápidos porque usan memoria compartida.</Option>
-  <Option isCorrect>Los timers integran logging con journalctl, pueden depender de otros servicios, soportan ejecución si el sistema estaba apagado (persistent), y permiten dependencias con systemd.</Option>
-  <Option>Los timers de systemd permiten ejecutar scripts con mayor prioridad de CPU.</Option>
-</MultipleChoice>
+Si `dpkg` falla por dependencias: `sudo apt install -f -y` y vuelve a intentarlo.
 
 ---
 
-## Ejercicio 6.6 — Caso práctico
+## Ejercicio 6.2 — Script de informe del sistema
 
-Necesitas programar un script de backup (`/usr/local/bin/backup.sh`) que se ejecute todos los días a las 3:00 AM. El script tarda unos 10 minutos y quieres que sus logs queden en journalctl.
+### Contexto
 
-**¿Cuál es la solución más robusta?**
+Los sysadmins programan informes automáticos para detectar problemas antes de que los usuarios los reporten. Crearás un script que recopila el estado del servidor.
 
-<Aside type="note" title="Respuesta: systemd timer">
+### Setup — una sola vez
 
-**1. Archivo de servicio** `/etc/systemd/system/backup.service`:
+```bash
+# Crea el directorio donde iran los informes
+mkdir -p ~/informes
+```
+
+### Tarea 1 — Crear el script paso a paso
+
+Primero entiende cada pieza antes de montarlas juntas:
+
+```bash
+# Prueba en la terminal cada uno de estos comandos:
+
+# 1. Fecha y hora actual
+date '+%Y-%m-%d %H:%M:%S'
+
+# 2. Hostname del servidor
+hostname
+
+# 3. Uso de disco del raíz
+df -h / | tail -1
+
+# 4. Memoria disponible
+free -h | grep "Mem:"
+
+# 5. Carga del sistema (últimos 1, 5 y 15 minutos)
+uptime | awk -F'load average:' '{print $2}'
+
+# 6. Servicios caídos (si no hay ninguno, no muestra nada)
+systemctl list-units --failed --no-legend 2>/dev/null | head -5
+```
+
+Ahora crea el script:
+
+```bash
+sudo nano /usr/local/bin/informe_sistema.sh
+```
+
+Escribe:
+
+```bash
+#!/bin/bash
+# informe_sistema.sh — Informe diario del estado del servidor
+
+LOGFILE="/var/log/informes/informe_$(date '+%Y-%m-%d').log"
+SEPARADOR="========================================"
+
+# Crea el directorio si no existe
+mkdir -p /var/log/informes
+
+{
+  echo "$SEPARADOR"
+  echo "INFORME DEL SERVIDOR — $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "$SEPARADOR"
+  echo ""
+
+  echo "## Servidor"
+  echo "Hostname: $(hostname)"
+  echo "Kernel:   $(uname -r)"
+  echo ""
+
+  echo "## Disco"
+  df -h | grep -v tmpfs
+  echo ""
+
+  echo "## Memoria"
+  free -h
+  echo ""
+
+  echo "## Carga del sistema"
+  uptime
+  echo ""
+
+  echo "## Servicios caídos"
+  FALLIDOS=$(systemctl list-units --failed --no-legend 2>/dev/null)
+  if [ -z "$FALLIDOS" ]; then
+    echo "Todos los servicios funcionan correctamente."
+  else
+    echo "$FALLIDOS"
+  fi
+  echo ""
+
+  echo "## Últimos errores del sistema"
+  journalctl -p err -n 5 --no-pager 2>/dev/null || echo "(sin errores recientes)"
+  echo ""
+
+  echo "$SEPARADOR"
+  echo "Fin del informe"
+} >> "$LOGFILE"
+
+echo "Informe guardado en: $LOGFILE"
+```
+
+Dale permisos de ejecución y pruébalo:
+
+```bash
+sudo chmod +x /usr/local/bin/informe_sistema.sh
+
+# Prueba manual
+sudo /usr/local/bin/informe_sistema.sh
+
+# Lee el informe generado
+cat /var/log/informes/informe_$(date '+%Y-%m-%d').log
+```
+
+El informe debe tener todas las secciones rellenas. Si alguna está vacía, revisa el comando correspondiente.
+
+---
+
+## Ejercicio 6.3 — Programar con systemd timer
+
+### Tarea 1 — Crear el servicio
+
+```bash
+sudo nano /etc/systemd/system/informe-sistema.service
+```
+
 ```ini
 [Unit]
-Description=Backup diario
+Description=Informe diario del estado del servidor
+After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/backup.sh
+ExecStart=/usr/local/bin/informe_sistema.sh
+
+[Install]
+WantedBy=multi-user.target
 ```
 
-**2. Archivo de timer** `/etc/systemd/system/backup.timer`:
+### Tarea 2 — Crear el timer
+
+```bash
+sudo nano /etc/systemd/system/informe-sistema.timer
+```
+
 ```ini
 [Unit]
-Description=Timer para backup diario
+Description=Timer para informe diario a las 7:00
 
 [Timer]
-OnCalendar=*-*-* 03:00:00
+OnCalendar=*-*-* 07:00:00
 Persistent=true
 
 [Install]
 WantedBy=timers.target
 ```
 
-**3. Activar el timer:**
+<Aside type="note" title="¿Qué hace Persistent=true?">
+Si el servidor estaba apagado a las 7:00, al encenderse ejecutará el informe que se perdió. Sin esta opción, la ejecución se perdería.
+</Aside>
+
+### Tarea 3 — Activar y probar
+
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now backup.timer
-systemctl list-timers  # Verificar
+
+# Habilita el timer
+sudo systemctl enable informe-sistema.timer
+
+# Arranca el timer
+sudo systemctl start informe-sistema.timer
+
+# Verifica el estado
+systemctl status informe-sistema.timer
+
+# Verifica cuándo es la próxima ejecución
+systemctl list-timers | grep informe
+
+# Fuerza una ejecución inmediata para probar
+sudo systemctl start informe-sistema.service
+
+# Verifica en los logs de systemd
+journalctl -u informe-sistema.service -n 5 --no-pager
+
+# Verifica que se generó el informe
+ls -la /var/log/informes/
+cat /var/log/informes/informe_$(date '+%Y-%m-%d').log
 ```
-</Aside>
+
+---
+
+## 📤 Bloque de entrega
+
+```bash
+echo "=== ENTREGA PRÁCTICA 6 ===" && \
+echo "" && \
+echo "--- Script de informe ---" && \
+cat /usr/local/bin/informe_sistema.sh && \
+echo "" && \
+echo "--- Estado del timer ---" && \
+systemctl status informe-sistema.timer && \
+echo "" && \
+echo "--- Próxima ejecución ---" && \
+systemctl list-timers | grep informe && \
+echo "" && \
+echo "--- Último informe generado ---" && \
+ls -la /var/log/informes/ && \
+echo "" && \
+sudo tail -30 /var/log/informes/informe_$(date '+%Y-%m-%d').log
+```

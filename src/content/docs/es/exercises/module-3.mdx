@@ -1,175 +1,254 @@
 ---
-title: "Ejercicios: Módulo 3 — Usuarios y Red"
-description: Ejercicios prácticos sobre gestión de usuarios, grupos, sudo, redes básicas y claves SSH en Linux.
+title: "Práctica 3 — Usuarios y Red"
+description: Configura usuarios, sudo y SSH con buenas prácticas de seguridad. Diagnostica y repara fallos de red en un servidor.
 sidebar:
   order: 3
 ---
 
 import { Aside } from "@astrojs/starlight/components";
-import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
-import Option from "@/components/tutorial/Option.astro";
 
-<Aside type="tip" title="Recomendación">
-  Practica estos comandos en una máquina virtual o sistema de prueba. Nunca en producción sin supervisión.
+<Aside type="tip" title="Antes de empezar">
+Esta práctica tiene dos ejercicios. El primero es de configuración (tú lo construyes todo). El segundo es de diagnóstico (hay fallos sembrados que debes encontrar). Léelos completos antes de empezar y trabaja en orden.
 </Aside>
 
 ---
 
-## Ejercicio 3.1 — Gestión de usuarios
+## Ejercicio 3.1 — Gestión de usuarios y sudo seguro
 
-**¿Qué comando crea un nuevo usuario llamado `devuser` con su directorio home?**
+### Contexto
 
-<MultipleChoice>
-  <Option>`useradd devuser`</Option>
-  <Option isCorrect>`useradd -m devuser`</Option>
-  <Option>`adduser --no-home devuser`</Option>
-</MultipleChoice>
+En un servidor real nunca se trabaja como `root` directamente. Se crea un usuario específico para cada tarea y se le dan solo los permisos que necesita. En esta práctica configurarás el usuario `deploy` que solo podrá reiniciar nginx — nada más.
 
----
+### Setup — ejecutar una sola vez como alumno
 
-**¿Dónde se almacenan las contraseñas cifradas de los usuarios en Linux?**
+```bash
+# Instala nginx si no está instalado
+sudo apt update && sudo apt install -y nginx
 
-<MultipleChoice>
-  <Option>En `/etc/passwd` en texto cifrado.</Option>
-  <Option isCorrect>En `/etc/shadow`, accesible solo por root.</Option>
-  <Option>En `/home/.passwords` de cada usuario.</Option>
-</MultipleChoice>
-
----
-
-**¿Qué comando bloquea la cuenta del usuario `peter` sin eliminarla?**
-
-<MultipleChoice>
-  <Option>`userdel -l peter`</Option>
-  <Option isCorrect>`usermod -L peter`</Option>
-  <Option>`passwd --freeze peter`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 3.2 — Grupos y sudo
-
-**¿Cómo añades al usuario `ana` al grupo secundario `docker` sin quitarla de sus grupos actuales?**
-
-<MultipleChoice>
-  <Option>`usermod -g docker ana`</Option>
-  <Option isCorrect>`usermod -aG docker ana`</Option>
-  <Option>`groupadd docker ana`</Option>
-</MultipleChoice>
-
----
-
-**Analiza esta línea en `/etc/sudoers`:**
-
-```
-%developers ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
+# Verifica que nginx está corriendo
+sudo systemctl status nginx
 ```
 
-**¿Qué permite esta regla?**
+### Tarea 1 — Crear el usuario deploy
 
-<MultipleChoice>
-  <Option>Que cualquier usuario pueda reiniciar nginx sin contraseña.</Option>
-  <Option isCorrect>Que todos los miembros del grupo `developers` puedan ejecutar `systemctl restart nginx` como root sin introducir contraseña.</Option>
-  <Option>Que el usuario `developers` tenga acceso root completo sin contraseña.</Option>
-</MultipleChoice>
+```bash
+# Crea el usuario con su directorio home
+sudo useradd -m -s /bin/bash deploy
 
----
+# Establece una contraseña segura (invéntate una que recuerdes)
+sudo passwd deploy
+# Escribe la contraseña dos veces cuando te la pida
+```
 
-## Ejercicio 3.3 — Redes básicas
+<Aside type="note" title="¿Por qué -m y -s /bin/bash?">
+`-m` crea el directorio `/home/deploy` automáticamente.  
+`-s /bin/bash` asigna bash como shell (sin esto el usuario no tendría shell interactiva).
+</Aside>
 
-**¿Qué comando muestra las interfaces de red y sus direcciones IP en sistemas modernos?**
+### Tarea 2 — Configurar sudo restringido
 
-<MultipleChoice>
-  <Option>`ifconfig -a` (obsoleto pero funciona)</Option>
-  <Option isCorrect>`ip addr show` (o `ip a`)</Option>
-  <Option>`netstat -i`</Option>
-</MultipleChoice>
+Queremos que `deploy` pueda reiniciar nginx con sudo pero **sin introducir contraseña** y **sin poder hacer ninguna otra cosa** con sudo.
 
----
+```bash
+# Crea el archivo de configuración de sudoers para deploy
+# IMPORTANTE: usa visudo o el editor con este comando para evitar errores de sintaxis
+sudo nano /etc/sudoers.d/deploy
+```
 
-**Ejecutas `ping 8.8.8.8` y no hay respuesta. ¿Qué comando usarías para diagnosticar la ruta hasta el destino?**
+Escribe exactamente esta línea en el archivo:
 
-<MultipleChoice>
-  <Option>`nmap 8.8.8.8`</Option>
-  <Option isCorrect>`traceroute 8.8.8.8` (o `mtr 8.8.8.8` para modo interactivo)</Option>
-  <Option>`ip route show 8.8.8.8`</Option>
-</MultipleChoice>
-
----
-
-**¿Qué archivo en sistemas con NetworkManager/systemd-networkd define la configuración de red estática en Debian/Ubuntu moderno?**
-
-<MultipleChoice>
-  <Option>`/etc/network/interfaces` (método clásico)</Option>
-  <Option isCorrect>Archivos `.yaml` en `/etc/netplan/` (método moderno en Ubuntu)</Option>
-  <Option>`/etc/resolv.conf` (solo para DNS)</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 3.4 — SSH y claves
-
-**¿Qué comando genera un par de claves SSH de tipo Ed25519?**
-
-<MultipleChoice>
-  <Option>`ssh-copy-id -t ed25519 servidor`</Option>
-  <Option isCorrect>`ssh-keygen -t ed25519 -C "comentario"`</Option>
-  <Option>`openssl genrsa -out id_ed25519 4096`</Option>
-</MultipleChoice>
-
----
-
-**¿Dónde debes colocar tu clave pública en el servidor remoto para autenticarte sin contraseña?**
-
-<MultipleChoice>
-  <Option>En `/etc/ssh/authorized_keys`</Option>
-  <Option isCorrect>En `~/.ssh/authorized_keys` del usuario con el que te conectarás</Option>
-  <Option>En `/root/.ssh/id_ed25519.pub`</Option>
-</MultipleChoice>
-
----
-
-**¿Qué parámetro del fichero `/etc/ssh/sshd_config` debes desactivar para prohibir el login de root por SSH?**
-
-<MultipleChoice>
-  <Option>`AllowUsers root`</Option>
-  <Option isCorrect>`PermitRootLogin no`</Option>
-  <Option>`RootSSH disable`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 3.5 — Caso práctico
-
-Debes configurar un servidor para que:
-1. El usuario `deploy` pueda reiniciar el servicio `nginx` con sudo sin contraseña
-2. Nadie pueda conectarse por SSH con contraseña (solo claves)
-3. El puerto SSH se cambie al 2222
-
-**¿Cuáles son los pasos correctos?**
-
-<Aside type="note" title="Respuesta">
-
-**Paso 1** — Edita `/etc/sudoers` (con `visudo`):
 ```
 deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
 ```
 
-**Paso 2** — Edita `/etc/ssh/sshd_config`:
+Guarda con `Ctrl+O`, `Enter`, `Ctrl+X`.
+
+Verifica que la sintaxis es correcta:
+
+```bash
+sudo visudo -c -f /etc/sudoers.d/deploy
+# Debe decir: /etc/sudoers.d/deploy: parsed OK
+```
+
+Prueba que funciona (cambia al usuario deploy primero):
+
+```bash
+# Cambia al usuario deploy
+sudo su - deploy
+
+# Intenta reiniciar nginx (debe funcionar sin pedir contraseña)
+sudo systemctl restart nginx
+
+# Intenta listar archivos como root (DEBE FALLAR)
+sudo ls /root
+# Debe decir: Sorry, user deploy is not allowed to execute...
+
+# Vuelve a tu usuario
+exit
+```
+
+### Tarea 3 — Generar par de claves SSH para deploy
+
+La autenticación por clave SSH es mucho más segura que por contraseña. Vamos a configurarla:
+
+```bash
+# Cambia al usuario deploy
+sudo su - deploy
+
+# Genera un par de claves Ed25519 (algoritmo moderno y seguro)
+ssh-keygen -t ed25519 -C "deploy@servidor-linux"
+# Cuando pida la ruta, pulsa Enter para usar la predeterminada (~/.ssh/id_ed25519)
+# Cuando pida passphrase, pulsa Enter dos veces (sin passphrase, para simplificar)
+
+# Añade la clave pública al archivo authorized_keys
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+cp ~/.ssh/id_ed25519.pub ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+# Verifica que existen los archivos
+ls -la ~/.ssh/
+
+exit  # Vuelve a tu usuario
+```
+
+### Tarea 4 — Proteger SSH
+
+Edita la configuración de SSH:
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+Asegúrate de que estas líneas existen y tienen estos valores (busca con `Ctrl+W` en nano si no las encuentras; si empiezan por `#` descoméntalas):
+
 ```
 PasswordAuthentication no
 PubkeyAuthentication yes
-Port 2222
 PermitRootLogin no
 ```
 
-**Paso 3** — Recarga SSH:
+<Aside type="caution" title="⚠ Cuidado antes de aplicar">
+Antes de desactivar la autenticación por contraseña, asegúrate de que tu usuario `alumno` puede conectarse por clave SSH o seguirás pudiendo conectarte por la ventana de VirtualBox directamente.
+</Aside>
+
+Aplica los cambios:
+
 ```bash
 sudo systemctl reload sshd
 ```
 
-**¡Importante!** Antes de cerrar la sesión, abre una nueva conexión de prueba:
+### Tarea 5 — Verificar todo junto
+
 ```bash
-ssh -p 2222 deploy@servidor
+# Verifica los permisos de sudo de deploy
+sudo -l -U deploy
+
+# Verifica que root no puede conectarse por SSH
+grep "PermitRootLogin" /etc/ssh/sshd_config
+
+# Verifica el directorio .ssh de deploy
+ls -la /home/deploy/.ssh/
 ```
-</Aside>
+
+---
+
+## Ejercicio 3.2 — Diagnóstico de red: encuentra los fallos
+
+### Contexto
+
+Eres el sysadmin. El profesor ha "roto" el servidor de tres maneras diferentes. No sabes cuáles ni cuántas son. Tu trabajo es diagnosticar qué está fallando y solucionarlo todo.
+
+### Setup — el profesor ejecuta esto antes de darte el servidor
+
+```bash
+# (Para el profesor — no ejecutes esto tú)
+sudo apt install -y nginx ufw
+sudo systemctl stop nginx
+sudo ufw --force enable
+sudo ufw default deny incoming
+sudo ufw allow ssh
+echo "192.0.2.1 google.com" | sudo tee -a /etc/hosts
+```
+
+### Síntomas que experimentarás
+
+- El servidor web no responde cuando haces `curl http://localhost`
+- Internet puede tener comportamiento extraño
+
+### Metodología de diagnóstico
+
+Sigue siempre este orden:
+
+**Paso 1 — Comprueba si nginx responde:**
+```bash
+curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://localhost
+```
+Si no responde (error de conexión), el servidor está parado o el firewall bloquea.
+
+**Paso 2 — Comprueba si nginx está corriendo:**
+```bash
+systemctl is-active nginx
+```
+Si dice `inactive`, arráncalo:
+```bash
+sudo systemctl start nginx
+```
+Vuelve al Paso 1. Si ahora funciona, ¿hay más problemas?
+
+**Paso 3 — Comprueba el firewall:**
+```bash
+sudo ufw status verbose
+```
+¿Está activo? ¿Permite el puerto 80 (HTTP)?  
+Si no permite el 80:
+```bash
+sudo ufw allow 80/tcp
+```
+
+**Paso 4 — Comprueba la resolución DNS:**
+```bash
+ping -c 2 google.com
+```
+¿Falla o va a una IP inesperada? Inspecciona el archivo hosts:
+```bash
+cat /etc/hosts
+```
+¿Hay alguna línea sospechosa? Una IP como `192.0.2.X` es una IP de documentación que no existe en internet.  
+Elimina la línea falsa:
+```bash
+sudo nano /etc/hosts
+# Borra la línea con la IP falsa de google.com
+# Guarda con Ctrl+O, Enter, Ctrl+X
+```
+
+**Paso 5 — Verifica que todo está resuelto:**
+```bash
+curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://localhost
+ping -c 2 google.com | grep "transmitted"
+sudo ufw status | grep "80/tcp"
+```
+
+---
+
+## 📤 Bloque de entrega
+
+```bash
+echo "=== ENTREGA PRÁCTICA 3 ===" && \
+echo "" && \
+echo "--- 3.1: Permisos sudo de deploy ---" && \
+sudo -l -U deploy && \
+echo "" && \
+echo "--- 3.1: Claves SSH de deploy ---" && \
+ls -la /home/deploy/.ssh/ && \
+echo "" && \
+echo "--- 3.1: Config SSH ---" && \
+grep "PasswordAuthentication\|PermitRootLogin" /etc/ssh/sshd_config && \
+echo "" && \
+echo "--- 3.2: Estado nginx ---" && \
+systemctl is-active nginx && \
+echo "--- 3.2: Estado firewall ---" && \
+sudo ufw status && \
+echo "--- 3.2: DNS google ---" && \
+ping -c 1 google.com | grep "transmitted"
+```

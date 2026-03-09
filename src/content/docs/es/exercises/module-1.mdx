@@ -1,122 +1,216 @@
 ---
-title: "Ejercicios: Módulo 1 — Introducción a Linux"
-description: Ejercicios prácticos sobre historia de Linux, distribuciones, filosofía Unix y el ecosistema de certificaciones.
+title: "Práctica 1 — Instalación y Entorno"
+description: Instala Ubuntu Server en VirtualBox, configura la red y conéctate por SSH. Primer contacto real con un servidor Linux.
 sidebar:
   order: 1
 ---
 
 import { Aside } from "@astrojs/starlight/components";
-import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
-import Option from "@/components/tutorial/Option.astro";
 
-<Aside type="tip" title="Cómo usar estos ejercicios">
-  Intenta responder cada pregunta **sin mirar** el material del módulo. Después verifica tus respuestas y repasa los conceptos que hayas fallado.
+<Aside type="tip" title="Cómo usar esta práctica">
+Lee cada paso **antes** de ejecutarlo. Si algo no funciona, revisa el paso anterior. Cuando termines, ejecuta el bloque de **Entrega** y lleva la salida al profesor.
 </Aside>
 
 ---
 
-## Ejercicio 1.1 — Historia y filosofía
+## Objetivo
 
-**¿En qué año y por quién fue liberado el kernel de Linux?**
-
-<MultipleChoice>
-  <Option>1983, por Richard Stallman como parte del proyecto GNU.</Option>
-  <Option>1969, por Ken Thompson en los Laboratorios Bell de AT&T.</Option>
-  <Option isCorrect>1991, por Linus Torvalds, un estudiante universitario en Finlandia.</Option>
-</MultipleChoice>
+Al terminar esta práctica tendrás un servidor Ubuntu Server 24.04 corriendo en VirtualBox, accesible por SSH desde tu ordenador como si fuera un servidor remoto real.
 
 ---
 
-**¿Cuál es el significado práctico del principio "Todo es un archivo" en Linux?**
+## Requisitos previos
 
-<MultipleChoice>
-  <Option>Que todos los archivos deben tener extensión para que el sistema los reconozca.</Option>
-  <Option isCorrect>Que los dispositivos de hardware (`/dev/sda`), procesos (`/proc`) y configuraciones del sistema se representan e interactúan como archivos de texto estándar.</Option>
-  <Option>Que el sistema de archivos de Linux no usa carpetas, solo archivos planos.</Option>
-</MultipleChoice>
+- VirtualBox instalado ([descargar aquí](https://www.virtualbox.org/wiki/Downloads))
+- ISO de Ubuntu Server 24.04 LTS ([descargar aquí](https://ubuntu.com/download/server)) — elige la opción **Get Ubuntu Server**
 
 ---
 
-## Ejercicio 1.2 — Familias de distribuciones
+## Paso 1 — Crear la máquina virtual
 
-**¿Qué gestor de paquetes y formato de paquete utiliza la familia Debian?**
+1. Abre VirtualBox y haz clic en **Nueva**
+2. Rellena la configuración:
+   - **Nombre:** `servidor-linux`
+   - **Tipo:** Linux
+   - **Versión:** Ubuntu (64-bit)
+3. Haz clic en **Siguiente** en cada pantalla con estos valores:
+   - **Memoria RAM:** 2048 MB (2 GB)
+   - **Disco duro:** Crear uno nuevo → VDI → Reservado dinámicamente → **20 GB**
+4. Haz clic en **Crear**
 
-<MultipleChoice>
-  <Option>dnf / .rpm</Option>
-  <Option isCorrect>apt / .deb</Option>
-  <Option>pacman / .pkg.tar.zst</Option>
-</MultipleChoice>
-
----
-
-**Relaciona cada distribución con su familia correcta:**
-
-| Distribución | Familia |
-|-------------|---------|
-| Rocky Linux | ? |
-| Ubuntu | ? |
-| Arch Linux | ? |
-| Fedora | ? |
-
-<Aside type="note" title="Respuesta">
-- **Rocky Linux** → Familia Red Hat (usa `dnf` / `.rpm`)
-- **Ubuntu** → Familia Debian (usa `apt` / `.deb`)
-- **Arch Linux** → Familia Arch (usa `pacman`)
-- **Fedora** → Familia Red Hat (usa `dnf` / `.rpm`)
+<Aside type="note" title="¿Por qué 20 GB?">
+El servidor real usará unos 5-8 GB. Los 20 GB son el máximo que puede crecer el archivo, pero al ser dinámico solo ocupa en disco lo que realmente use.
 </Aside>
 
 ---
 
-## Ejercicio 1.3 — Entornos gráficos
+## Paso 2 — Configurar la red (dos adaptadores)
 
-**¿Cuál es la principal ventaja de Wayland sobre X11?**
+Esto es clave: necesitas **dos adaptadores de red**:
 
-<MultipleChoice>
-  <Option>Wayland es más compatible con software antiguo que X11.</Option>
-  <Option isCorrect>Wayland es fundamentalmente más seguro y eficiente: los clientes renderizan directamente, eliminando intermediarios y reduciendo el consumo de CPU/GPU.</Option>
-  <Option>Wayland ofrece más opciones de personalización visual que X11.</Option>
-</MultipleChoice>
+- **NAT** → para que la VM tenga acceso a internet
+- **Host-Only** → para conectarte por SSH desde tu ordenador
 
----
+En VirtualBox, con la VM seleccionada:
 
-**¿Por qué los servidores Linux normalmente se administran sin entorno gráfico?**
+1. **Configuración → Red → Adaptador 1**
+   - Conectado a: **NAT**
+   - ✅ Activar la interfaz de red
 
-<MultipleChoice>
-  <Option>Porque los entornos gráficos son incompatibles con Linux en modo servidor.</Option>
-  <Option>Porque la ley exige que los servidores funcionen en modo texto.</Option>
-  <Option isCorrect>Para ahorrar recursos (CPU, RAM, disco), mejorar la seguridad y facilitar la administración remota vía SSH.</Option>
-</MultipleChoice>
+2. **Adaptador 2**
+   - ✅ Habilitar adaptador de red
+   - Conectado a: **Adaptador solo-anfitrión**
+   - Nombre: `vboxnet0` (si no existe, créalo en VirtualBox → Herramientas → Red → Crear)
 
 ---
 
-## Ejercicio 1.4 — Certificación LFCS
+## Paso 3 — Instalar Ubuntu Server
 
-**¿Cuál es el formato del examen LFCS?**
-
-<MultipleChoice>
-  <Option>50 preguntas de test de opción múltiple en 90 minutos.</Option>
-  <Option>Un proyecto de scripting Bash que se entrega a distancia.</Option>
-  <Option isCorrect>100% basado en rendimiento: resolución de escenarios reales en una terminal en vivo durante 2 horas.</Option>
-</MultipleChoice>
+1. Selecciona la VM y haz clic en **Iniciar**
+2. Cuando pida disco de arranque, selecciona la ISO que descargaste
+3. En el instalador:
+   - **Language:** English (el instalador en inglés evita problemas de codificación)
+   - **Keyboard:** Spanish → Spanish
+   - **Type of install:** Ubuntu Server *(no la versión minimized)*
+   - **Network:** deja la configuración automática (DHCP); el adaptador NAT obtendrá IP automáticamente
+   - **Storage:** Use an entire disk → continúa con los valores por defecto
+   - **Profile setup:**
+     - Your name: `Alumno Linux`
+     - Server name: `servidor-linux` *(sin espacios ni mayúsculas)*
+     - Username: `alumno`
+     - Password: elige una que recuerdes (mínimo 8 caracteres)
+   - **SSH:** ✅ Install OpenSSH server — **MUY IMPORTANTE, activa esta opción**
+   - **Featured snaps:** no selecciones nada, haz clic en Done
+4. Espera a que termine la instalación (~10-15 minutos)
+5. Cuando aparezca **"Reboot Now"**, haz clic y retira la ISO si lo pide
 
 ---
 
-**¿Qué distribuciones soporta el examen LFCS al momento de la inscripción?**
+## Paso 4 — Primera sesión en el servidor
 
-<MultipleChoice>
-  <Option isCorrect>Ubuntu (familia Debian) o CentOS Stream (familia Red Hat), a elegir.</Option>
-  <Option>Solo Fedora, que es el estándar de la Linux Foundation.</Option>
-  <Option>Debian, Arch Linux y openSUSE, según el candidato.</Option>
-</MultipleChoice>
+Cuando la VM arranque verás un prompt de login. Inicia sesión con `alumno` y tu contraseña.
+
+Ejecuta estos comandos para comprobar que todo funciona:
+
+```bash
+# Ver información del sistema
+uname -a
+
+# Ver las interfaces de red
+ip addr show
+
+# Actualizar la lista de paquetes
+sudo apt update
+
+# Instalar actualizaciones disponibles
+sudo apt upgrade -y
+```
+
+<Aside type="caution" title="Si sudo pide contraseña">
+Es normal la primera vez. Escribe tu contraseña (la que pusiste al instalar). No se verán los caracteres mientras escribes.
+</Aside>
 
 ---
 
-## Ejercicio 1.5 — Caso práctico
+## Paso 5 — Conectarte por SSH desde tu ordenador
 
-Eres administrador de sistemas en una empresa. Te piden elegir una distribución Linux para 20 servidores de producción que requieren soporte durante 10 años, gestión empresarial y estabilidad máxima.
+El objetivo es no usar la ventana de VirtualBox, sino conectarte igual que a un servidor remoto real.
 
-**¿Cuál sería tu elección y por qué?**
+### 5.1 Encontrar la IP del adaptador Host-Only
 
-<Aside type="note" title="Respuesta razonada">
-Las opciones más adecuadas son **Rocky Linux** o **AlmaLinux** (familia Red Hat), ambas con ciclos de soporte de 10 años y diseñadas como sustitutos de RHEL para entornos empresariales. También sería válido **Ubuntu Server LTS** (5 años de soporte oficial, ampliable a 10 con ESM). La clave es priorizar el **ciclo LTS** sobre las novedades tecnológicas.
+En la VM, ejecuta:
+
+```bash
+ip addr show
+```
+
+Busca la interfaz `enp0s8` (o `eth1`). Su IP empezará por `192.168.56.X`. Anótala.
+
+Si no aparece, el adaptador Host-Only no se configuró. Solución:
+
+```bash
+# Editar la configuración de red
+sudo nano /etc/netplan/00-installer-config.yaml
+```
+
+Añade el adaptador si falta (el archivo ya tendrá `enp0s3` para NAT):
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    enp0s3:
+      dhcp4: true
+    enp0s8:
+      dhcp4: true
+```
+
+Aplica los cambios:
+
+```bash
+sudo netplan apply
+ip addr show enp0s8
+```
+
+### 5.2 Conectarte desde tu terminal (Windows/Mac/Linux)
+
+**Windows:** abre PowerShell o Windows Terminal  
+**Mac/Linux:** abre Terminal
+
+```bash
+ssh alumno@192.168.56.X
+```
+
+*(sustituye la X por la IP de tu VM)*
+
+La primera vez preguntará si confías en el servidor — escribe `yes`.  
+Introduce tu contraseña.
+
+Si todo va bien, verás el prompt del servidor:
+
+```
+alumno@servidor-linux:~$
+```
+
+**🎉 Estás conectado por SSH a tu propio servidor Linux.**
+
+---
+
+## Paso 6 — Configurar el hostname y la zona horaria
+
+```bash
+# Cambiar el hostname (nombre del servidor)
+sudo hostnamectl set-hostname servidor-linux
+
+# Configurar la zona horaria a España
+sudo timedatectl set-timezone Europe/Madrid
+
+# Verificar
+timedatectl
+```
+
+---
+
+## 📤 Bloque de entrega
+
+Cuando termines todos los pasos, ejecuta este comando **desde la sesión SSH** (no desde la ventana de VirtualBox):
+
+```bash
+echo "=== ENTREGA PRÁCTICA 1 ===" && \
+echo "Hostname: $(hostname)" && \
+echo "Usuario: $(whoami)" && \
+uname -a && \
+echo "--- Red ---" && \
+ip addr show | grep "inet " && \
+echo "--- Zona horaria ---" && \
+timedatectl | grep "Time zone" && \
+echo "--- Sistema actualizado ---" && \
+sudo apt list --upgradable 2>/dev/null | wc -l && \
+echo "paquetes pendientes (0 = actualizado)"
+```
+
+Copia toda la salida y llévala al profesor.
+
+<Aside type="tip" title="Snapshot antes de continuar">
+Antes de la próxima práctica, haz un snapshot de la VM en este estado: **VirtualBox → Máquina → Tomar instantánea → "Base limpia M1"**. Si algo sale mal en futuras prácticas, puedes volver aquí.
 </Aside>

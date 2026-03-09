@@ -1,162 +1,219 @@
 ---
-title: "Ejercicios: Módulo 5 — Almacenamiento y LVM"
-description: Ejercicios prácticos sobre discos, particiones, sistemas de archivos, montaje y gestión de volúmenes lógicos con LVM.
+title: "Práctica 5 — Almacenamiento y LVM"
+description: Configura un disco adicional con LVM desde cero, crea volúmenes lógicos, formatea particiones y configura el montaje automático.
 sidebar:
   order: 5
 ---
 
 import { Aside } from "@astrojs/starlight/components";
-import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
-import Option from "@/components/tutorial/Option.astro";
+
+<Aside type="tip" title="Antes de empezar">
+Para esta práctica necesitas añadir un segundo disco a tu VM. El profesor lo hará por ti en VirtualBox antes de la sesión, o sigue el Paso 0 si no lo tienes.
+</Aside>
 
 ---
 
-## Ejercicio 5.1 — Discos y particiones
+## Paso 0 — Añadir un segundo disco a la VM (si no está hecho)
 
-**¿Qué comando lista todos los discos y particiones del sistema de forma clara?**
+Haz esto con la **VM apagada**:
 
-<MultipleChoice>
-  <Option>`fdisk -l /dev/sda`</Option>
-  <Option isCorrect>`lsblk` (muestra el árbol de dispositivos de bloque)</Option>
-  <Option>`mount | grep disk`</Option>
-</MultipleChoice>
+1. En VirtualBox, selecciona tu VM y abre **Configuración → Almacenamiento**
+2. Haz clic en el **icono del disco con un +** junto al controlador SATA
+3. Selecciona **Crear un nuevo disco** → VDI → Reservado dinámicamente → **10 GB**
+4. Haz clic en **Finalizar** y luego en **OK**
+5. Arranca la VM
 
----
-
-**¿Cuál es la diferencia entre MBR y GPT?**
-
-<MultipleChoice>
-  <Option>MBR soporta discos de más de 2 TB; GPT está limitado a 2 TB.</Option>
-  <Option isCorrect>MBR es el esquema antiguo (máx. 4 particiones primarias, discos hasta 2 TB); GPT es el moderno (128 particiones, discos de cualquier tamaño, necesario para UEFI).</Option>
-  <Option>GPT solo funciona en sistemas Linux; MBR es compatible con todos los sistemas.</Option>
-</MultipleChoice>
-
----
-
-**¿Qué herramienta usarías para crear particiones en un disco con esquema GPT?**
-
-<MultipleChoice>
-  <Option>`fdisk` (soporta GPT en versiones modernas, pero mejor usar gdisk)</Option>
-  <Option isCorrect>`gdisk` o `parted` (diseñados específicamente para GPT)</Option>
-  <Option>`mkfs.ext4` (no gestiona tablas de partición)</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 5.2 — Sistemas de archivos y montaje
-
-**¿Qué comando formatea la partición `/dev/sdb1` con el sistema de archivos ext4?**
-
-<MultipleChoice>
-  <Option>`format /dev/sdb1 ext4`</Option>
-  <Option isCorrect>`mkfs.ext4 /dev/sdb1`</Option>
-  <Option>`fdisk --mkfs ext4 /dev/sdb1`</Option>
-</MultipleChoice>
-
----
-
-**Para que un sistema de archivos se monte automáticamente en cada arranque, ¿qué archivo debes editar?**
-
-<MultipleChoice>
-  <Option>`/etc/mounts.conf`</Option>
-  <Option isCorrect>`/etc/fstab`</Option>
-  <Option>`/boot/grub/mounts.cfg`</Option>
-</MultipleChoice>
-
----
-
-**Analiza esta línea de `/etc/fstab`:**
-
-```
-UUID=a1b2c3d4  /data  ext4  defaults,noatime  0  2
-```
-
-**¿Qué significa el último campo `2`?**
-
-<MultipleChoice>
-  <Option>El sistema de archivos se montará en segundo lugar después del raíz.</Option>
-  <Option isCorrect>El orden de `fsck` (comprobación de disco al arranque). `1` es para el raíz, `2` para el resto. `0` desactiva la comprobación.</Option>
-  <Option>La prioridad de montaje; menor número = más prioritario.</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 5.3 — LVM
-
-**¿Cuál es el orden correcto para crear un volumen lógico con LVM?**
-
-<MultipleChoice>
-  <Option>Crear VG → Crear PV → Crear LV → Formatear</Option>
-  <Option isCorrect>Crear PV (`pvcreate`) → Crear VG (`vgcreate`) → Crear LV (`lvcreate`) → Formatear con `mkfs`</Option>
-  <Option>Crear LV → Asignar PV → Crear VG → Montar</Option>
-</MultipleChoice>
-
----
-
-**¿Qué comando amplía un grupo de volúmenes `datos-vg` añadiendo el disco `/dev/sdc`?**
-
-<MultipleChoice>
-  <Option>`lvcreate -L +50G datos-vg /dev/sdc`</Option>
-  <Option isCorrect>`vgextend datos-vg /dev/sdc` (primero debes hacer `pvcreate /dev/sdc`)</Option>
-  <Option>`pvextend datos-vg /dev/sdc`</Option>
-</MultipleChoice>
-
----
-
-**¿Qué comando extiende el volumen lógico `/dev/datos-vg/home-lv` en 10 GB y redimensiona el sistema de archivos ext4 al mismo tiempo?**
-
-<MultipleChoice>
-  <Option>`lvresize -L +10G /dev/datos-vg/home-lv`</Option>
-  <Option isCorrect>`lvextend -L +10G -r /dev/datos-vg/home-lv` (el flag `-r` redimensiona el fs automáticamente)</Option>
-  <Option>`resize2fs /dev/datos-vg/home-lv +10G`</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 5.4 — Monitorización de disco
-
-**¿Qué comando muestra el uso de disco de todos los sistemas de archivos montados en formato legible?**
-
-<MultipleChoice>
-  <Option>`du -sh /*`</Option>
-  <Option isCorrect>`df -h`</Option>
-  <Option>`lsblk --usage`</Option>
-</MultipleChoice>
-
----
-
-**¿Para qué sirve el comando `du -sh /var/*`?**
-
-<MultipleChoice>
-  <Option>Muestra el uso de disco del sistema de archivos `/var`.</Option>
-  <Option isCorrect>Muestra el tamaño total de cada subdirectorio dentro de `/var`, en formato legible por humanos.</Option>
-  <Option>Elimina los archivos duplicados en `/var`.</Option>
-</MultipleChoice>
-
----
-
-## Ejercicio 5.5 — Caso práctico: disco lleno
-
-El disco raíz de tu servidor está al 95%. Diagnostica:
+Verifica que el disco aparece en el sistema:
 
 ```bash
-# 1. Ver qué sistema de archivos está lleno
-df -h
-
-# 2. Encontrar los directorios más grandes en /
-du -sh /* 2>/dev/null | sort -rh | head -20
-
-# 3. Buscar archivos grandes
-find / -type f -size +1G 2>/dev/null
-
-# 4. Ver logs grandes
-du -sh /var/log/* | sort -rh | head -10
+lsblk
 ```
 
-**¿Qué hace `sort -rh`?**
+Deberías ver `/dev/sda` (disco del sistema) y `/dev/sdb` (disco nuevo, vacío, sin particiones).  
+Si ves `/dev/nvme0n1` en lugar de `sda`, el nuevo disco será `/dev/sdb` igualmente.
 
-<MultipleChoice>
-  <Option>Ordena en orden alfabético inverso.</Option>
-  <Option isCorrect>Ordena en orden descendente (`-r`) interpretando tamaños legibles como 1G, 500M (`-h`).</Option>
-  <Option>Muestra solo los archivos ocultos ordenados por tamaño.</Option>
-</MultipleChoice>
+---
+
+## Contexto — ¿Qué es LVM?
+
+LVM (Logical Volume Manager) añade una capa de abstracción entre los discos físicos y los sistemas de archivos. Te permite:
+
+- Redimensionar particiones sin apagar el servidor
+- Combinar varios discos en un único espacio
+- Ampliar el almacenamiento añadiendo discos en caliente
+
+Hay tres conceptos clave:
+
+```
+Disco físico (/dev/sdb)
+    ↓ pvcreate
+Physical Volume (PV) — el disco inicializado para LVM
+    ↓ vgcreate
+Volume Group (VG) — pool de almacenamiento (puede tener varios PVs)
+    ↓ lvcreate
+Logical Volume (LV) — equivalente a una partición flexible
+    ↓ mkfs / mount
+Sistema de archivos montado y accesible
+```
+
+---
+
+## Tarea 1 — Instalar las herramientas LVM
+
+```bash
+sudo apt update && sudo apt install -y lvm2
+
+# Verifica que las herramientas están disponibles
+pvs --version
+```
+
+---
+
+## Tarea 2 — Crear el Physical Volume
+
+```bash
+# Inicializa el disco /dev/sdb para su uso con LVM
+sudo pvcreate /dev/sdb
+
+# Verifica el resultado
+sudo pvs
+# Debes ver /dev/sdb en la lista con ~10 GiB de capacidad
+```
+
+Si `pvcreate` pide confirmación porque el disco tiene datos, escribe `y` para confirmar.
+
+---
+
+## Tarea 3 — Crear el Volume Group
+
+```bash
+# Crea el Volume Group 'datos-vg' usando el PV
+sudo vgcreate datos-vg /dev/sdb
+
+# Verifica el resultado
+sudo vgs
+# Verás datos-vg con ~10 GiB disponibles
+```
+
+---
+
+## Tarea 4 — Crear el Logical Volume
+
+```bash
+# Crea un LV de 8 GB llamado 'proyectos-lv' dentro del VG
+sudo lvcreate -L 8G -n proyectos-lv datos-vg
+
+# Verifica el resultado
+sudo lvs
+# Verás proyectos-lv con 8 GiB
+
+# El LV es accesible como dispositivo:
+ls -la /dev/datos-vg/proyectos-lv
+```
+
+---
+
+## Tarea 5 — Crear el sistema de archivos y montarlo
+
+```bash
+# Formatea el LV con ext4
+sudo mkfs.ext4 /dev/datos-vg/proyectos-lv
+
+# Crea el punto de montaje
+sudo mkdir -p /srv/proyectos
+
+# Monta el LV
+sudo mount /dev/datos-vg/proyectos-lv /srv/proyectos
+
+# Verifica que está montado
+df -h /srv/proyectos
+# Debe mostrar ~7.9 GB disponibles en /srv/proyectos
+```
+
+Prueba que puedes escribir en él:
+
+```bash
+sudo touch /srv/proyectos/prueba.txt
+ls /srv/proyectos/
+```
+
+---
+
+## Tarea 6 — Montaje automático con /etc/fstab
+
+El montaje actual desaparecería al reiniciar. Para que sea permanente, añade una entrada en `/etc/fstab`.
+
+**IMPORTANTE:** usa el UUID del LV, no el nombre del dispositivo. El UUID nunca cambia aunque añadas discos:
+
+```bash
+# Obtén el UUID del LV
+sudo blkid /dev/datos-vg/proyectos-lv
+```
+
+Copia el valor `UUID="xxxxx-xxxx-..."` (con las comillas).
+
+```bash
+# Edita /etc/fstab
+sudo nano /etc/fstab
+```
+
+Añade esta línea al final (sustituye el UUID por el tuyo):
+
+```
+UUID=tu-uuid-aqui  /srv/proyectos  ext4  defaults,noatime  0  2
+```
+
+<Aside type="note" title="¿Qué significan los últimos dos números?">
+- El primer `0` → no se hace dump (backup clásico) de esta partición
+- El `2` → se comprueba con `fsck` al arranque, pero después del disco raíz (que es `1`)
+</Aside>
+
+Verifica que la entrada de fstab es correcta antes de reiniciar:
+
+```bash
+# Desmonta primero
+sudo umount /srv/proyectos
+
+# Monta todo lo que aparece en fstab
+sudo mount -a
+
+# Si no hay errores, verifica que se montó
+df -h /srv/proyectos
+```
+
+Si hay un error en fstab, el sistema puede no arrancar. Si algo sale mal, edita el fstab y elimina la línea.
+
+---
+
+## Tarea 7 — Verificar el montaje tras reiniciar (opcional)
+
+```bash
+sudo reboot
+```
+
+Tras reconectar por SSH:
+
+```bash
+df -h /srv/proyectos
+# Debe montarse automáticamente sin hacer nada
+```
+
+---
+
+## 📤 Bloque de entrega
+
+```bash
+echo "=== ENTREGA PRÁCTICA 5 ===" && \
+echo "" && \
+echo "--- LVM: resumen ---" && \
+sudo pvs && sudo vgs && sudo lvs && \
+echo "" && \
+echo "--- Montaje ---" && \
+df -h /srv/proyectos && \
+echo "" && \
+echo "--- fstab ---" && \
+grep proyectos /etc/fstab && \
+echo "" && \
+echo "--- lsblk ---" && \
+lsblk -f | grep -A3 sdb
+```
