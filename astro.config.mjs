@@ -7,9 +7,11 @@ import { sidebar } from "./astro.sidebar";
 import icon from "astro-icon";
 import mermaid from "astro-mermaid";
 
+import cloudflare from "@astrojs/cloudflare";
+
 // https://astro.build/config
 export default defineConfig({
-  site: "https://linux-starlight.netlify.app/",
+  site: "https://linux.casset.cat/",
   integrations: [
     starlight({
       title: "Linux Starlight",
@@ -42,4 +44,5 @@ export default defineConfig({
   markdown: {
     rehypePlugins: [rehypeTasklistEnhancer()],
   },
+  adapter: cloudflare(),
 });
