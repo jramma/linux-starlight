@@ -37,23 +37,42 @@ Cada proceso en Linux nace siempre con tres "tuberías invisibles" conectadas a 
 
 ### Operadores de Redirección
 
-- **`>` (Sobrescribir):** Redirige el `stdout` reemplazando todo el contenido previo del archivo si este ya existe. Si no existe, lo crea.
+- **`>` (Redirigir Salida Estándar / Sobrescribir):** Redirige el `stdout` reemplazando todo el contenido previo del archivo si este ya existe. Si no existe, lo crea automáticamente.
 
   ```bash
   # Guarda el mensaje anulando el contenido anterior de registro.txt
   echo "Sistema iniciado" > registro.txt
+  
+  # Guarda la lista de archivos de tu directorio actual
+  ls -la > mis_archivos.txt
   ```
 
-- **`>>` (Añadir / Append):** Redirige el `stdout` agregando la salida al final del archivo sin tocar el texto existente. Vital para sistemas de Logs.
+- **`>>` (Añadir / Append):** Redirige el `stdout` agregando la salida al final del archivo sin tocar ni borrar el texto existente. Vital para sistemas de Logs o historiales.
 
   ```bash
-  echo "Nueva alerta de seguridad" >> registro.txt
+  # Añade una nueva línea al final del archivo
+  echo "Nueva alerta de seguridad: Intento de inicio de sesión fallido" >> registro.txt
   ```
 
-- **`2>` (Redirigir solo Errores):** Supongamos que escaneas un disco entero. La pantalla se llenará de errores "Permiso Denegado". Puedes limpiar la vista enviando los errores a `/dev/null` (el agujero negro de Linux).
+- **`<` (Redirigir Entrada Estándar):** En lugar de usar el teclado para el `stdin`, toma el contenido de un archivo y se lo pasa a un comando.
+
   ```bash
-  # Muestra los archivos encontrados, pero oculta e ignora los errores
+  # El comando 'wc -l' (contar líneas) lee el contenido de registro.txt directamente
+  wc -l < registro.txt
+  ```
+
+- **`2>` (Redirigir solo Errores):** Supongamos que escaneas un disco entero. La pantalla se llenará de aburridos errores "Permiso Denegado". Puedes limpiar la vista enviando los errores a `/dev/null` (el agujero negro de Linux donde todo lo que entra desaparece).
+
+  ```bash
+  # Muestra los archivos encontrados (stdout por pantalla), pero oculta e ignora los errores (stderr a /dev/null)
   find / -name "*.conf" 2> /dev/null
+  ```
+
+- **`&>` (Redirigir Salida y Errores Juntos):** Si no te importa si el comando fue exitoso o falló, y quieres que absolutamente todo el resultado se guarde en un mismo archivo (o se silencie en `/dev/null`).
+
+  ```bash
+  # Guarda tanto los resultados de la búsqueda como los posibles errores
+  find / -name "*.conf" &> resultado_completo.txt
   ```
 
 ---
@@ -68,26 +87,63 @@ comando1 | comando2 | comando3
 
 ### Filtros Esenciales (Coreutils)
 
-Los siguientes comandos están diseñados específicamente para brillar cuando se conectan detrás de un Pipe:
+Los siguientes comandos están diseñados específicamente para brillar cuando se conectan detrás de un Pipe. Actúan como pequeños "filtros" que moldean los datos que reciben:
 
-1. **`grep`**: El buscador universal. Filtra e imprime solo las líneas que contienen una palabra o patrón.
+1. **`grep`**: El buscador universal. Filtra e imprime solo las líneas que contienen una palabra o patrón específico.
    ```bash
-   # Lee un archivo inmenso, y solo imprime las líneas con la palabra "Error"
+   # Lee un archivo inmenso, y solo imprime las líneas con la palabra "Error" o "Failed"
    cat /var/log/syslog | grep "Error"
    ```
-2. **`less`**: Paginador. Si la salida de un comando es de miles de líneas y abarrota tu pantalla, ponle `| less` y podrás navegarla cómodamente con flechas (presiona `q` para salir).
-3. **`wc` (Word Count)**: Cuenta bytes, palabras o, lo más útil, líneas con la bandera `-l` (lines).
-4. **`head` y `tail`**: Muestran sólo las 10 primeras (`head`) o las 10 últimas (`tail`) líneas de texto.
+2. **`less`**: Paginador. Si la salida de un comando es de miles de líneas y abarrota tu pantalla destruyendo tu historial, ponle `| less` y podrás navegarla cómodamente con flechas (presiona `q` para salir).
+   ```bash
+   # Mira la lista de todos los procesos corriendo de forma paginada y controlada
+   ps aux | less
+   ```
+3. **`wc` (Word Count)**: Cuenta bytes, palabras o, lo más útil y frecuente, líneas con la bandera `-l` (lines).
+   ```bash
+   # ¿Cuántos archivos y carpetas hay en el directorio de configuraciones?
+   ls /etc | wc -l
+   ```
+4. **`head` y `tail`**: Muestran sólo las 10 primeras (`head`) o las últimas (`tail`) líneas de texto de un flujo masivo. La bandera `-n` permite elegir la cantidad exacta.
+   ```bash
+   # Observa solo los últimos 20 logueos del sistema
+   last | tail -n 20
+   ```
+5. **`sort`**: Ordena el texto resultante alfabéticamente o numéricamente. Agrega `-r` para orden inverso y `-n` para números.
+6. **`uniq`**: Filtra y elimina las líneas duplicadas de un listado. **Ojo:** Requiere que los datos estén ordenados previamente (`sort | uniq`).
+7. **`awk` y `sed`**: Herramientas súper potentes. `awk` extrae columnas de texto (ej: `awk '{print $1}'`) y `sed` busca y reemplaza patrones "al vuelo" a lo largo de flujos de texto inmensos.
 
 ### Ejemplos Prácticos de Sysadmin
 
-- Quiero ver todas las IPs caídas y conectadas, pero solo quiero que me muestre las líneas que digan "UP" (conectadas):
+La verdadera magia de la consola de Linux ocurre cuando encadenas tres, cuatro o cinco comandos combinados como piezas de lego.
+
+- **Quiero ver solo las interfaces de red que están conectadas ("UP"):**
   ```bash
-  ip a | grep "UP"
+  # ip a muestra todas. grep filtra las conectadas.
+  ip a | grep "state UP"
   ```
-- Quiero saber cuántos procesos en el servidor contienen la palabra "nginx" en su nombre (para saber cuántos workers HTTP hay vivios):
+- **Quiero saber un recuento de cuántos puertos y servicios están escuchando en mi servidor:**
   ```bash
-  ps aux | grep "nginx" | wc -l
+  # ss muestra la red, grep filtra lo que dice 'LISTEN', wc cuenta las líneas finales
+  ss -tuln | grep "LISTEN" | wc -l
+  ```
+- **Top 5 de las direcciones IP que más intentan hackear el servidor SSH y fallan:**
+  ```bash
+  # cat lee toda la bitácora de auth.log, grep pilla los accesos fallidos,
+  # awk extrae exactamente la columna de texto con la IP (suele ser la #11),
+  # sort ordena las IPs para juntar las que son iguales,
+  # uniq -c las recuenta agrupándolas,
+  # sort -nr las re-ordena de mayor a menor con base en el nuevo recuento,
+  # y head finaliza quedándose solo con las primeras 5.
+  cat /var/log/auth.log | grep "Failed password" | awk '{print $11}' | sort | uniq -c | sort -nr | head -n 5
+  ```
+- **Buscar archivos modificados recientemente y registrar el nombre en un archivo sin llenarse de errores en pantalla:**
+  ```bash
+  # Buscamos archivos en la raíz (/) modificados los últimos 7 días (-mtime -7).
+  # Los errores de permiso (2>) se vuelcan a /dev/null y se ignoran.
+  # La salida estándar buena fluye por la tubería (|) y es ordenada por 'sort',
+  # y su resultado final se guarda temporalmente (>)
+  find / -mtime -7 2> /dev/null | sort > /tmp/archivos_recientes.txt
   ```
 
 ---
