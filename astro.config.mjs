@@ -18,16 +18,13 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/jramma",
+          href: "https://github.com/jramma/linux-starlight",
         },
       ],
       defaultLocale: "es",
       locales: {
         es: {
           label: "Español",
-        },
-        ca: {
-          label: "Català",
         },
       },
       customCss: ["./src/styles/global.css"],
