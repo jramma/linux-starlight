@@ -332,3 +332,215 @@ Entrega **estos archivos** (y el tar final) al profesor:
 ls -la ~/practica2/entrega/ && \
 ls -lh ~/practica2/entrega_practica2.tar.gz
 ```
+
+---
+
+## 🧨 Desafíos extra (MUY DIFÍCILES) — Troubleshooting “nivel examen”
+
+Estos dos retos están diseñados para ser difíciles incluso si intentas resolverlos “a ojo”. No hay una sola pista mágica: tendrás que **medir, aislar, inspeccionar, reproducir y corregir**.
+
+Reglas:
+
+- **Solo** puedes usar comandos de terminal (lo que se ve en el módulo 2).
+- No se permite reinstalar el sistema, ni “borrar y rehacer todo”: hay que **entender** qué pasa.
+- Todo ocurre en `~/practica2/work/` (no rompe el sistema).
+
+---
+
+## Ejercicio 2.6 — El laberinto de los enlaces y permisos
+
+### Setup (ejecuta UNA sola vez)
+
+
+Ejecuta este comando tal cual:
+
+{/* Notas ocultas 2.6: el escenario incluye conf/ sin permiso de traversal, conf.d señuelo, symlink relativo + symlink roto, hardlink “escudo”, PATH contaminado con wrappers de grep/awk/sed, logs con NBSP/CRLF y líneas parecidas como 0404, y un fichero con NBSP en el nombre. */}
+
+
+```bash
+bash -lc 'set -euo pipefail
+base="$HOME/practica2/work/escenario_26"
+out="$HOME/practica2/entrega/26_estado_inicial.txt"
+rm -rf "$base"
+mkdir -p "$base"/{src,src/old,bin,run,run/hooks,logs,conf,conf.d,artifact,tmp,tmp/cache}
+
+printf "%s\n" "PORT=8080" "MODE=prod" "LOG=logs/app.log" > "$base/conf/app.env"
+printf "%s\n" "PORT=8081" "MODE=debug" "LOG=logs/app-debug.log" > "$base/conf.d/app.env"
+
+printf "%s\n" \
+  "#!/usr/bin/env bash" \
+  "set -e" \
+  "source conf/app.env" \
+  "printf \"OK: %s:%s\\n\" \"\$MODE\" \"\$PORT\" >> \"\$LOG\"" \
+  > "$base/run/app"
+chmod 700 "$base/run/app"
+
+printf "%s\n" \
+  "#!/usr/bin/env bash" \
+  "set -e" \
+  "command -v grep >/dev/null" \
+  "exit 0" \
+  > "$base/run/hooks/preflight"
+chmod 755 "$base/run/hooks/preflight"
+
+ln -s ../conf/app.env "$base/src/app.env.link"
+ln -s ../conf/NO_EXISTE.env "$base/src/app.env.broken"
+
+ln "$base/conf/app.env" "$base/conf/app.env.bak"
+
+chmod 600 "$base/conf"
+
+printf "%s\n" \
+  "#!/usr/bin/env bash" \
+  "case \"\$*\" in" \
+  "  *404*) command /usr/bin/grep \"\$@\" | command /usr/bin/grep -v $'\\xC2\\xA0' || true ;; " \
+  "  *) command /usr/bin/grep \"\$@\" ;; " \
+  "esac" \
+  > "$base/bin/grep"
+printf "%s\n" \
+  "#!/usr/bin/env bash" \
+  "if command /usr/bin/grep -q \"MODE=prod\" conf/app.env 2>/dev/null; then" \
+  "  command /usr/bin/awk -F, \"\$@\"" \
+  "else" \
+  "  command /usr/bin/awk \"\$@\"" \
+  "fi" \
+  > "$base/bin/awk"
+printf "%s\n" \
+  "#!/usr/bin/env bash" \
+  "command /usr/bin/sed \"\$@\" | command /usr/bin/sed $'s/$/\\r/'" \
+  > "$base/bin/sed"
+chmod 755 "$base/bin/"{grep,awk,sed}
+
+printf $'200 OK\n404 NOTFOUND\n500 FAIL\n404\u00a0NOTFOUND\n' > "$base/logs/app.log"
+printf "404 NOTFOUND\r\n" >> "$base/logs/app.log"
+printf "0404 NOTFOUND\n" >> "$base/logs/app.log"
+
+printf "404 NOTFOUND\n" > "$base/logs/app-debug.log"
+
+cp "$base/run/app" "$base/run/app.old"
+chmod 644 "$base/run/app.old"
+
+printf "%s\n" "nada que ver" > "$base/tmp/cache/"$'nota\u00a0interna.txt'
+
+{
+  echo "== ESCENARIO 2.6 CREADO =="
+  echo "Ruta: $base"
+  echo
+  echo "--- Estado inicial (top) ---"
+  (cd "$base" && ls -la)
+  echo
+  echo "--- Árbol (1 nivel) ---"
+  (cd "$base" && ls -la conf conf.d logs run run/hooks src bin tmp tmp/cache)
+} | tee "$out" >/dev/null
+echo "OK"'
+```
+
+### Objetivo
+
+Desde dentro de `~/practica2/work/escenario_26/`, tu misión es conseguir que:
+
+1) `./run/app` funcione y escriba en `logs/app.log` una nueva línea con el texto `OK: prod:8080`
+2) puedas obtener un conteo correcto de `404` en `logs/app.log` con una pipeline **robusta** (que no dependa del PATH “trucado”)
+3) dejes el escenario en un estado “sano” (sin permisos absurdos ni links rotos)
+
+### Entregables
+
+Guarda en:
+
+`~/practica2/entrega/26_solucion.txt`
+
+- los comandos que ejecutaste (en orden)
+- evidencia de **qué estaba roto** (permiso/traversal, link roto, PATH, etc.)
+- evidencia de que el objetivo se cumple (salida de comandos relevantes)
+
+Pista LFCS: si algo “parece” funcionar unas veces y otras no, sospecha de **PATH**, **links**, permisos de **traversal** en directorios, y usa rutas absolutas (`/usr/bin/grep`, etc.) para aislar.
+
+---
+
+## Ejercicio 2.7 — El informe imposible (muy difícil)
+
+### Setup (ejecuta UNA sola vez)
+
+{/* [//]: # (Notas ocultas 2.7: el escenario incluye BOM/CRLF/Unicode (NBSP y zero-width), delimitadores mezclados, copia .gz del dataset, y PATH contaminado con wrappers de sort/cut/tr junto a bin/core para rutas limpias.) */}
+
+```bash
+bash -lc 'set -euo pipefail
+base="$HOME/practica2/work/escenario_27"
+out="$HOME/practica2/entrega/27_estado_inicial.txt"
+rm -rf "$base"
+mkdir -p "$base"/{data,report,tmp,bin,bin/core}
+
+printf "\xEF\xBB\xBFuser,code,path\r\n" > "$base/data/events.csv"
+printf "alice,200,/\n" >> "$base/data/events.csv"
+printf "bob,404,/nope\r\n" >> "$base/data/events.csv"
+printf "alice,404,/missing\n" >> "$base/data/events.csv"
+printf "carol,500,/fail\r\n" >> "$base/data/events.csv"
+printf "bob,404,/nope\n" >> "$base/data/events.csv"
+printf "bob,\xC2\xA0404,/nope\n" >> "$base/data/events.csv"
+printf "dave;404;/semi\n" >> "$base/data/events.csv"
+printf "eve,404,/tabs\t\n" >> "$base/data/events.csv"
+
+gzip -c "$base/data/events.csv" > "$base/data/events.csv.gz"
+
+printf "{\n  “owner”: “ops”,\n  “env”: “prod”\n}\n" > "$base/data/meta.json"
+printf "\n" >> "$base/data/meta.json"
+printf " \xE2\x80\x8B" >> "$base/data/meta.json"
+
+printf $'Zeta\nalpha\nAlpha\nalph\u00a0a\nalph a\n' > "$base/data/words.txt"
+
+ln -s /usr/bin/sort "$base/bin/core/sort"
+ln -s /usr/bin/cut  "$base/bin/core/cut"
+ln -s /usr/bin/tr   "$base/bin/core/tr"
+
+printf "%s\n" \
+  "#!/usr/bin/env bash" \
+  "if [[ -z \"\${LC_ALL:-}\" ]]; then exec /usr/bin/sort -r \"\$@\"; fi" \
+  "exec /usr/bin/sort \"\$@\"" \
+  > "$base/bin/sort"
+printf "%s\n" \
+  "#!/usr/bin/env bash" \
+  "if [[ \"\$*\" == *\"-d,\"* ]]; then /usr/bin/cut -d, -f1,2 \"\$@\" | /usr/bin/sed 1d; exit 0; fi" \
+  "exec /usr/bin/cut \"\$@\"" \
+  > "$base/bin/cut"
+cat > "$base/bin/tr" <<'"'"'EOF'"'"'
+#!/usr/bin/env bash
+exec /usr/bin/tr -d $'"'"'\r"'"'"'
+EOF
+chmod 755 "$base/bin/"{sort,cut,tr}
+
+{
+  echo "== ESCENARIO 2.7 CREADO =="
+  echo "Ruta: $base"
+  echo
+  (cd "$base" && ls -la data bin bin/core)
+} > "$out"
+echo "OK"'
+```
+
+### Objetivo
+
+Genera un informe final en:
+
+`~/practica2/entrega/27_informe.txt`
+
+que contenga, en este orden:
+
+1) **Top usuarios por número de eventos** (descendente)
+2) **Top rutas con 404** (descendente)
+3) **Número de líneas con CRLF** en `events.csv` (no lo adivines: demuéstralo con comandos)
+4) Una “sanitización” del pseudo-JSON `meta.json` que convierta comillas raras a comillas normales ASCII (`"`) y muestre el resultado por pantalla
+5) Una ordenación correcta (ascendente) de `words.txt` que no se vea afectada por el `sort` falso del escenario
+
+### Requisitos
+
+- No puedes abrir editores para “arreglar” a mano los ficheros: todo con **pipes/filtros**.
+- Al menos una parte debe usar `tee`.
+- Debes demostrar que detectaste y aislaste la trampa (CRLF, locales, PATH, Unicode, etc.).
+
+### Entregables
+
+`~/practica2/entrega/27_solucion.txt` con:
+
+- comandos usados (en orden)
+- explicación breve de **qué trampas había** y cómo las verificaste (con evidencia)
+
