@@ -77,6 +77,12 @@ Guarda el comando exacto que usaste (copiado tal cual) en:
 
 `~/practica2/entrega/21_rutas.txt`
 
+5) (Extra LFCS) Ajusta tu **umask** temporalmente para que, al crear un archivo nuevo, quede **no legible para “otros”**. Crea un archivo `umask_test.txt` dentro de `escenario_21/tmp/` y demuestra con `ls -l` que los permisos cumplen el objetivo.
+
+Guarda comandos y salida en:
+
+`~/practica2/entrega/21_umask.txt`
+
 ---
 
 ## Ejercicio 2.2 — Edición de texto (nano/vim) + validación por terminal
@@ -154,6 +160,8 @@ Los campos son: `IP - - [fecha] "MÉTODO /ruta HTTP/versión" CÓDIGO bytes "ref
 Guarda todo en:
 
 `~/practica2/entrega/23_informe.txt`
+
+Requisito LFCS: al menos una parte del pipeline debe usar `tee` (ver y guardar a la vez) en lugar de ejecutar el comando dos veces.
 
 2) Crea un fichero con **todas** las líneas de log que sean **404 o 500** y guárdalo comprimido en gzip (sin perder el original). Debe quedar:
 
@@ -236,6 +244,17 @@ Guarda todo en:
 
 `~/practica2/entrega/24_symlink.txt`
 
+6) (Extra LFCS) Crea un directorio `/var/www/proyecto/drop/` con permisos **sticky** para colaboración segura: cualquiera del grupo puede crear archivos, pero no borrar los del otro. Recomendación típica: `1777`.
+
+Prueba:
+
+- como `alice`, crea `a.txt`
+- como `bob`, intenta borrar `a.txt` (debe fallar)
+
+Guarda comandos y salidas en:
+
+`~/practica2/entrega/24_sticky.txt`
+
 ---
 
 ## Ejercicio 2.5 — Procesos, jobs, archivado y documentación (man/apropos)
@@ -258,11 +277,19 @@ Guarda todo en:
 
 `~/practica2/entrega/25_jobs_ps.txt`
 
-2) Simula un proceso “rebeldísimo” y elimínalo en dos fases: primero SIGTERM y luego SIGKILL si no muere. Pista: puedes usar `sleep 99999` como víctima.
+2.a) Simula un proceso “rebeldísimo” y elimínalo en dos fases: primero SIGTERM y luego SIGKILL si no muere. Pista: puedes usar `sleep 99999` como víctima.
 
 Guarda comandos y salida relevante en:
 
 `~/practica2/entrega/25_kill.txt`
+
+Requisito LFCS: encuentra el PID con `pgrep -a` (o equivalente) antes de matar.
+
+2.b) Lanza un proceso que consuma CPU (pista: `yes > /dev/null`) en background. Encuentra su PID con `pgrep -a` y bájale prioridad con `renice` (no lo mates todavía). Luego termina el proceso.
+
+Guarda evidencia en:
+
+`~/practica2/entrega/25_renice.txt`
 
 3) Crea un archivo comprimido con `tar` que incluya:
 

@@ -23,6 +23,16 @@ En Linux, a diferencia de Windows o Mac donde un archivo "zip" hace ambas cosas 
 - **Archivar (Empaquetar):** Tomar 50 archivos distintos y juntarlos en un solo bloque sólido (como meterlos en una caja de cartón). El tamaño resultante es la suma exacta de los 50 archivos.
 - **Comprimir:** Tomar ese bloque sólido y aplicarle un algoritmo matemático para que ocupe menos megabytes en el disco duro.
 
+{/* ![Esquema tar vs compresión gzip bzip2 xz](../../../../../assets/module-2/archiving/tar-vs-compresion-esquema.webp) */}
+
+```mermaid
+flowchart LR
+  F["Muchos archivos"] --> TAR["tar (archivar) → .tar"]
+  TAR --> GZ["gzip (-z) → .tar.gz"]
+  TAR --> BZ["bzip2 (-j) → .tar.bz2"]
+  TAR --> XZ["xz (-J) → .tar.xz"]
+```
+
 ---
 
 ## 1. El estándar absoluto: `tar`

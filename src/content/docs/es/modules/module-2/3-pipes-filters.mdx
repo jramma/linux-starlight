@@ -35,6 +35,20 @@ Cada proceso en Linux nace siempre con tres "tuberías invisibles" conectadas a 
 2. **`stdout` (1)**: Salida estándar. El resultado exitoso de un comando. Por defecto es tu pantalla.
 3. **`stderr` (2)**: Error estándar. Los mensajes de fallo. También salen por tu pantalla.
 
+
+```mermaid
+flowchart LR
+  K[Teclado<br/>stdin (0)] --> P[Proceso / Comando]
+  P --> O[Pantalla / Archivo<br/>stdout (1)]
+  P --> E[Pantalla / Archivo<br/>stderr (2)]
+```
+
+<Aside type="tip" title="Dato curioso: el nacimiento del pipe">
+  La idea de “enchufar” la salida de un programa a la entrada de otro se
+  popularizó en Unix en los años 70. Es una de las razones por las que la
+  filosofía Unix escala tan bien: programas pequeños + composición.
+</Aside>
+
 ### Operadores de Redirección
 
 - **`>` (Redirigir Salida Estándar / Sobrescribir):** Redirige el `stdout` reemplazando todo el contenido previo del archivo si este ya existe. Si no existe, lo crea automáticamente.
@@ -85,6 +99,14 @@ Aquí es donde Linux brilla. El operador de Tubería `|` toma la Salida Estánda
 comando1 | comando2 | comando3
 ```
 
+
+```mermaid
+flowchart LR;
+  A["cmd1"] -->|stdout| B["cmd2"];
+  B -->|stdout| C["cmd3"];
+  A -.->|"stderr (normalmente no pasa por pipe)"| S["stderr"];
+```
+
 ### Filtros Esenciales (Coreutils)
 
 Los siguientes comandos están diseñados específicamente para brillar cuando se conectan detrás de un Pipe. Actúan como pequeños "filtros" que moldean los datos que reciben:
@@ -112,6 +134,49 @@ Los siguientes comandos están diseñados específicamente para brillar cuando s
 5. **`sort`**: Ordena el texto resultante alfabéticamente o numéricamente. Agrega `-r` para orden inverso y `-n` para números.
 6. **`uniq`**: Filtra y elimina las líneas duplicadas de un listado. **Ojo:** Requiere que los datos estén ordenados previamente (`sort | uniq`).
 7. **`awk` y `sed`**: Herramientas súper potentes. `awk` extrae columnas de texto (ej: `awk '{print $1}'`) y `sed` busca y reemplaza patrones "al vuelo" a lo largo de flujos de texto inmensos.
+
+---
+
+## 3. Herramientas LFCS que multiplican los pipes
+
+En examen, muchas tareas se vuelven triviales si dominas estos “conectores”.
+
+### `tee` (ver en pantalla y guardar a la vez)
+
+Si necesitas **ver** el resultado pero también **guardarlo** sin repetir el comando:
+
+```bash
+# Guarda y además muestra en pantalla
+ps aux | grep nginx | tee /tmp/nginx_procesos.txt
+```
+
+<Aside type="tip" title="Dato curioso: por qué se llama tee">
+  `tee` se llama así por la pieza de fontanería en forma de “T”: duplica el
+  flujo, enviándolo a la pantalla y a un fichero al mismo tiempo.
+</Aside>
+
+### `xargs` (convertir líneas en argumentos)
+
+Muchos comandos imprimen una lista (una ruta por línea). `xargs` toma ese flujo y lo convierte en argumentos para otro comando.
+
+```bash
+# Buscar .log y calcular tamaño total en bytes
+find /var/log -type f -name "*.log" 2>/dev/null | xargs -r du -b | awk '{s+=$1} END{print s}'
+```
+
+`-r` evita ejecutar el comando si no hay entradas (muy útil en scripts).
+
+### `cut` y `tr` (cortar columnas y transformar texto)
+
+Cuando trabajas con ficheros delimitados (por `:` en `/etc/passwd`, por espacios, etc.):
+
+```bash
+# Extraer el usuario (campo 1) y la shell (campo 7) de /etc/passwd
+cut -d: -f1,7 /etc/passwd | head
+
+# Pasar a mayúsculas (útil para normalizar)
+echo "error" | tr '[:lower:]' '[:upper:]'
+```
 
 ### Ejemplos Prácticos de Sysadmin
 

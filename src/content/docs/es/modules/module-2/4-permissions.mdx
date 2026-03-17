@@ -26,6 +26,22 @@ En Linux, todo archivo y directorio es propiedad absoluta de un **Usuario** espe
 
 Cuando ejecutas el comando `ls -l`, la primera columna que ves es una cadena de 10 caracteres aparentemente críptica, como `-rwxr-xr--` o `drwxrwxr-x`.
 
+
+```mermaid
+flowchart TB
+  subgraph Bits["Bits de permisos"]
+    R[r = 4]:::b
+    W[w = 2]:::b
+    X[x = 1]:::b
+  end
+  R --> SUM[(Suma)]
+  W --> SUM
+  X --> SUM
+  SUM --> OCT["Octal: 0..7"]
+
+  classDef b fill:#eef,stroke:#88a,stroke-width:1px;
+```
+
 Desgranemos `-rwxr-xr--` (10 caracteres):
 
 - **El 1º caracter (Tipo):** Indica qué es. Un guion `-` significa que es un archivo regular. Una `d` significa que es un directorio. Un `l` significa que es un enlace simbólico.
@@ -75,6 +91,14 @@ Para cada bloque (Usuario, Grupo, Otros), sumas los valores:
 - `chmod 600 llave.pem` -> Dueño `6`. Resto `0`. Máxima privacidad, estándar para claves privadas SSH.
 - `chmod 777 publico` -> **PELIGRO**. Todo el mundo (`7`,`7`,`7`) puede alterar, borrar y ejecutar archivos. Jamás uses esto en producción para "arreglar un problema que no te deja guardar".
 
+{/* ![Ejemplo anotado de permisos -rwxr-xr-- explicado](../../../../../assets/module-2/permissions/ejemplo-anotado-rwxr-xr--.webp) */}
+
+<Aside type="caution" title="Dato curioso: 777 no arregla, expone">
+  `777` suele “funcionar” porque elimina la seguridad. En sistemas reales, es
+  una de las causas más comunes de incidentes y borrados accidentales: si todos
+  pueden escribir, cualquiera (o cualquier proceso) puede romperlo.
+</Aside>
+
 ---
 
 ## 3. Cambiando de Dueño (`chown`)
@@ -100,6 +124,58 @@ sudo chown -R www-data:www-data /var/www/html/
 </Aside>
 
 ---
+
+## 4. Umask: los permisos por defecto (mentalidad de examen)
+
+Cuando creas un archivo o directorio, Linux no lo crea con “permisos máximos”. Parte de una base y le aplica una máscara llamada **umask**.
+
+- Archivos parten de `666` (rw-rw-rw-)
+- Directorios parten de `777` (rwxrwxrwx)
+- Luego se “resta” (se enmascara) la umask.
+
+Ver tu umask actual:
+
+```bash
+umask
+```
+
+Ejemplo típico en servidores: `umask 027` (archivos nuevos ~ `640`, directorios ~ `750`).
+
+<Aside type="tip" title="Truco LFCS">
+  Si un ejercicio pide “que los ficheros nuevos NO sean legibles por otros”, en
+  vez de chmod repetido, ajusta `umask` antes de crear.
+</Aside>
+
+---
+
+## 5. Bits especiales: SUID, SGID y Sticky
+
+Además de `rwx`, existen bits especiales que verás mucho en sistemas reales.
+
+### SGID en directorios (colaboración por grupo)
+
+En un directorio con SGID, los archivos nuevos **heredan el grupo** del directorio.
+
+```bash
+chmod g+s /ruta/directorio
+```
+
+En `ls -l` verás una `s` en el bloque del grupo (ej. `drwxrwsr-x`).
+
+### Sticky bit (carpetas compartidas seguras)
+
+El sticky bit es típico de `/tmp` (permite que todos creen, pero **nadie borra lo del otro** salvo el dueño o root).
+
+```bash
+chmod 1777 /ruta/carpeta
+```
+
+En `ls -ld` verás una `t` al final (ej. `drwxrwxrwt`).
+
+<Aside type="note">
+  SUID/SGID en ejecutables existen, pero en LFCS lo más frecuente en prácticas es
+  SGID en directorios y sticky en carpetas compartidas.
+</Aside>
 
 ## Comprueba tus conocimientos
 

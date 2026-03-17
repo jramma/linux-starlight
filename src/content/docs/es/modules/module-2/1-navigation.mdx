@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Card, CardGrid } from "@astrojs/starlight/components";
 import PreCheck from "@/components/tutorial/PreCheck.astro";
 import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
 import Option from "@/components/tutorial/Option.astro";
@@ -21,10 +21,26 @@ import Option from "@/components/tutorial/Option.astro";
 
 Recuerda que todo comienza en `/`.
 
+```mermaid
+flowchart TB;
+  R["/"] --> E["/etc"];
+  R --> H["/home"];
+  R --> V["/var"];
+  R --> U["/usr"];
+  R --> T["/tmp"];
+  H --> HU["/home/usuario"];
+```
+
 ### Conceptos de rutas (path)
 
 - **Ruta absoluta**: Comienza con `/`. Siempre funciona, sin importar dónde estés. (ej.: `/home/user/docs/file.txt`).
 - **Ruta relativa**: _No_ comienza con `/`. Depende de tu ubicación actual. (ej.: `docs/file.txt` o `../file.txt`).
+
+```mermaid
+flowchart LR;
+  PWD["pwd = /home/juan/docs"] --> REL["ruta relativa: ../informe.txt"];
+  PWD --> ABS["ruta absoluta: /home/juan/informe.txt"];
+```
 
 <Aside type="note">
   No confundas las **rutas de archivos** con la variable de entorno **`$PATH`**.
@@ -62,6 +78,8 @@ Los comodines ayudan a seleccionar múltiples archivos:
 - `file?.txt`: Coincide `file1.txt`, `fileA.txt`, etc.
 - `docs/*/index.md`: Cualquier `index.md` dentro de un subdirectorio de `docs/`.
 
+![Ejemplos visuales de globs asterisco interrogacion corchetes](../../../../../assets/module-2/glob.png)
+
 ## Gestión de archivos
 
 | Comando | Función                             | Ejemplo                            |
@@ -93,6 +111,53 @@ Herramientas habituales para localizar archivos en el sistema:
 ### `find`
 
 Busca archivos en una jerarquía de directorios.
+
+#### Find Cheatsheet (referencia rápida)
+
+<CardGrid>
+  <Card title="Búsqueda, tipo, tamaño y tiempo">
+
+| Patrón | Qué hace |
+| --- | --- |
+| `find . -name "file.txt"` | Buscar un nombre exacto |
+| `find . -iname "readme.md"` | Buscar sin distinguir mayúsculas/minúsculas |
+| `find /etc -name "*.conf"` | Buscar por extensión/patrón |
+| `find . -type f` | Solo archivos regulares |
+| `find . -type d` | Solo directorios |
+| `find . -type l` | Solo enlaces simbólicos |
+| `find . -maxdepth 1 -type f` | Solo el directorio actual (sin recursión) |
+| `find . -type f -empty` | Archivos vacíos |
+| `find . -type d -empty` | Directorios vacíos |
+| `find . -type f -size +100M` | Archivos mayores de 100 MB |
+| `find . -type f -size -10M` | Archivos menores de 10 MB |
+| `find . -type f -mtime -7` | Modificados en los últimos 7 días |
+| `find . -type f -mtime +30` | Modificados hace más de 30 días |
+| `find . -type f -mmin -60` | Modificados en los últimos 60 minutos |
+| `find . -type f -atime -1` | Accedidos en las últimas 24 horas |
+| `find . -type f -ctime -3` | Metadatos cambiados en los últimos 3 días |
+
+  </Card>
+  <Card title="Permisos, exclusiones y acciones">
+
+| Patrón | Qué hace |
+| --- | --- |
+| `find . -type f -perm 644` | Permiso exacto (modo octal) |
+| `find . -type f -perm -u+w` | Archivos escribibles por el usuario |
+| `find / -type f -user root` | Archivos cuyo dueño es `root` |
+| `find /srv -type f -group www-data` | Archivos cuyo grupo es `www-data` |
+| `find . -path ./node_modules -prune -o -type f -print` | Excluir un directorio |
+| `find . \\( -path ./node_modules -o -path ./.git \\) -prune -o -type f -print` | Excluir varios directorios |
+| `find . -type f ! -name "*.log"` | Excluir por patrón de nombre |
+| `find . -type f ! -path "*/cache/*"` | Excluir por patrón de ruta |
+| `find . -type f -name "*.tmp" -delete` | Borrar coincidencias |
+| `find . -type f -name "*.log" -exec gzip {} \\;` | Ejecutar un comando por archivo |
+| `find . -type f -name "*.jpg" -exec mv {} /tmp/images/ \\;` | Mover coincidencias |
+| `find . -type f -name "*.conf" -exec grep -H "listen" {} \\;` | Buscar texto dentro de coincidencias |
+| `find . -type f -name "*.log" -exec rm {} +` | Borrado en lote (más rápido que `\\;`) |
+| `find . -type f -name "*.txt" -print0 \\| xargs -0 rm -f` | Operaciones seguras con espacios (NUL) |
+
+  </Card>
+</CardGrid>
 
 - **Sintaxis**: `find [ruta] [expresión]`
 - **Ejemplos**:

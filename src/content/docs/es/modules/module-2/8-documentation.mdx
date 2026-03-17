@@ -19,6 +19,17 @@ import Option from "@/components/tutorial/Option.astro";
 
 Cuando rindas un examen de certificación como el LFCS (Linux Foundation Certified Sysadmin), no tendrás acceso a Google. Estarás tú solo frente a una terminal negra. **Tu vida dependerá de saber cómo leer y buscar en el manual interno del sistema operativo.**
 
+{/* ![Captura de man usando less con busqueda resaltada](../../../../../assets/module-2/documentation/man-less-busqueda-captura.webp) */}
+
+```mermaid
+flowchart TD
+  Q["No recuerdo la opción / sintaxis"] --> M[Abro man comando]
+  M --> S["Busco dentro: /palabra"]
+  S --> N["Siguiente match: n / N"]
+  Q --> A["No recuerdo el comando"] --> K["apropos / man -k palabra"]
+  M --> D["Busco ejemplos: /usr/share/doc/paquete"]
+```
+
 ---
 
 ## 1. El Manual de Comandos (`man`)

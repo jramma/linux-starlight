@@ -57,3 +57,25 @@ Para prácticas rápidas o alumnos sin tiempo de configurar VM:
 | **[LabEx](https://labex.io)**                              | Ubuntu 22.04/24.04 completo en el navegador, con terminal + IDE | Plan gratuito limitado              |
 | **[Webminal](https://www.webminal.org)**                   | Terminal Linux online con registro gratuito                     | 100 MB, recursos limitados          |
 | **[Play with Docker](https://labs.play-with-docker.com/)** | Contenedores Linux con acceso root                              | 4 horas por sesión                  |
+
+---
+
+## Certificaciones y rutas recomendadas
+
+### Linux (Sysadmin)
+
+- **LFCS (Linux Foundation Certified Sysadmin)**: certificación práctica (hands-on) orientada a tareas reales de administración en terminal. Muy alineada con este curso.  
+  - Temario oficial y detalles: [Linux Foundation Certified System Administrator (LFCS)](https://training.linuxfoundation.org/certification/linux-foundation-certified-sysadmin-lfcs/)
+
+- **LPIC-1 (Linux Professional Institute)**: certificación teórica (test) centrada en comandos, instalación, mantenimiento y networking básico. Buena para consolidar fundamentos.  
+  - Resumen oficial: [LPIC-1 overview](https://www.lpi.org/our-certifications/lpic-1-overview/)
+
+### Ciberseguridad (complemento útil)
+
+Estas no son “Linux puro”, pero dan mucha práctica real con terminal, redes y troubleshooting.
+
+- **OffSec (PEN-XXX)**: certificaciones conocidas por su enfoque práctico (dependerá de tu objetivo: pentest, web, etc.).  
+  - Recomendación para alumnos: tomarlas como “proyectos” posteriores a dominar lo esencial de Linux y redes.
+
+- **TryHackMe**: plataforma de laboratorios guiados (mucho Linux + redes en escenarios).  
+  - Útil para: practicar SSH, permisos, enumeración básica, servicios y troubleshooting de forma incremental.

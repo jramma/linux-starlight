@@ -29,6 +29,20 @@ El nombre `foto.jpg` es simplemente una "etiqueta visual" para los humanos que a
 
 Sabiendo esto, imagina que creamos una segunda etiqueta llamada `vacaciones.jpg` que apunte al **mismo** Inodo 5512. Tendrías un solo archivo físico en el disco duro, pero podrías abrirlo desde dos nombres diferentes. Eso es un enlace.
 
+{/* ![Diagrama inodo nombres enlaces duros y enlaces simbolicos](../../../../../assets/module-2/links/inodo-hardlink-symlink-diagrama.webp) */}
+
+```mermaid
+flowchart LR
+  subgraph FS["Filesystem (misma partición)"]
+    I[(inode 5512)]
+    D[(datos en disco)]
+    I --> D
+  end
+  N1["foto.jpg"] --> I
+  N2["vacaciones.jpg<br/>(hard link)"] --> I
+  S1["acceso_foto.jpg<br/>(symlink)"] -. "apunta a ruta" .-> N1
+```
+
 ---
 
 ## 2. Enlaces Duros (Hard Links)

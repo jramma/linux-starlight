@@ -25,6 +25,9 @@ En Linux, cada programa, comando o servicio en ejecución se denomina **Proceso*
 
 Hay dos enfoques para mirar qué está ocurriendo en tu Debian: las "fotos estáticas" y el "vídeo en tiempo real".
 
+![Captura ejemplo de top mostrando procesos y consumo](../../../../../assets/module-2/top.png)
+![Captura ejemplo de htop con barras y árbol](../../../../../assets/module-2/htop.png)
+
 ### `ps` (Process Status) - La Foto Estática
 
 Muestra una captura en ese instante exacto de los procesos. Por sí solo `ps` solo muestra los de tu terminal actual, lo cual rara vez es útil. Para ver **todos los procesos del sistema** en estilo Sysadmin, usa las banderas `aux` (estilo BSD) o `-ef` (estilo estándar UNIX).
@@ -60,6 +63,22 @@ Usa el comando `kill` seguido del número de PID del proceso rebelde.
 - **`kill 1234` (Señal SIGTERM - 15)**: Le pide amablemente al programa con PID 1234 que termine. Le da tiempo a guardar datos, cerrar archivos y morir dignamente. Es el comportamiento por defecto.
 - **`kill -9 1234` (Señal SIGKILL - 9)**: La ejecución máxima. El kernel de Linux destruye el proceso instantáneamente. El programa no tiene oportunidad de guardar nada. Úsalo solo si la opción anterior no funcionó tras esperar unos segundos.
 
+{/* ![Mini mapa de señales SIGTERM vs SIGKILL](../../../../../assets/module-2/processes/senales-sigterm-sigkill-mapa.webp) */}
+
+```mermaid
+flowchart TD
+  A[Proceso problemático] --> B["Intento 1: SIGTERM (15)<br/>kill PID"]
+  B -->|termina| OK[Fin limpio]
+  B -->|no termina| C["Intento 2: SIGKILL (9)<br/>kill -9 PID"]
+  C --> HARD[Fin forzado (sin cleanup)]
+```
+
+<Aside type="tip" title="Dato curioso: kill casi nunca “mata” primero">
+  Por defecto, `kill PID` envía **SIGTERM (15)**: una petición educada. Es el
+  propio programa quien decide cómo cerrar. **SIGKILL (9)** es diferente: el
+  proceso no puede capturarlo ni ignorarlo.
+</Aside>
+
 ### `killall` (por Nombre)
 
 A veces tienes 50 procesos del mismo programa (ej: `apache2`) y no quieres buscar 50 PIDs distintos.
@@ -68,6 +87,56 @@ A veces tienes 50 procesos del mismo programa (ej: `apache2`) y no quieres busca
 # Envía la señal SIGTERM a todos los procesos que se llamen "apache2"
 sudo killall apache2
 ```
+
+---
+
+## 3. Atajos LFCS: pgrep/pkill y prioridad (nice/renice)
+
+En administración real, “grep al ps” funciona, pero hay herramientas hechas para esto.
+
+### `pgrep` (buscar PID por patrón)
+
+```bash
+# Devuelve PIDs cuyo comando coincide con el patrón
+pgrep nginx
+
+# Ver PID y comando (útil para no matar lo incorrecto)
+pgrep -a nginx
+```
+
+### `pkill` (matar por patrón, con cuidado)
+
+```bash
+# Envía SIGTERM a procesos que coincidan
+pkill nginx
+
+# Enviar SIGKILL (solo si es imprescindible)
+pkill -9 nginx
+```
+
+<Aside type="caution">
+  `pkill` es potente: revisa primero con `pgrep -a` qué va a coincidir.
+</Aside>
+
+### `nice` / `renice` (prioridad CPU)
+
+Si un proceso está “comiéndose” la máquina, a veces no quieres matarlo: quieres bajarle prioridad.
+
+```bash
+# Lanzar un comando con menor prioridad (más "amable")
+nice -n 10 tar -czf backup.tar.gz /var/log/
+
+# Cambiar prioridad de un PID existente
+sudo renice 10 -p 1234
+```
+
+{/* ![Árbol de procesos tipo pstree con PID y jerarquía](../../../../../assets/module-2/processes/pstree-arbol-procesos-ejemplo.webp) */}
+
+<Aside type="note" title="Dato curioso: el PID 1 es especial">
+  PID 1 es el primer proceso de espacio de usuario (en muchos Linux modernos es
+  `systemd`). Si PID 1 cae, el sistema normalmente entra en un estado crítico o
+  reinicia porque se rompe la “cadena de adopción” y supervisión de procesos.
+</Aside>
 
 ---
 
