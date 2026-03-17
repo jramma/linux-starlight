@@ -46,8 +46,14 @@ touch ~/practica2/work/escenario_21/src/old/legacy.LOG
 touch ~/practica2/work/escenario_21/src/old/legacy.log
 touch ~/practica2/work/escenario_21/src/old/"informe 2024.txt"
 
-printf "%s\n" "#!/usr/bin/env bash" "echo hola" > ~/practica2/work/escenario_21/bin/hola.sh
+# Intentamos crear el script. Si falla el directorio, mostramos "no existe"
+{
+  [ -d ~/practica2/work/escenario_21/bin ] || { echo "no existe"; exit 1; }
+  printf "%s\n" "#!/usr/bin/env bash" "echo hola" > ~/practica2/work/escenario_21/bin/hola.sh
+} || echo "Error al crear el archivo"
+
 chmod 644 ~/practica2/work/escenario_21/bin/hola.sh
+
 
 ln -s ~/practica2/work/escenario_21/src/app.conf ~/practica2/work/escenario_21/app.conf.link
 ```
