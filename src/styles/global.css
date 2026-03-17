@@ -1,1 +1,22 @@
-/* Custom global styles */
+img {
+  max-height: 220px;
+  object-fit: contain;
+  object-position: left;
+}
+
+.tab {
+  white-space: nowrap;
+}
+
+.tablist-wrapper {
+  scrollbar-width: none;
+}
+
+.tablist-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  padding: 0;
+  border: 0;
+}
