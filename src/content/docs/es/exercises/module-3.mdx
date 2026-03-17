@@ -1,6 +1,6 @@
 ---
 title: "Práctica 3 — Usuarios y Red"
-description: Configura usuarios, sudo y SSH con buenas prácticas de seguridad. Diagnostica y repara fallos de red en un servidor.
+description: "Práctica LFCS (módulo 3): usuarios/grupos, sudo mínimo, paquetes (apt/dpkg), diagnóstico de red con ip/ss y SSH con llaves + hardening."
 sidebar:
   order: 3
 ---
@@ -8,156 +8,130 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 
 <Aside type="tip" title="Antes de empezar">
-Esta práctica tiene dos ejercicios. El primero es de configuración (tú lo construyes todo). El segundo es de diagnóstico (hay fallos sembrados que debes encontrar). Léelos completos antes de empezar y trabaja en orden.
+Esta práctica está diseñada para durar ~2 horas y preparar habilidades tipo **LFCS**. Son 5 ejercicios: algunos los construyes tú, otros son de diagnóstico con fallos “sembrados”. Léelos completos antes de empezar y trabaja en orden.
 </Aside>
 
 ---
 
-## Ejercicio 3.1 — Gestión de usuarios y sudo seguro
+## Setup — ejecutar una sola vez (carpeta de trabajo)
+
+```bash
+mkdir -p ~/practica3/{work,entrega}
+```
+
+Todo lo que se pida “guardar” debe ir dentro de `~/practica3/entrega/`.
+
+---
+
+## Ejercicio 3.1 — Anatomía de usuarios (UID, passwd/shadow) y ciclo de vida
 
 ### Contexto
 
-En un servidor real nunca se trabaja como `root` directamente. Se crea un usuario específico para cada tarea y se le dan solo los permisos que necesita. En esta práctica configurarás el usuario `deploy` que solo podrá reiniciar nginx — nada más.
+En LFCS no basta con “crear un usuario”: tienes que **auditar** qué queda escrito en `/etc/passwd`, entender shells, bloquear/desbloquear, y comprobar UIDs/GIDs con precisión.
 
-### Setup — ejecutar una sola vez como alumno
+### Tareas
+
+1) Crea tres cuentas con `useradd` (no `adduser`):
+
+- `audit1` con HOME y shell `/bin/bash`
+- `audit2` con HOME y shell `/usr/sbin/nologin`
+- `audit3` con HOME y shell `/bin/bash` y un comentario (GECOS) “Cuenta de auditoría”
+
+2) Asigna contraseña a `audit1` y `audit3`. (La cuenta `audit2` no debe poder iniciar sesión interactiva por su shell).
+
+3) Demuestra con evidencia:
+
+- la línea completa de cada usuario en `/etc/passwd`
+- el UID y GID principal de cada usuario (con `id`)
+- que `/etc/shadow` **no** es legible por un usuario normal (y sí por root)
+
+Guarda comandos y salidas en:
+
+`~/practica3/entrega/31_auditoria_usuarios.txt`
+
+4) Bloquea a `audit3` (sin borrarlo) y demuestra que queda bloqueado; luego desbloquéalo y demuestra que vuelve a estar operativo.
+
+Guarda evidencia (comandos + salida relevante) en:
+
+`~/practica3/entrega/31_lock_unlock.txt`
+
+---
+
+## Ejercicio 3.2 — Grupos, delegación y sudo mínimo (visudo)
+
+### Contexto
+
+En un servidor real no se comparte root. Delegas poder con grupos y reglas de sudo **mínimas**, auditables y sin romper `/etc/sudoers`.
+
+### Setup — ejecutar una sola vez
 
 ```bash
-# Instala nginx si no está instalado
 sudo apt update && sudo apt install -y nginx
-
-# Verifica que nginx está corriendo
-sudo systemctl status nginx
+systemctl status nginx --no-pager
 ```
 
-### Tarea 1 — Crear el usuario deploy
+### Tareas
 
-```bash
-# Crea el usuario con su directorio home
-sudo useradd -m -s /bin/bash deploy
+1) Crea el usuario `deploy` con HOME y `/bin/bash`. Asigna contraseña.
 
-# Establece una contraseña segura (invéntate una que recuerdes)
-sudo passwd deploy
-# Escribe la contraseña dos veces cuando te la pida
-```
+2) Crea un grupo `webops` y añade `deploy` a ese grupo (sin quitarle otros grupos).
 
-<Aside type="note" title="¿Por qué -m y -s /bin/bash?">
-`-m` crea el directorio `/home/deploy` automáticamente.  
-`-s /bin/bash` asigna bash como shell (sin esto el usuario no tendría shell interactiva).
+3) Configura sudo para que **solo** el grupo `webops` pueda ejecutar **sin contraseña**:
+
+- `systemctl restart nginx`
+- `systemctl status nginx`
+
+Requisitos:
+
+- Debe estar en un archivo drop-in dentro de `/etc/sudoers.d/`
+- Debe ser validado con `visudo -c -f`
+
+4) Prueba como `deploy` que:
+
+- `sudo systemctl restart nginx` funciona sin pedir contraseña
+- `sudo systemctl status nginx` funciona
+- `sudo ls /root` **falla**
+- `sudo systemctl restart ssh` **falla**
+
+Guarda toda la evidencia en:
+
+`~/practica3/entrega/32_sudo_webops.txt`
+
+<Aside type="caution" title="Regla LFCS">
+No edites `/etc/sudoers` a mano. Usa `visudo` (y valida siempre antes de salir).
 </Aside>
-
-### Tarea 2 — Configurar sudo restringido
-
-Queremos que `deploy` pueda reiniciar nginx con sudo pero **sin introducir contraseña** y **sin poder hacer ninguna otra cosa** con sudo.
-
-```bash
-# Crea el archivo de configuración de sudoers para deploy
-# IMPORTANTE: usa visudo o el editor con este comando para evitar errores de sintaxis
-sudo nano /etc/sudoers.d/deploy
-```
-
-Escribe exactamente esta línea en el archivo:
-
-```
-deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
-```
-
-Guarda con `Ctrl+O`, `Enter`, `Ctrl+X`.
-
-Verifica que la sintaxis es correcta:
-
-```bash
-sudo visudo -c -f /etc/sudoers.d/deploy
-# Debe decir: /etc/sudoers.d/deploy: parsed OK
-```
-
-Prueba que funciona (cambia al usuario deploy primero):
-
-```bash
-# Cambia al usuario deploy
-sudo su - deploy
-
-# Intenta reiniciar nginx (debe funcionar sin pedir contraseña)
-sudo systemctl restart nginx
-
-# Intenta listar archivos como root (DEBE FALLAR)
-sudo ls /root
-# Debe decir: Sorry, user deploy is not allowed to execute...
-
-# Vuelve a tu usuario
-exit
-```
-
-### Tarea 3 — Generar par de claves SSH para deploy
-
-La autenticación por clave SSH es mucho más segura que por contraseña. Vamos a configurarla:
-
-```bash
-# Cambia al usuario deploy
-sudo su - deploy
-
-# Genera un par de claves Ed25519 (algoritmo moderno y seguro)
-ssh-keygen -t ed25519 -C "deploy@servidor-linux"
-# Cuando pida la ruta, pulsa Enter para usar la predeterminada (~/.ssh/id_ed25519)
-# Cuando pida passphrase, pulsa Enter dos veces (sin passphrase, para simplificar)
-
-# Añade la clave pública al archivo authorized_keys
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-cp ~/.ssh/id_ed25519.pub ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-
-# Verifica que existen los archivos
-ls -la ~/.ssh/
-
-exit  # Vuelve a tu usuario
-```
-
-### Tarea 4 — Proteger SSH
-
-Edita la configuración de SSH:
-
-```bash
-sudo nano /etc/ssh/sshd_config
-```
-
-Asegúrate de que estas líneas existen y tienen estos valores (busca con `Ctrl+W` en nano si no las encuentras; si empiezan por `#` descoméntalas):
-
-```
-PasswordAuthentication no
-PubkeyAuthentication yes
-PermitRootLogin no
-```
-
-<Aside type="caution" title="⚠ Cuidado antes de aplicar">
-Antes de desactivar la autenticación por contraseña, asegúrate de que tu usuario `alumno` puede conectarse por clave SSH o seguirás pudiendo conectarte por la ventana de VirtualBox directamente.
-</Aside>
-
-Aplica los cambios:
-
-```bash
-sudo systemctl reload sshd
-```
-
-### Tarea 5 — Verificar todo junto
-
-```bash
-# Verifica los permisos de sudo de deploy
-sudo -l -U deploy
-
-# Verifica que root no puede conectarse por SSH
-grep "PermitRootLogin" /etc/ssh/sshd_config
-
-# Verifica el directorio .ssh de deploy
-ls -la /home/deploy/.ssh/
-```
 
 ---
 
-## Ejercicio 3.2 — Diagnóstico de red: encuentra los fallos
+## Ejercicio 3.3 — Gestión de paquetes (apt/dpkg) con verificación y trazabilidad
 
 ### Contexto
 
-Eres el sysadmin. El profesor ha "roto" el servidor de tres maneras diferentes. No sabes cuáles ni cuántas son. Tu trabajo es diagnosticar qué está fallando y solucionarlo todo.
+En LFCS te pedirán instalar/quitar herramientas y demostrar que sabes inspeccionar paquetes, binarios y ficheros que instalan.
+
+### Tareas
+
+1) Instala `curl`, `git` y `htop`.
+
+2) Demuestra con evidencia:
+
+- versión de cada herramienta
+- qué paquete provee el binario `curl` (pista: `dpkg -S`)
+- lista de ficheros instalados por `openssh-server` o `nginx` (elige uno) usando `dpkg -L`
+
+3) Elimina `htop` y demuestra que ya no está disponible.
+
+Guarda comandos y salidas en:
+
+`~/practica3/entrega/33_paquetes.txt`
+
+---
+
+## Ejercicio 3.4 — Diagnóstico de red (ip, ss, rutas, DNS) con fallos sembrados
+
+### Contexto
+
+Tu servidor “parece caído”: la web no responde, y la resolución de nombres está manipulada. Debes diagnosticar con **`ip a`**, **`ip r`**, **`ss`**, `systemctl`, y pruebas tipo `ping/curl`.
 
 ### Setup — el profesor ejecuta esto antes de darte el servidor
 
@@ -171,84 +145,85 @@ sudo ufw allow ssh
 echo "192.0.2.1 google.com" | sudo tee -a /etc/hosts
 ```
 
-### Síntomas que experimentarás
+### Tareas
 
-- El servidor web no responde cuando haces `curl http://localhost`
-- Internet puede tener comportamiento extraño
+1) Sin “adivinar”, recopila un diagnóstico inicial con:
 
-### Metodología de diagnóstico
+- `ip a`
+- `ip r`
+- `sudo ss -tulpn`
+- `systemctl is-active nginx`
+- `sudo ufw status verbose`
 
-Sigue siempre este orden:
+Guarda el output en:
 
-**Paso 1 — Comprueba si nginx responde:**
-```bash
-curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://localhost
-```
-Si no responde (error de conexión), el servidor está parado o el firewall bloquea.
+`~/practica3/entrega/34_diagnostico_inicial.txt`
 
-**Paso 2 — Comprueba si nginx está corriendo:**
-```bash
-systemctl is-active nginx
-```
-Si dice `inactive`, arráncalo:
-```bash
-sudo systemctl start nginx
-```
-Vuelve al Paso 1. Si ahora funciona, ¿hay más problemas?
+2) Repara el sistema para que se cumpla:
 
-**Paso 3 — Comprueba el firewall:**
-```bash
-sudo ufw status verbose
-```
-¿Está activo? ¿Permite el puerto 80 (HTTP)?  
-Si no permite el 80:
-```bash
-sudo ufw allow 80/tcp
-```
+- `curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://localhost` devuelva 200
+- `ping -c 1 8.8.8.8` funcione
+- `ping -c 1 google.com` funcione y no resuelva a `192.0.2.x`
+- el firewall permita HTTP (80/tcp)
 
-**Paso 4 — Comprueba la resolución DNS:**
-```bash
-ping -c 2 google.com
-```
-¿Falla o va a una IP inesperada? Inspecciona el archivo hosts:
-```bash
-cat /etc/hosts
-```
-¿Hay alguna línea sospechosa? Una IP como `192.0.2.X` es una IP de documentación que no existe en internet.  
-Elimina la línea falsa:
-```bash
-sudo nano /etc/hosts
-# Borra la línea con la IP falsa de google.com
-# Guarda con Ctrl+O, Enter, Ctrl+X
-```
+3) Entrega evidencia final de que está arreglado en:
 
-**Paso 5 — Verifica que todo está resuelto:**
-```bash
-curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://localhost
-ping -c 2 google.com | grep "transmitted"
-sudo ufw status | grep "80/tcp"
-```
+`~/practica3/entrega/34_verificacion_final.txt`
 
 ---
 
-## 📤 Bloque de entrega
+## Ejercicio 3.5 — SSH con llaves + hardening (sshd_config) y pruebas sin bloquearte
+
+### Contexto
+
+La meta es operar como un sysadmin real: usar llaves, asegurar permisos de `~/.ssh`, y endurecer `sshd_config` sin bloquearte.
+
+### Tareas
+
+1) Genera un par de claves **ED25519** para tu usuario actual (si ya tienes, crea uno nuevo con otro nombre). Guarda:
+
+- el listado `ls -la ~/.ssh/`
+- la huella de la clave pública (`ssh-keygen -lf ...pub`)
+
+En:
+
+`~/practica3/entrega/35_claves_locales.txt`
+
+2) Crea el usuario `remoteops` (HOME + bash) y configura acceso por llave:
+
+- Crea `/home/remoteops/.ssh/authorized_keys`
+- Copia dentro tu clave pública
+- Ajusta permisos correctos (`~/.ssh` 700, `authorized_keys` 600) y propietario
+
+Guarda evidencia en:
+
+`~/practica3/entrega/35_authorized_keys_perms.txt`
+
+3) Endurece SSH en `/etc/ssh/sshd_config` para:
+
+- `PermitRootLogin no`
+- `PasswordAuthentication no`
+- `PubkeyAuthentication yes`
+
+Aplica cambios con `reload` o reinicio y **prueba** que:
+
+- puedes abrir una nueva sesión SSH contra `localhost` como `remoteops` usando llave
+- una autenticación por contraseña queda rechazada
+
+Guarda comandos/salidas en:
+
+`~/practica3/entrega/35_hardening_pruebas.txt`
+
+<Aside type="caution" title="No te bloquees">
+Antes de desactivar `PasswordAuthentication`, asegúrate de que el login por llave funciona (abre otra terminal y prueba). Si te equivocas, podrías perder el acceso remoto.
+</Aside>
+
+---
+
+## 📤 Bloque de entrega (resumen rápido)
+
+Entrega estos ficheros al profesor:
 
 ```bash
-echo "=== ENTREGA PRÁCTICA 3 ===" && \
-echo "" && \
-echo "--- 3.1: Permisos sudo de deploy ---" && \
-sudo -l -U deploy && \
-echo "" && \
-echo "--- 3.1: Claves SSH de deploy ---" && \
-ls -la /home/deploy/.ssh/ && \
-echo "" && \
-echo "--- 3.1: Config SSH ---" && \
-grep "PasswordAuthentication\|PermitRootLogin" /etc/ssh/sshd_config && \
-echo "" && \
-echo "--- 3.2: Estado nginx ---" && \
-systemctl is-active nginx && \
-echo "--- 3.2: Estado firewall ---" && \
-sudo ufw status && \
-echo "--- 3.2: DNS google ---" && \
-ping -c 1 google.com | grep "transmitted"
+ls -la ~/practica3/entrega/
 ```

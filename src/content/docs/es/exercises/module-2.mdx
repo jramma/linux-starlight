@@ -1,6 +1,6 @@
 ---
 title: "Práctica 2 — Comandos Básicos"
-description: Analiza logs reales de un servidor web, gestiona permisos de archivos y automatiza tareas con tuberías y redirecciones.
+description: "Resuelve 5 retos avanzados de terminal: navegación y búsqueda, edición, pipes y redirecciones, permisos y links, procesos y backups con documentación."
 sidebar:
   order: 2
 ---
@@ -8,12 +8,111 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 
 <Aside type="tip" title="Antes de empezar">
-Conéctate a tu VM por SSH. Esta práctica tiene dos ejercicios independientes. Léelos enteros antes de empezar.
+Conéctate a tu VM por SSH. Esta práctica está diseñada para durar ~2 horas. Son 5 ejercicios independientes, pero comparten carpeta de trabajo. Léelos enteros antes de empezar.
 </Aside>
 
 ---
 
-## Ejercicio 2.1 — Análisis de logs del servidor web
+## Setup — ejecutar una sola vez (carpeta de trabajo)
+
+```bash
+mkdir -p ~/practica2/{data,work,entrega}
+```
+
+Todo lo que te pidamos “guardar” deberá ir dentro de `~/practica2/entrega/`.
+
+---
+
+## Ejercicio 2.1 — Navegación, rutas y búsqueda (find)
+
+### Contexto
+
+Te han dejado un “árbol de proyecto” desordenado con ficheros duplicados, nombres raros y pistas escondidas. Tu objetivo es localizar artefactos concretos usando **rutas absolutas/relativas**, **comodines (globs)** y **`find`** con expresiones útiles.
+
+### Setup — generar el árbol (ejecutar una sola vez)
+
+```bash
+rm -rf ~/practica2/work/escenario_21
+mkdir -p ~/practica2/work/escenario_21/{src,src/old,docs,"docs/Informe Final",tmp,bin}
+
+printf "%s\n" "TODO: revisar permisos" "owner=alice" "status=pending" \
+  > ~/practica2/work/escenario_21/docs/README.md
+
+printf "%s\n" "token=CAMBIAME" "mode=debug" "path=/var/www/html" \
+  > ~/practica2/work/escenario_21/src/app.conf
+
+dd if=/dev/zero of=~/practica2/work/escenario_21/tmp/big.bin bs=1M count=12 status=none
+touch ~/practica2/work/escenario_21/src/old/legacy.LOG
+touch ~/practica2/work/escenario_21/src/old/legacy.log
+touch ~/practica2/work/escenario_21/src/old/"informe 2024.txt"
+
+printf "%s\n" "#!/usr/bin/env bash" "echo hola" > ~/practica2/work/escenario_21/bin/hola.sh
+chmod 644 ~/practica2/work/escenario_21/bin/hola.sh
+
+ln -s ~/practica2/work/escenario_21/src/app.conf ~/practica2/work/escenario_21/app.conf.link
+```
+
+### Tareas
+
+1) Encuentra (con `find`) **todos los archivos** en `escenario_21/` cuyo nombre termine en `.log` **sin distinguir mayúsculas/minúsculas**. Guarda el listado (una ruta por línea, ordenado) en:
+
+`~/practica2/entrega/21_logs.txt`
+
+2) Encuentra **archivos mayores de 10MB** dentro de `escenario_21/` y guarda el listado largo (`ls -lh` por cada resultado) en:
+
+`~/practica2/entrega/21_grandes.txt`
+
+3) Localiza el script `hola.sh` y **hazlo ejecutable** únicamente para su propietario (sin abrir permisos al grupo/otros). Después, guarda en un archivo:
+
+- la salida de `ls -l` del script
+- la ruta exacta del ejecutable `bash` usando `which`
+
+En:
+
+`~/practica2/entrega/21_script_permisos.txt`
+
+4) Usando **rutas relativas**, muévete a `~/practica2/work/escenario_21/docs/Informe Final/` (nota el espacio) y crea dentro un fichero vacío llamado `OK.txt`.
+
+Guarda el comando exacto que usaste (copiado tal cual) en:
+
+`~/practica2/entrega/21_rutas.txt`
+
+---
+
+## Ejercicio 2.2 — Edición de texto (nano/vim) + validación por terminal
+
+### Contexto
+
+Tienes un fichero de configuración con valores “inseguros” y debes corregirlos rápido en consola. En un examen real, nadie te deja un IDE: se hace con `nano` o con `vim`.
+
+### Tareas
+
+1) Abre `~/practica2/work/escenario_21/src/app.conf` con **`nano`** y cambia:
+
+- `token=CAMBIAME` por `token=OK_<tu_usuario>`
+- `mode=debug` por `mode=prod`
+
+Guarda y sal.
+
+2) Abre el mismo fichero con **`vim`**, y añade al final una línea:
+
+`last_edit=$(date -Is)`
+
+Guarda y sal.
+
+3) Valida desde terminal (sin abrir editores) que:
+
+- existe exactamente una línea que empieza por `token=`
+- `mode=` vale `prod`
+- el fichero tiene 3 o 4 líneas (dependerá de tu `date`)
+
+Guarda **los comandos** que usaste y **sus salidas** en:
+
+`~/practica2/entrega/22_validacion.txt`
+
+---
+
+## Ejercicio 2.3 — Pipes, filtros y redirecciones (análisis de logs real)
 
 ### Contexto
 
@@ -22,16 +121,13 @@ Un servidor web guarda un registro de todas las peticiones que recibe. Tu misió
 ### Setup — ejecutar una sola vez
 
 ```bash
-# Crea los directorios de trabajo
-mkdir -p ~/practica2/logs ~/practica2/backup
-
 # Descarga un log real de un servidor nginx (~50.000 líneas)
 wget -q \
   "https://raw.githubusercontent.com/elastic/examples/master/Common%20Data%20Formats/nginx_logs/nginx_logs" \
-  -O ~/practica2/logs/access.log
+  -O ~/practica2/data/access.log
 
 # Comprueba que se descargó correctamente
-wc -l ~/practica2/logs/access.log
+wc -l ~/practica2/data/access.log
 ```
 
 Deberías ver un número cercano a **51.462 líneas**. Si ves 0 o un error, el servidor de GitHub puede estar caído — espera unos minutos y vuelve a intentarlo.
@@ -46,76 +142,37 @@ Cada línea tiene este formato:
 
 Los campos son: `IP - - [fecha] "MÉTODO /ruta HTTP/versión" CÓDIGO bytes "referer" "agente"`
 
-### Tarea 1 — Contar IPs únicas
+### Tareas (todas deben dejar entrega)
 
-¿Cuántas IPs diferentes han accedido al servidor?
+1) Genera un informe con:
 
-```bash
-awk '{print $1}' ~/practica2/logs/access.log | sort -u | wc -l
-```
+- **IPs únicas** (un número)
+- **Top 15 IPs** por número de peticiones
+- **Top 10 rutas** con más errores 404
+- **% de peticiones 5xx** sobre el total (redondea a 2 decimales)
 
-`awk '{print $1}'` extrae el primer campo (la IP).  
-`sort -u` ordena y elimina duplicados.  
-`wc -l` cuenta las líneas resultantes.
+Guarda todo en:
 
-Anota el resultado.
+`~/practica2/entrega/23_informe.txt`
 
-### Tarea 2 — Top 10 IPs más activas
+2) Crea un fichero con **todas** las líneas de log que sean **404 o 500** y guárdalo comprimido en gzip (sin perder el original). Debe quedar:
 
-¿Quién ha hecho más peticiones?
+- `~/practica2/entrega/23_errores.log`
+- `~/practica2/entrega/23_errores.log.gz`
 
-```bash
-awk '{print $1}' ~/practica2/logs/access.log | sort | uniq -c | sort -rn | head -10
-```
+3) Ejecuta un comando `find` que recorra `/var/log` buscando `*.log` pero **sin ensuciar la pantalla** con “Permission denied”. Guarda el output completo (stdout+stderr) en:
 
-`uniq -c` cuenta las repeticiones de cada IP.  
-`sort -rn` ordena numéricamente en orden descendente.
+`~/practica2/entrega/23_find_varlog.txt`
 
-Guarda el resultado en un archivo:
-
-```bash
-awk '{print $1}' ~/practica2/logs/access.log | sort | uniq -c | sort -rn | head -10 \
-  > ~/practica2/backup/top10_ips.txt
-
-cat ~/practica2/backup/top10_ips.txt
-```
-
-### Tarea 3 — Contar errores 404
-
-Los errores 404 significan que el cliente pidió una página que no existe:
-
-```bash
-grep ' 404 ' ~/practica2/logs/access.log | wc -l
-```
-
-Anota cuántos hay.
-
-### Tarea 4 — Ver qué rutas dan más 404
-
-```bash
-grep ' 404 ' ~/practica2/logs/access.log | awk '{print $7}' | sort | uniq -c | sort -rn | head -10
-```
-
-`$7` es el campo de la ruta (el URL).
-
-### Tarea 5 — Comprimir el log para archivar
-
-```bash
-tar -czvf ~/practica2/backup/access.log.tar.gz ~/practica2/logs/access.log
-
-# Verifica que el archivo existe y su tamaño
-ls -lh ~/practica2/backup/
-```
-
-Un log de 10 MB comprimido suele reducirse a 1-2 MB. Comprueba la diferencia.
+Pista: aquí se evalúa que entiendes `2>` y/o `&>`.
 
 ---
 
-## Ejercicio 2.2 — Permisos y estructura de archivos
+## Ejercicio 2.4 — Permisos + propiedad + enlaces (hard/soft)
 
 ### Contexto
 
-Vas a crear la estructura de directorios de un proyecto web compartido entre dos desarrolladores. Cada directorio tiene requisitos de acceso diferentes.
+Vas a simular un mini “equipo web” con 2 usuarios, un grupo compartido y una jerarquía con reglas estrictas. Además, protegerás un fichero crítico con un **hard link** y crearás accesos con **symlinks**.
 
 ### Setup — ejecutar una sola vez
 
@@ -129,7 +186,7 @@ echo "alice:linux123" | sudo chpasswd
 echo "bob:linux123" | sudo chpasswd
 
 # Crea la estructura de directorios del proyecto
-sudo mkdir -p /var/www/proyecto/{public,private,logs}
+sudo mkdir -p /var/www/proyecto/{public,private,logs,shared,release}
 
 # Crea el grupo del equipo de desarrollo
 sudo groupadd webdevs 2>/dev/null || echo "El grupo ya existe"
@@ -145,86 +202,106 @@ ls -la /var/www/proyecto/
 | `public/` | root | webdevs | `775` | ✅ Sí | El equipo puede leer y escribir; los archivos nuevos heredan el grupo |
 | `private/` | root | root | `700` | ❌ No | Solo root puede entrar |
 | `logs/` | root | webdevs | `754` | ❌ No | El equipo solo puede leer los logs, no escribirlos |
+| `shared/` | root | webdevs | `2775` | ✅ Sí | Directorio compartido: hereda grupo y permite colaboración |
+| `release/` | root | root | `755` | ❌ No | Publicable: cualquiera lee/ejecuta, nadie escribe salvo root |
 
-### Tarea 1 — Añadir alice y bob al grupo
+### Tareas
 
-```bash
-sudo usermod -aG webdevs alice
-sudo usermod -aG webdevs bob
+1) Añade `alice` y `bob` al grupo `webdevs` y valida con `getent group`.
 
-# Verifica que están en el grupo
-getent group webdevs
-```
+2) Aplica propietarios/permisos para que la tabla se cumpla (usa `chown`, `chmod` y el bit SGID donde toque). Luego guarda en:
 
-Deberías ver algo como: `webdevs:x:1002:alice,bob`
+`~/practica2/entrega/24_permisos_ls.txt`
 
-### Tarea 2 — Asignar propietarios y permisos
+La salida de:
 
-```bash
-# public: propietario root, grupo webdevs, permisos 775
-sudo chown root:webdevs /var/www/proyecto/public
-sudo chmod 775 /var/www/proyecto/public
+- `ls -la /var/www/proyecto/`
+- `stat /var/www/proyecto/public /var/www/proyecto/shared` (para ver SGID claramente)
 
-# private: solo root
-sudo chmod 700 /var/www/proyecto/private
+3) Como `alice`, crea `index.html` dentro de `public/` y `shared/`. Valida que **el grupo** del fichero creado sea `webdevs` en ambos casos (por SGID). Guarda las salidas de `ls -la` en:
 
-# logs: grupo puede leer pero no escribir
-sudo chown root:webdevs /var/www/proyecto/logs
-sudo chmod 754 /var/www/proyecto/logs
-```
+`~/practica2/entrega/24_sgid_prueba.txt`
 
-### Tarea 3 — Activar el bit SGID en public/
+4) Crea un archivo crítico `/var/www/proyecto/shared/config.ini` (contenido libre) y crea un **hard link** llamado `/var/www/proyecto/shared/config.ini.bak`. Luego:
 
-El bit SGID (Set Group ID) hace que cualquier archivo creado dentro de `public/` herede automáticamente el grupo `webdevs`, aunque lo cree un usuario diferente:
+- Borra `config.ini`
+- Demuestra que el contenido **sigue existiendo** a través de `config.ini.bak`
+- Guarda evidencia del mismo inodo usando `ls -li` o `stat`
 
-```bash
-sudo chmod g+s /var/www/proyecto/public
+Guarda todo en:
 
-# Verifica: debe aparecer una 's' en los permisos del grupo
-ls -la /var/www/proyecto/
-```
+`~/practica2/entrega/24_hardlink.txt`
 
-El resultado de `ls -la` para `public/` debe ser: `drwxrwsr-x root webdevs`  
-La `s` en la posición del bit de ejecución del grupo confirma que el SGID está activo.
+5) Crea un **symlink** llamado `/var/www/proyecto/public/shared-current` que apunte a `/var/www/proyecto/shared`. Luego, lista con `ls -l` y guarda la salida en:
 
-### Tarea 4 — Verificar que los permisos funcionan
-
-```bash
-# Prueba que alice puede escribir en public
-sudo -u alice touch /var/www/proyecto/public/prueba-alice.txt
-ls -la /var/www/proyecto/public/
-# El grupo del archivo debe ser 'webdevs', no 'alice'
-
-# Prueba que alice NO puede escribir en private
-sudo -u alice touch /var/www/proyecto/private/intento.txt
-# Debe dar: Permission denied
-
-# Prueba que alice puede leer logs pero no escribir
-sudo -u alice ls /var/www/proyecto/logs/          # Debe funcionar
-sudo -u alice touch /var/www/proyecto/logs/a.txt  # Debe fallar
-```
+`~/practica2/entrega/24_symlink.txt`
 
 ---
 
-## 📤 Bloque de entrega
+## Ejercicio 2.5 — Procesos, jobs, archivado y documentación (man/apropos)
 
-Ejecuta esto y lleva la salida al profesor:
+### Contexto
+
+Estás en un servidor remoto. Necesitas lanzar tareas largas, dejarlas corriendo en segundo plano, monitorear y (si toca) matar procesos. Al final debes archivar y hacer un “backup incremental” local. No se permite Google: se evalúa `man`/`apropos`.
+
+### Tareas
+
+1) Inicia un comando que tarde un rato (por ejemplo, crear un tar de `/var/log` o comprimir algo grande) y envíalo a **background** sin cerrar la sesión.
+
+Debes entregar:
+
+- `jobs` mostrando el trabajo en segundo plano
+- el PID del proceso
+- un `ps aux | grep ...` que lo localice (sin confundirte con el propio grep)
+
+Guarda todo en:
+
+`~/practica2/entrega/25_jobs_ps.txt`
+
+2) Simula un proceso “rebeldísimo” y elimínalo en dos fases: primero SIGTERM y luego SIGKILL si no muere. Pista: puedes usar `sleep 99999` como víctima.
+
+Guarda comandos y salida relevante en:
+
+`~/practica2/entrega/25_kill.txt`
+
+3) Crea un archivo comprimido con `tar` que incluya:
+
+- `~/practica2/entrega/` completo
+- y el fichero `~/practica2/data/access.log`
+
+Debe llamarse:
+
+`~/practica2/entrega_practica2.tar.gz`
+
+Guarda el `ls -lh` del resultado y el “table of contents” (`tar -t...`) en:
+
+`~/practica2/entrega/25_tar_verificacion.txt`
+
+4) Crea un “backup incremental” local usando `rsync` desde `~/practica2/` hacia `~/practica2_backup/` preservando metadatos. Debes demostrar que entiendes la **barra final**.
+
+Guarda en:
+
+`~/practica2/entrega/25_rsync.txt`
+
+- el comando exacto usado
+- una segunda ejecución mostrando que ya no copia casi nada (output reducido)
+
+5) Sin recordar flags de memoria, usa `man` y/o `apropos` para responder:
+
+- ¿Qué opción de `tar` lista el contenido sin extraer?
+- ¿Qué opción de `rsync` preserva permisos/dueños/fechas (modo “archivador”)?
+
+Guarda el comando de búsqueda que usaste y una evidencia (líneas relevantes) en:
+
+`~/practica2/entrega/25_man_apropos.txt`
+
+---
+
+## 📤 Bloque de entrega (resumen rápido)
+
+Entrega **estos archivos** (y el tar final) al profesor:
 
 ```bash
-echo "=== ENTREGA PRÁCTICA 2 ===" && \
-echo "" && \
-echo "--- 2.1: Top 10 IPs ---" && \
-cat ~/practica2/backup/top10_ips.txt && \
-echo "" && \
-echo "--- 2.1: Errores 404 ---" && \
-grep ' 404 ' ~/practica2/logs/access.log | wc -l && \
-echo "" && \
-echo "--- 2.1: Archivo comprimido ---" && \
-ls -lh ~/practica2/backup/access.log.tar.gz && \
-echo "" && \
-echo "--- 2.2: Permisos del proyecto ---" && \
-ls -la /var/www/proyecto/ && \
-echo "" && \
-echo "--- 2.2: Grupos de alice y bob ---" && \
-groups alice && groups bob
+ls -la ~/practica2/entrega/ && \
+ls -lh ~/practica2/entrega_practica2.tar.gz
 ```
