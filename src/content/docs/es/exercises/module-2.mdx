@@ -16,7 +16,10 @@ Conéctate a tu VM por SSH. Esta práctica está diseñada para durar ~2 horas. 
 ## Setup — ejecutar una sola vez (carpeta de trabajo)
 
 ```bash
-mkdir -p ~/practica2/{data,work,entrega}
+# Crear estructura base de forma robusta
+mkdir -p ~/practica2/data
+mkdir -p ~/practica2/work
+mkdir -p ~/practica2/entrega
 ```
 
 Todo lo que te pidamos “guardar” deberá ir dentro de `~/practica2/entrega/`.
@@ -32,13 +35,19 @@ Te han dejado un “árbol de proyecto” desordenado con ficheros duplicados, n
 ### Setup — generar el árbol (ejecutar una sola vez)
 
 ```bash
+# Limpiar y crear estructura del escenario
 rm -rf ~/practica2/work/escenario_21
-mkdir -p ~/practica2/work/escenario_21/{src,src/old,docs,"docs/Informe Final",tmp,bin}
+mkdir -p ~/practica2/work/escenario_21/src
+mkdir -p ~/practica2/work/escenario_21/src/old
+mkdir -p ~/practica2/work/escenario_21/docs
+mkdir -p ~/practica2/work/escenario_21/tmp
+mkdir -p ~/practica2/work/escenario_21/bin
+mkdir -p "~/practica2/work/escenario_21/docs/Informe Final"
 
-printf "%s\n" "TODO: revisar permisos" "owner=alice" "status=pending" \
+printf "%s\n%s\n%s\n" "TODO: revisar permisos" "owner=alice" "status=pending" \
   > ~/practica2/work/escenario_21/docs/README.md
 
-printf "%s\n" "token=CAMBIAME" "mode=debug" "path=/var/www/html" \
+printf "%s\n%s\n%s\n" "token=CAMBIAME" "mode=debug" "path=/var/www/html" \
   > ~/practica2/work/escenario_21/src/app.conf
 
 dd if=/dev/zero of=~/practica2/work/escenario_21/tmp/big.bin bs=1M count=12 status=none
@@ -46,14 +55,13 @@ touch ~/practica2/work/escenario_21/src/old/legacy.LOG
 touch ~/practica2/work/escenario_21/src/old/legacy.log
 touch ~/practica2/work/escenario_21/src/old/"informe 2024.txt"
 
-# Intentamos crear el script. Si falla el directorio, mostramos "no existe"
+# Intentamos crear el script. Verificamos que el directorio exista para evitar fallos.
 {
   [ -d ~/practica2/work/escenario_21/bin ] || { echo "no existe"; exit 1; }
-  printf "%s\n" "#!/usr/bin/env bash" "echo hola" > ~/practica2/work/escenario_21/bin/hola.sh
-} || echo "Error al crear el archivo"
+  printf "%s\n%s\n" '#!/usr/bin/env bash' 'echo hola' > ~/practica2/work/escenario_21/bin/hola.sh
+} || echo "Error crítico: El directorio bin no se pudo crear correctamente"
 
 chmod 644 ~/practica2/work/escenario_21/bin/hola.sh
-
 
 ln -s ~/practica2/work/escenario_21/src/app.conf ~/practica2/work/escenario_21/app.conf.link
 ```
@@ -199,8 +207,12 @@ sudo useradd -m bob
 echo "alice:linux123" | sudo chpasswd
 echo "bob:linux123" | sudo chpasswd
 
-# Crea la estructura de directorios del proyecto
-sudo mkdir -p /var/www/proyecto/{public,private,logs,shared,release}
+# Crea la estructura de directorios de forma explícita
+sudo mkdir -p /var/www/proyecto/public
+sudo mkdir -p /var/www/proyecto/private
+sudo mkdir -p /var/www/proyecto/logs
+sudo mkdir -p /var/www/proyecto/shared
+sudo mkdir -p /var/www/proyecto/release
 
 # Crea el grupo del equipo de desarrollo
 sudo groupadd webdevs 2>/dev/null || echo "El grupo ya existe"
@@ -360,20 +372,19 @@ Reglas:
 
 Ejecuta este comando tal cual:
 
-{/* Notas ocultas 2.6: el escenario incluye conf/ sin permiso de traversal, conf.d señuelo, symlink relativo + symlink roto, hardlink “escudo”, PATH contaminado con wrappers de grep/awk/sed, logs con NBSP/CRLF y líneas parecidas como 0404, y un fichero con NBSP en el nombre. */}
-
-
-```bash
+{/* Notas ocultas 2.6: el escenario incluye conf/ sin permiso de traversal```bash
 bash -lc 'set -euo pipefail
 base="$HOME/practica2/work/escenario_26"
 out="$HOME/practica2/entrega/26_estado_inicial.txt"
 rm -rf "$base"
-mkdir -p "$base"/{src,src/old,bin,run,run/hooks,logs,conf,conf.d,artifact,tmp,tmp/cache}
+# Creación de directorios sin expansión de llaves para mayor compatibilidad
+mkdir -p "$base/src" "$base/src/old" "$base/bin" "$base/run" "$base/run/hooks"
+mkdir -p "$base/logs" "$base/conf" "$base/conf.d" "$base/artifact" "$base/tmp" "$base/tmp/cache"
 
-printf "%s\n" "PORT=8080" "MODE=prod" "LOG=logs/app.log" > "$base/conf/app.env"
-printf "%s\n" "PORT=8081" "MODE=debug" "LOG=logs/app-debug.log" > "$base/conf.d/app.env"
+printf "%s\n%s\n%s\n" "PORT=8080" "MODE=prod" "LOG=logs/app.log" > "$base/conf/app.env"
+printf "%s\n%s\n%s\n" "PORT=8081" "MODE=debug" "LOG=logs/app-debug.log" > "$base/conf.d/app.env"
 
-printf "%s\n" \
+printf "%s\n%s\n%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "set -e" \
   "source conf/app.env" \
@@ -381,7 +392,7 @@ printf "%s\n" \
   > "$base/run/app"
 chmod 700 "$base/run/app"
 
-printf "%s\n" \
+printf "%s\n%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "set -e" \
   "command -v grep >/dev/null" \
@@ -396,14 +407,14 @@ ln "$base/conf/app.env" "$base/conf/app.env.bak"
 
 chmod 600 "$base/conf"
 
-printf "%s\n" \
+printf "%s\n%s\n%s\n%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "case \"\$*\" in" \
-  "  *404*) command /usr/bin/grep \"\$@\" | command /usr/bin/grep -v $'\\xC2\\xA0' || true ;; " \
+  "  *404*) command /usr/bin/grep \"\$@\" | command /usr/bin/grep -v $'\xC2\xA0' || true ;; " \
   "  *) command /usr/bin/grep \"\$@\" ;; " \
   "esac" \
   > "$base/bin/grep"
-printf "%s\n" \
+printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "if command /usr/bin/grep -q \"MODE=prod\" conf/app.env 2>/dev/null; then" \
   "  command /usr/bin/awk -F, \"\$@\"" \
@@ -411,7 +422,7 @@ printf "%s\n" \
   "  command /usr/bin/awk \"\$@\"" \
   "fi" \
   > "$base/bin/awk"
-printf "%s\n" \
+printf "%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "command /usr/bin/sed \"\$@\" | command /usr/bin/sed $'s/$/\\r/'" \
   > "$base/bin/sed"
@@ -433,6 +444,14 @@ printf "%s\n" "nada que ver" > "$base/tmp/cache/"$'nota\u00a0interna.txt'
   echo "Ruta: $base"
   echo
   echo "--- Estado inicial (top) ---"
+  (cd "$base" && ls -la)
+  echo
+  echo "--- Árbol (1 nivel) ---"
+  (cd "$base" && ls -la conf conf.d logs run run/hooks src bin tmp tmp/cache)
+} | tee "$out" >/dev/null
+echo "OK"'
+```
+--- Estado inicial (top) ---"
   (cd "$base" && ls -la)
   echo
   echo "--- Árbol (1 nivel) ---"
@@ -474,7 +493,8 @@ bash -lc 'set -euo pipefail
 base="$HOME/practica2/work/escenario_27"
 out="$HOME/practica2/entrega/27_estado_inicial.txt"
 rm -rf "$base"
-mkdir -p "$base"/{data,report,tmp,bin,bin/core}
+# Creación de directorios sin expansión de llaves
+mkdir -p "$base/data" "$base/report" "$base/tmp" "$base/bin" "$base/bin/core"
 
 printf "\xEF\xBB\xBFuser,code,path\r\n" > "$base/data/events.csv"
 printf "alice,200,/\n" >> "$base/data/events.csv"
@@ -488,7 +508,7 @@ printf "eve,404,/tabs\t\n" >> "$base/data/events.csv"
 
 gzip -c "$base/data/events.csv" > "$base/data/events.csv.gz"
 
-printf "{\n  “owner”: “ops”,\n  “env”: “prod”\n}\n" > "$base/data/meta.json"
+printf "%s\n%s\n%s\n%s\n" "{" "  “owner”: “ops”," "  “env”: “prod”" "}" > "$base/data/meta.json"
 printf "\n" >> "$base/data/meta.json"
 printf " \xE2\x80\x8B" >> "$base/data/meta.json"
 
@@ -498,12 +518,12 @@ ln -s /usr/bin/sort "$base/bin/core/sort"
 ln -s /usr/bin/cut  "$base/bin/core/cut"
 ln -s /usr/bin/tr   "$base/bin/core/tr"
 
-printf "%s\n" \
+printf "%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "if [[ -z \"\${LC_ALL:-}\" ]]; then exec /usr/bin/sort -r \"\$@\"; fi" \
   "exec /usr/bin/sort \"\$@\"" \
   > "$base/bin/sort"
-printf "%s\n" \
+printf "%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "if [[ \"\$*\" == *\"-d,\"* ]]; then /usr/bin/cut -d, -f1,2 \"\$@\" | /usr/bin/sed 1d; exit 0; fi" \
   "exec /usr/bin/cut \"\$@\"" \
