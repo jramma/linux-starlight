@@ -5,7 +5,7 @@ import { rehypeTasklistEnhancer } from "./config/plugins/rehype-tasklist-enhance
 import { sidebar } from "./astro.sidebar";
 
 import icon from "astro-icon";
-import mermaid from "astro-mermaid";
+import rehypeMermaid from "rehype-mermaid";
 
 // https://astro.build/config
 export default defineConfig({
@@ -35,9 +35,11 @@ export default defineConfig({
       },
     }),
     icon(),
-    mermaid(),
   ],
   markdown: {
-    rehypePlugins: [rehypeTasklistEnhancer()],
+    rehypePlugins: [
+      rehypeTasklistEnhancer(),
+      [rehypeMermaid, { strategy: "inline-svg" }],
+    ],
   },
 });

@@ -38,9 +38,9 @@ Cada proceso en Linux nace siempre con tres "tuberías invisibles" conectadas a 
 
 ```mermaid
 flowchart LR
-  K[Teclado<br/>stdin (0)] --> P[Proceso / Comando]
-  P --> O[Pantalla / Archivo<br/>stdout (1)]
-  P --> E[Pantalla / Archivo<br/>stderr (2)]
+  K["Teclado<br/>stdin (0)"] --> P["Proceso / Comando"]
+  P --> O["Pantalla / Archivo<br/>stdout (1)"]
+  P --> E["Pantalla / Archivo<br/>stderr (2)"]
 ```
 
 <Aside type="tip" title="Dato curioso: el nacimiento del pipe">

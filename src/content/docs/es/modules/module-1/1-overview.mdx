@@ -222,23 +222,23 @@ A continuación, un esquema simplificado para comparar cómo de ineficiente y la
 #### Arquitectura X11 (La Vía Larga)
 ```mermaid
 graph TD
-    HW_Input[Hardware: Ratón / Teclado] -->|1. Evento físico| Kernel
+    HW_Input["Hardware: Ratón / Teclado"] -->|1. Evento físico| Kernel
     Kernel -->|2. Datos brutos| X11{Servidor X11}
-    X11 -->|3. Traslada evento| App[Aplicación / Programa]
+    X11 -->|3. Traslada evento| App["Aplicación / Programa"]
     App -->|4. Renderiza vía CPU/GPU| X11
     X11 -->|5. Petición de mapa de píxels| Compositor[Entorno de Escritorio]
     Compositor -->|6. Compone imagen final| X11
-    X11 -->|7. Petición de pintado| GPU[Hardware: GPU / Pantalla]
+    X11 -->|7. Petición de pintado| GPU["Hardware: GPU / Pantalla"]
 ```
 
 #### Arquitectura Wayland (La Vía Directa)
 ```mermaid
 graph TD
-    HW_Input[Hardware: Ratón / Teclado] -->|1. Evento físico| Kernel
-    Kernel -->|2. Datos brutos| Compositor{Wayland Compositor<br/>Entorno de Escritorio}
-    Compositor -->|3. Traslada evento| App[Aplicación / Programa]
+    HW_Input["Hardware: Ratón / Teclado"] -->|1. Evento físico| Kernel
+    Kernel -->|2. Datos brutos| Compositor{"Wayland Compositor<br/>Entorno de Escritorio"}
+    Compositor -->|3. Traslada evento| App["Aplicación / Programa"]
     App -->|4. Renderiza vía CPU/GPU| Compositor
-    Compositor -->|5. Petición directa de pintado| GPU[Hardware: GPU / Pantalla]
+    Compositor -->|5. Petición directa de pintado| GPU["Hardware: GPU / Pantalla"]
 ```
 
 Sobre este servidor se apoya el **Entorno de Escritorio** (Desktop Environment), responsable del *look & feel* y diseño de interacción del sistema (gestión de ventanas, menús, explorador de archivos, configuración). Alternativas muy populares incluyen:

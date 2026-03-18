@@ -1,6 +1,6 @@
 ---
-title: "Práctica 3 — Usuarios y Red"
-description: "Práctica LFCS (módulo 3): usuarios/grupos, sudo mínimo, paquetes (apt/dpkg), diagnóstico de red con ip/ss y SSH con llaves + hardening."
+title: "Práctica 3 — Usuarios, Red y SSH"
+description: "5 ejercicios LFCS: gestión de usuarios/grupos, sudo mínimo, APT/dpkg, diagnóstico de red y hardening SSH con llaves."
 sidebar:
   order: 3
 ---
@@ -8,135 +8,152 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 
 <Aside type="tip" title="Antes de empezar">
-Esta práctica está diseñada para durar ~2 horas y preparar habilidades tipo **LFCS**. Son 5 ejercicios: algunos los construyes tú, otros son de diagnóstico con fallos “sembrados”. Léelos completos antes de empezar y trabaja en orden.
+Conéctate a tu VM por SSH. Esta práctica está diseñada para durar ~2 horas. Los tres primeros ejercicios son progresivos; los dos últimos son escenarios con fallos sembrados que debes diagnosticar y reparar. Léelos todos antes de empezar.
 </Aside>
 
 ---
 
-## Setup — ejecutar una sola vez (carpeta de trabajo)
+## Setup — ejecutar una sola vez
 
 ```bash
 mkdir -p ~/practica3/{work,entrega}
 ```
 
-Todo lo que se pida “guardar” debe ir dentro de `~/practica3/entrega/`.
+Todo lo que se pida "guardar" debe ir dentro de `~/practica3/entrega/`.
 
 ---
 
-## Ejercicio 3.1 — Anatomía de usuarios (UID, passwd/shadow) y ciclo de vida
+## Ejercicio 3.1 — Anatomía de usuarios: passwd, shadow y ciclo de vida
 
 ### Contexto
 
-En LFCS no basta con “crear un usuario”: tienes que **auditar** qué queda escrito en `/etc/passwd`, entender shells, bloquear/desbloquear, y comprobar UIDs/GIDs con precisión.
+Un sysadmin real no "crea usuarios a ciegas": primero lee el estado actual del sistema, entiende qué hay, y deja evidencia de cada cambio. Aquí aprenderás a auditar `/etc/passwd` y `/etc/shadow` con precisión, y a distinguir **cuentas de servicio** de **cuentas humanas**.
 
 ### Tareas
 
-1) Crea tres cuentas con `useradd` (no `adduser`):
+1) **Audita el sistema antes de tocar nada.** Guarda en `~/practica3/entrega/31_auditoria_previa.txt`:
 
-- `audit1` con HOME y shell `/bin/bash`
-- `audit2` con HOME y shell `/usr/sbin/nologin`
-- `audit3` con HOME y shell `/bin/bash` y un comentario (GECOS) “Cuenta de auditoría”
+- Usuarios con UID ≥ 1000 (humanos): filtra `/etc/passwd` con `awk` o `grep`
+- Si existe algún usuario con UID `0` **distinto** de `root` (demostrarlo con un comando; si no existe, el comando debe devolver vacío)
+- Permisos y propietario exactos de `/etc/shadow` con `stat /etc/shadow`; explica en una línea de comentario `#` por qué esos permisos importan
 
-2) Asigna contraseña a `audit1` y `audit3`. (La cuenta `audit2` no debe poder iniciar sesión interactiva por su shell).
+2) Crea estas tres cuentas con `useradd` (no `adduser`):
 
-3) Demuestra con evidencia:
+- `svc_backup`: **sin HOME**, shell `/usr/sbin/nologin`, UID fijo `1500`, GECOS "Servicio de backups"
+- `dev_ana`: con HOME, shell `/bin/bash`, GECOS "Desarrolladora senior"
+- `ops_luis`: con HOME, shell `/bin/bash`
 
-- la línea completa de cada usuario en `/etc/passwd`
-- el UID y GID principal de cada usuario (con `id`)
-- que `/etc/shadow` **no** es legible por un usuario normal (y sí por root)
+3) Asigna contraseña a `dev_ana` y `ops_luis`. Deja `svc_backup` sin contraseña. Demuestra el estado de las 3 cuentas con `passwd -S <usuario>` (los estados serán `L`, `P` o `NP`).
 
-Guarda comandos y salidas en:
+4) Bloquea `ops_luis` con `usermod -L`. Verifica que la línea en `/etc/shadow` contiene el prefijo `!` en el hash. Luego desbloquéalo y vuelve a verificar.
 
-`~/practica3/entrega/31_auditoria_usuarios.txt`
+Guarda todos los comandos y sus salidas en:
 
-4) Bloquea a `audit3` (sin borrarlo) y demuestra que queda bloqueado; luego desbloquéalo y demuestra que vuelve a estar operativo.
-
-Guarda evidencia (comandos + salida relevante) en:
-
-`~/practica3/entrega/31_lock_unlock.txt`
+`~/practica3/entrega/31_usuarios.txt`
 
 ---
 
-## Ejercicio 3.2 — Grupos, delegación y sudo mínimo (visudo)
+## Ejercicio 3.2 — Grupos, delegación y sudo mínimo
 
 ### Contexto
 
-En un servidor real no se comparte root. Delegas poder con grupos y reglas de sudo **mínimas**, auditables y sin romper `/etc/sudoers`.
+El error más habitual en producción con `sudo` es conceder demasiado poder. Aquí practicarás la delegación **mínima**: solo los comandos exactos que el rol necesita, con rutas absolutas, en un fichero `drop-in` validado antes de activarlo.
 
 ### Setup — ejecutar una sola vez
 
 ```bash
 sudo apt update && sudo apt install -y nginx
-systemctl status nginx --no-pager
+systemctl is-active nginx
 ```
 
 ### Tareas
 
-1) Crea el usuario `deploy` con HOME y `/bin/bash`. Asigna contraseña.
+1) Crea el grupo `webops`. Añade `dev_ana` y `ops_luis` (del ejercicio anterior) al grupo sin quitarles otros grupos (`-aG`). Verifica con `getent group webops`.
 
-2) Crea un grupo `webops` y añade `deploy` a ese grupo (sin quitarle otros grupos).
+2) Crea el fichero `/etc/sudoers.d/webops` con tu editor habitual:
 
-3) Configura sudo para que **solo** el grupo `webops` pueda ejecutar **sin contraseña**:
+```bash
+sudo nano /etc/sudoers.d/webops
+```
 
-- `systemctl restart nginx`
-- `systemctl status nginx`
+Contenido (usa **rutas absolutas** — en LFCS es obligatorio):
 
-Requisitos:
+```
+%webops ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx, /usr/bin/systemctl status nginx, /usr/bin/systemctl reload nginx
+```
 
-- Debe estar en un archivo drop-in dentro de `/etc/sudoers.d/`
-- Debe ser validado con `visudo -c -f`
+Valida la sintaxis **antes** de confiar en el fichero:
 
-4) Prueba como `deploy` que:
+```bash
+sudo visudo -c -f /etc/sudoers.d/webops
+```
 
-- `sudo systemctl restart nginx` funciona sin pedir contraseña
-- `sudo systemctl status nginx` funciona
-- `sudo ls /root` **falla**
-- `sudo systemctl restart ssh` **falla**
+Si hay error, corrígelo hasta que devuelva `OK`.
 
-Guarda toda la evidencia en:
+3) Como `dev_ana`, comprueba sus permisos declarados:
+
+```bash
+sudo -u dev_ana sudo -l
+```
+
+Guarda la salida: debe listar los tres comandos de nginx y nada más.
+
+4) Demuestra los límites de la delegación ejecutando como `dev_ana`:
+
+- `sudo systemctl restart nginx` → debe funcionar sin contraseña
+- `sudo systemctl restart ssh` → debe **fallar**
+- `sudo ls /root` → debe **fallar**
+
+5) Verifica el **trail de auditoría**: busca en `/var/log/auth.log` las entradas de `dev_ana` usando `sudo`:
+
+```bash
+grep "dev_ana" /var/log/auth.log | grep sudo | tail -10
+```
+
+Guarda toda la evidencia (comandos + salidas) en:
 
 `~/practica3/entrega/32_sudo_webops.txt`
 
 <Aside type="caution" title="Regla LFCS">
-No edites `/etc/sudoers` a mano. Usa `visudo` (y valida siempre antes de salir).
+Nunca edites `/etc/sudoers` directamente con `nano` o `vim`. Usa siempre `visudo` o valida con `visudo -c -f` antes de activar un drop-in. Un error de sintaxis deja el sistema sin acceso `sudo` de forma permanente hasta rescate físico.
 </Aside>
 
 ---
 
-## Ejercicio 3.3 — Gestión de paquetes (apt/dpkg) con verificación y trazabilidad
+## Ejercicio 3.3 — Gestión de paquetes APT/dpkg con trazabilidad
 
 ### Contexto
 
-En LFCS te pedirán instalar/quitar herramientas y demostrar que sabes inspeccionar paquetes, binarios y ficheros que instalan.
+En LFCS no basta con `apt install`: tienes que saber **inspeccionar** qué instala cada paquete antes de instalarlo, **rastrear** a qué paquete pertenece un fichero dado solo su ruta (sin conocer el nombre del paquete), **controlar** actualizaciones en producción y entender la diferencia real entre `remove` y `purge`. Un sysadmin que no sabe leer el estado de `dpkg` comete errores que no detecta hasta producción.
 
 ### Tareas
 
-1) Instala `curl`, `git` y `htop`.
+1) **Auditoría previa.** Comprueba si `curl`, `tree` y `net-tools` están ya instalados consultando `dpkg`. El campo de estado `ii` significa instalado, `rc` eliminado con configs residuales, `un` nunca instalado. Guarda la salida en `~/practica3/entrega/33_estado_previo.txt`. Instala los que falten y verifica que los tres tienen estado `ii`.
 
-2) Demuestra con evidencia:
+2) **Inspección antes de confiar.** Un sysadmin responsable no instala paquetes a ciegas. Antes de que el profesor instale nada nuevo, usa `apt-cache show openssh-server` para leer la descripción, versión y dependencias del paquete. Identifica en esa salida el campo `Installed-Size` y anota en un comentario `#` cuánto espacio ocupa en disco.
 
-- versión de cada herramienta
-- qué paquete provee el binario `curl` (pista: `dpkg -S`)
-- lista de ficheros instalados por `openssh-server` o `nginx` (elige uno) usando `dpkg -L`
+3) **Investigación inversa: del fichero al paquete.** Sin buscar en Google, averigua a qué paquete pertenece el ejecutable `/usr/sbin/sshd` usando solo herramientas `dpkg`. Guarda el comando exacto y su salida en `~/practica3/entrega/33_inversion.txt`. A continuación, con ese paquete identificado, lista todos los ficheros que instala y localiza el fichero de configuración principal del demonio (pista: está en `/etc/ssh/`). Anótalo con un comentario `#`.
 
-3) Elimina `htop` y demuestra que ya no está disponible.
+4) **Control de versiones en producción.** En entornos estables es habitual congelar paquetes críticos para que un `apt upgrade` desatendido no los actualice. Congela `curl` y demuestra que el bloqueo está activo. Luego libéralo y demuestra que ha desaparecido. Guarda ambos estados en `~/practica3/entrega/33_hold.txt`.
 
-Guarda comandos y salidas en:
+5) **Remove vs purge: diferencias de estado.** Elimina `tree` en dos fases separadas. Tras cada fase, consulta su estado con `dpkg`. Observa la diferencia en la columna de estado y explica con un comentario `#` qué letra aparece en cada fase, qué significa, y por qué en producción `purge` es la opción correcta cuando un servicio queda definitivamente fuera de uso.
+
+Guarda todos los comandos y salidas en:
 
 `~/practica3/entrega/33_paquetes.txt`
 
 ---
 
-## Ejercicio 3.4 — Diagnóstico de red (ip, ss, rutas, DNS) con fallos sembrados
+## Ejercicio 3.4 — Diagnóstico de red con fallos sembrados
 
 ### Contexto
 
-Tu servidor “parece caído”: la web no responde, y la resolución de nombres está manipulada. Debes diagnosticar con **`ip a`**, **`ip r`**, **`ss`**, `systemctl`, y pruebas tipo `ping/curl`.
+Tu servidor "parece caído": la web no responde y la resolución de nombres está manipulada. Debes diagnosticar **sistemáticamente** sin adivinar — midiendo cada capa antes de tocar nada — e identificar exactamente qué está roto antes de repararlo.
 
-### Setup — el profesor ejecuta esto antes de darte el servidor
+### Setup — el profesor ejecuta esto antes de entregarte el servidor
 
 ```bash
-# (Para el profesor — no ejecutes esto tú)
+# (Para el profesor — no ejecutes esto tú si lo hace el profesor)
 sudo apt install -y nginx ufw
 sudo systemctl stop nginx
 sudo ufw --force enable
@@ -145,85 +162,152 @@ sudo ufw allow ssh
 echo "192.0.2.1 google.com" | sudo tee -a /etc/hosts
 ```
 
+<Aside type="note" title="Práctica individual">
+Si trabajas solo, puedes ejecutar el setup tú mismo. Aunque sepas qué está roto, el valor está en el proceso de diagnóstico sistemático y en la documentación de cada hallazgo.
+</Aside>
+
 ### Tareas
 
-1) Sin “adivinar”, recopila un diagnóstico inicial con:
+1) **Diagnóstico inicial — sin tocar nada todavía.** Guarda en `~/practica3/entrega/34_diagnostico_inicial.txt` la salida de **todos** estos comandos en orden:
 
-- `ip a`
-- `ip r`
-- `sudo ss -tulpn`
-- `systemctl is-active nginx`
-- `sudo ufw status verbose`
+```bash
+ip a
+ip r
+sudo ss -tulpn
+systemctl is-active nginx
+systemctl status nginx --no-pager
+sudo ufw status verbose
+curl -sv http://localhost 2>&1 | tail -8
+ping -c 2 8.8.8.8
+ping -c 2 google.com
+```
 
-Guarda el output en:
+2) A partir del diagnóstico, **identifica y documenta exactamente qué está mal** (hay al menos 3 problemas independientes). Escribe cada problema en una línea de comentario `#` dentro del fichero de entrega antes de corregirlo.
 
-`~/practica3/entrega/34_diagnostico_inicial.txt`
+3) Repara el sistema para que se cumpla **todo** simultáneamente:
 
-2) Repara el sistema para que se cumpla:
+- `curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://localhost` → `HTTP: 200`
+- `ping -c 1 8.8.8.8` → funciona
+- `ping -c 1 google.com` → resuelve a una IP **distinta** de `192.0.2.x`
+- `sudo ufw status` → muestra el puerto 80/tcp como `ALLOW`
 
-- `curl -s -o /dev/null -w "HTTP: %{http_code}\n" http://localhost` devuelva 200
-- `ping -c 1 8.8.8.8` funcione
-- `ping -c 1 google.com` funcione y no resuelva a `192.0.2.x`
-- el firewall permita HTTP (80/tcp)
-
-3) Entrega evidencia final de que está arreglado en:
-
-`~/practica3/entrega/34_verificacion_final.txt`
+4) Guarda en `~/practica3/entrega/34_verificacion_final.txt` los mismos comandos del punto 1 ejecutados de nuevo, para comparar antes/después. Añade comentarios `#` indicando qué problema resuelve cada diferencia que observes.
 
 ---
 
-## Ejercicio 3.5 — SSH con llaves + hardening (sshd_config) y pruebas sin bloquearte
+## Ejercicio 3.5 — SSH hardening: llaves, permisos y sshd_config
 
 ### Contexto
 
-La meta es operar como un sysadmin real: usar llaves, asegurar permisos de `~/.ssh`, y endurecer `sshd_config` sin bloquearte.
+El hardening SSH tiene trampas sutiles: permisos incorrectos en `~/.ssh` hacen que las llaves sean **ignoradas silenciosamente**, y un error en `sshd_config` impide el reinicio del servicio. Hay que hacerlo en el orden correcto, probando en cada paso antes de cerrar la sesión actual.
+
+### Setup — ejecutar una sola vez
+
+```bash
+# Crea el usuario de prueba (si no existe del ejercicio anterior)
+id remoteops 2>/dev/null || sudo useradd -m -s /bin/bash remoteops
+echo "remoteops:linux123" | sudo chpasswd
+```
 
 ### Tareas
 
-1) Genera un par de claves **ED25519** para tu usuario actual (si ya tienes, crea uno nuevo con otro nombre). Guarda:
+1) **Genera un par de llaves ED25519** para tu usuario actual con un nombre específico:
 
-- el listado `ls -la ~/.ssh/`
-- la huella de la clave pública (`ssh-keygen -lf ...pub`)
+```bash
+ssh-keygen -t ed25519 -C "practica3-$(whoami)@$(hostname)" -f ~/.ssh/id_practica3
+```
 
-En:
+Guarda en `~/practica3/entrega/35_claves_locales.txt`:
 
-`~/practica3/entrega/35_claves_locales.txt`
+- `ls -la ~/.ssh/` (permisos del directorio y archivos)
+- `ssh-keygen -lf ~/.ssh/id_practica3.pub` (huella de la clave)
+- El contenido de la clave **pública** (`cat ~/.ssh/id_practica3.pub`) — nunca la privada
 
-2) Crea el usuario `remoteops` (HOME + bash) y configura acceso por llave:
+2) **Configura el acceso por llave para `remoteops` manualmente** (sin `ssh-copy-id`, para entender qué hace internamente):
 
-- Crea `/home/remoteops/.ssh/authorized_keys`
-- Copia dentro tu clave pública
-- Ajusta permisos correctos (`~/.ssh` 700, `authorized_keys` 600) y propietario
+```bash
+sudo mkdir -p /home/remoteops/.ssh
+sudo chmod 700 /home/remoteops/.ssh
+sudo cp ~/.ssh/id_practica3.pub /home/remoteops/.ssh/authorized_keys
+sudo chmod 600 /home/remoteops/.ssh/authorized_keys
+sudo chown -R remoteops:remoteops /home/remoteops/.ssh
+```
 
-Guarda evidencia en:
+Guarda en `~/practica3/entrega/35_authorized_keys.txt`:
 
-`~/practica3/entrega/35_authorized_keys_perms.txt`
+- `ls -la /home/remoteops/.ssh/`
+- `stat /home/remoteops/.ssh/authorized_keys`
 
-3) Endurece SSH en `/etc/ssh/sshd_config` para:
+3) **Endurece `sshd_config`**. Edita `/etc/ssh/sshd_config` y modifica o añade estas directivas:
 
-- `PermitRootLogin no`
-- `PasswordAuthentication no`
-- `PubkeyAuthentication yes`
+```
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+```
 
-Aplica cambios con `reload` o reinicio y **prueba** que:
-
-- puedes abrir una nueva sesión SSH contra `localhost` como `remoteops` usando llave
-- una autenticación por contraseña queda rechazada
-
-Guarda comandos/salidas en:
-
-`~/practica3/entrega/35_hardening_pruebas.txt`
-
-<Aside type="caution" title="No te bloquees">
-Antes de desactivar `PasswordAuthentication`, asegúrate de que el login por llave funciona (abre otra terminal y prueba). Si te equivocas, podrías perder el acceso remoto.
+<Aside type="caution" title="Trampa AllowUsers — lee esto antes de continuar">
+Si añades la directiva `AllowUsers`, debes incluir **tu usuario actual** además de `remoteops`. Si solo pones `AllowUsers remoteops` y recargas, te quedarás **bloqueado fuera de tu propia sesión** en cuanto la cierres. Para este ejercicio, añade: `AllowUsers remoteops <tu_usuario_actual>`.
 </Aside>
+
+Antes de recargar el servicio, **valida la sintaxis**:
+
+```bash
+sudo sshd -t
+```
+
+Si hay errores de sintaxis, corrígelos antes de continuar. Si todo está bien, recarga (no reinicies — evita cortar sesiones activas):
+
+```bash
+sudo systemctl reload ssh
+```
+
+4) **Prueba el acceso con llave** (abre una segunda terminal sin cerrar esta):
+
+```bash
+ssh -i ~/.ssh/id_practica3 -o PasswordAuthentication=no remoteops@localhost "whoami && hostname"
+```
+
+Debe responder `remoteops` y el nombre del host. Guarda el comando y su salida en `~/practica3/entrega/35_prueba_llave.txt`.
+
+5) **Prueba que la contraseña queda rechazada**:
+
+```bash
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no remoteops@localhost
+```
+
+Debe fallar con `Permission denied (publickey)`. Guarda la salida en el mismo fichero.
+
+6) **Auditoría:** Busca en `/var/log/auth.log` las entradas correspondientes al login exitoso y al rechazado:
+
+```bash
+grep "remoteops" /var/log/auth.log | tail -15
+```
+
+Guarda las líneas relevantes en `~/practica3/entrega/35_auth_log.txt`. Identifica con un comentario `#` qué línea corresponde a cada intento.
 
 ---
 
-## 📤 Bloque de entrega (resumen rápido)
+## 📤 Bloque de entrega
 
-Entrega estos ficheros al profesor:
+1. **Exporta tu historial de comandos:**
 
-```bash
-ls -la ~/practica3/entrega/
-```
+   ```bash
+   history > ~/practica3/entrega/history.txt
+   ```
+
+2. **Crea el archivo comprimido final:**
+
+   ```bash
+   tar -czf ~/practica3/entrega_practica3.tar.gz -C ~/practica3 entrega/
+   ```
+
+3. **Descarga a tu equipo local** desde la terminal de tu ordenador personal:
+
+   ```bash
+   # Sustituye 'usuario' e 'IP_DE_LA_VM' por tus datos reales
+   scp usuario@IP_DE_LA_VM:~/practica3/entrega_practica3.tar.gz ./
+   ```
+
+4. **Envía por correo** el archivo `entrega_practica3.tar.gz` a [hola@casset.cat](mailto:hola@casset.cat) con el asunto "Entrega Práctica 3 - [tu_nombre]".

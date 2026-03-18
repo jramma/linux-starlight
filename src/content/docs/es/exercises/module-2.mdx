@@ -42,7 +42,7 @@ mkdir -p ~/practica2/work/escenario_21/src/old
 mkdir -p ~/practica2/work/escenario_21/docs
 mkdir -p ~/practica2/work/escenario_21/tmp
 mkdir -p ~/practica2/work/escenario_21/bin
-mkdir -p "~/practica2/work/escenario_21/docs/Informe Final"
+mkdir -p ~/practica2/work/escenario_21/docs/"Informe Final"
 
 printf "%s\n%s\n%s\n" "TODO: revisar permisos" "owner=alice" "status=pending" \
   > ~/practica2/work/escenario_21/docs/README.md
@@ -388,7 +388,9 @@ Reglas:
 
 Ejecuta este comando tal cual:
 
-{/* Notas ocultas 2.6: el escenario incluye conf/ sin permiso de traversal```bash
+{/* Notas ocultas 2.6: el escenario incluye conf/ sin permiso de traversal, PATH contaminado con wrappers de grep/awk/sed, link roto, hard link, ficheros con NBSP */}
+
+```bash
 bash -lc 'set -euo pipefail
 base="$HOME/practica2/work/escenario_26"
 out="$HOME/practica2/entrega/26_estado_inicial.txt"
@@ -460,14 +462,6 @@ printf "%s\n" "nada que ver" > "$base/tmp/cache/"$'nota\u00a0interna.txt'
   echo "Ruta: $base"
   echo
   echo "--- Estado inicial (top) ---"
-  (cd "$base" && ls -la)
-  echo
-  echo "--- Árbol (1 nivel) ---"
-  (cd "$base" && ls -la conf conf.d logs run run/hooks src bin tmp tmp/cache)
-} | tee "$out" >/dev/null
-echo "OK"'
-```
---- Estado inicial (top) ---"
   (cd "$base" && ls -la)
   echo
   echo "--- Árbol (1 nivel) ---"

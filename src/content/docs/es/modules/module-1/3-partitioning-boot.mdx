@@ -164,10 +164,10 @@ El instalador de distribuciones como Ubuntu o Debian suele preguntarte si quiere
 
 ```mermaid
 graph TD
-    A[1. BIOS / UEFI] -->|POST & Hardware Init| B[2. Bootloader / GRUB2]
+    A["1. BIOS / UEFI"] -->|POST & Hardware Init| B["2. Bootloader / GRUB2"]
     B -->|Selects OS| C[3. Linux Kernel]
     C -->|Mounts Initramfs| D[4. Initramfs Temporary Root]
-    D -->|Loads Drivers| E[5. Real Root / Mounted]
+    D -->|Loads Drivers| E["5. Real Root / Mounted"]
     E -->|Starts Init Process| F[6. systemd PID 1]
     F -->|Parallel Execution| G[7. Targets & Login]
 ```

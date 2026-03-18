@@ -70,7 +70,7 @@ flowchart TD
   A[Proceso problemático] --> B["Intento 1: SIGTERM (15)<br/>kill PID"]
   B -->|termina| OK[Fin limpio]
   B -->|no termina| C["Intento 2: SIGKILL (9)<br/>kill -9 PID"]
-  C --> HARD[Fin forzado (sin cleanup)]
+  C --> HARD[Fin forzado - sin cleanup]
 ```
 
 <Aside type="tip" title="Dato curioso: kill casi nunca “mata” primero">
