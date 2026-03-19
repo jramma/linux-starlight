@@ -1,0 +1,354 @@
+---
+title: 6.5 Scripting Bash para Sysadmins
+description: Automatiza tareas de administración con Bash. Variables, argumentos, condicionales, bucles, funciones y manejo de errores orientados a scripts de producción real.
+sidebar:
+  order: 6
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Un sysadmin que no sabe scripting repite a mano lo que podría automatizar. El examen LFCS incluye tareas donde debes escribir scripts funcionales en el terminal. No hace falta ser un programador: con dominar las construcciones básicas de Bash puedes automatizar el 90% de las tareas de administración de sistemas.
+
+---
+
+## 1. Estructura de un script Bash
+
+```bash
+#!/usr/bin/env bash
+# ^ Shebang: indica al SO con qué intérprete ejecutar este fichero
+
+# Descripción: qué hace el script, autor, fecha
+
+set -euo pipefail
+# -e: salir si cualquier comando falla
+# -u: tratar variables no definidas como error
+# -o pipefail: un pipe falla si falla cualquier etapa
+
+# Cuerpo del script
+echo "Hola desde bash"
+```
+
+Hacer ejecutable y ejecutar:
+
+```bash
+chmod +x mi_script.sh
+./mi_script.sh
+
+# O ejecutar sin hacerlo ejecutable:
+bash mi_script.sh
+```
+
+---
+
+## 2. Variables
+
+```bash
+# Asignar (sin espacios alrededor del =)
+nombre="servidor-web"
+puerto=8080
+fecha=$(date +%Y-%m-%d)     # Captura la salida de un comando
+
+# Usar (siempre entre comillas dobles para evitar word splitting)
+echo "El servidor es: $nombre"
+echo "Puerto: ${puerto}"    # Las llaves son opcionales pero clarifican el límite
+
+# Variables especiales del sistema
+echo "Mi PID: $$"
+echo "Usuario: $USER"
+echo "Directorio home: $HOME"
+echo "Directorio actual: $PWD"
+```
+
+---
+
+## 3. Argumentos del script
+
+Cuando ejecutas `./script.sh arg1 arg2 arg3`:
+
+| Variable | Valor |
+|----------|-------|
+| `$0` | Nombre del script |
+| `$1`, `$2`... | Argumentos posicionales |
+| `$#` | Número de argumentos |
+| `$@` | Todos los argumentos (como lista) |
+| `$*` | Todos los argumentos (como cadena) |
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Verificar que se pasaron los argumentos necesarios
+if [[ $# -lt 2 ]]; then
+    echo "Uso: $0 <usuario> <directorio>"
+    exit 1
+fi
+
+usuario=$1
+directorio=$2
+
+echo "Creando directorio $directorio para el usuario $usuario"
+mkdir -p "$directorio"
+chown "$usuario:$usuario" "$directorio"
+```
+
+---
+
+## 4. Códigos de salida y $?
+
+Cada comando devuelve un código de salida: `0` = éxito, cualquier otro valor = error.
+
+```bash
+# $? contiene el código de salida del último comando
+ls /etc/passwd
+echo "Código de salida: $?"   # 0
+
+ls /no/existe
+echo "Código de salida: $?"   # 2
+
+# Comprobar explícitamente
+if grep -q "root" /etc/passwd; then
+    echo "root existe en el sistema"
+fi
+
+# Forzar un código de salida en el script
+exit 0    # Éxito
+exit 1    # Error genérico
+exit 2    # Error de uso incorrecto
+```
+
+---
+
+## 5. Condicionales
+
+### if / elif / else
+
+```bash
+#!/usr/bin/env bash
+disco_uso=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
+
+if [[ $disco_uso -gt 90 ]]; then
+    echo "CRÍTICO: Disco al ${disco_uso}%"
+    exit 2
+elif [[ $disco_uso -gt 75 ]]; then
+    echo "AVISO: Disco al ${disco_uso}%"
+    exit 1
+else
+    echo "OK: Disco al ${disco_uso}%"
+    exit 0
+fi
+```
+
+### Operadores de comparación
+
+| Números | Cadenas | Ficheros |
+|---------|---------|---------|
+| `-eq` (igual) | `=` o `==` | `-f` (es fichero regular) |
+| `-ne` (distinto) | `!=` | `-d` (es directorio) |
+| `-lt` (menor) | `-z` (cadena vacía) | `-e` (existe) |
+| `-gt` (mayor) | `-n` (no vacía) | `-r` (tiene permiso lectura) |
+| `-le` (menor o igual) | | `-w` (tiene permiso escritura) |
+| `-ge` (mayor o igual) | | `-x` (es ejecutable) |
+
+```bash
+# Comprobar si un fichero existe
+if [[ -f /etc/nginx/nginx.conf ]]; then
+    echo "Nginx está configurado"
+fi
+
+# Comprobar si un directorio existe
+if [[ ! -d /var/backups ]]; then
+    mkdir -p /var/backups
+fi
+
+# Comprobar si un servicio está activo
+if systemctl is-active --quiet nginx; then
+    echo "nginx está corriendo"
+fi
+```
+
+---
+
+## 6. Bucles
+
+### for
+
+```bash
+# Iterar sobre una lista
+for servicio in nginx ssh cron; do
+    estado=$(systemctl is-active "$servicio" 2>/dev/null || echo "inactivo")
+    echo "$servicio: $estado"
+done
+
+# Iterar sobre ficheros
+for log in /var/log/*.log; do
+    echo "Procesando: $log"
+    wc -l "$log"
+done
+
+# Iterar con rango numérico
+for i in {1..5}; do
+    echo "Intento $i"
+done
+```
+
+### while
+
+```bash
+# Leer fichero línea a línea
+while IFS= read -r linea; do
+    echo "Procesando: $linea"
+done < /etc/hosts
+
+# Esperar hasta que un servicio esté activo
+intentos=0
+while ! systemctl is-active --quiet nginx; do
+    intentos=$((intentos + 1))
+    if [[ $intentos -ge 10 ]]; then
+        echo "ERROR: nginx no arrancó después de 10 intentos"
+        exit 1
+    fi
+    echo "Esperando nginx... (intento $intentos)"
+    sleep 2
+done
+echo "nginx activo"
+```
+
+---
+
+## 7. Funciones
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Definir función (debe definirse antes de usarse)
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $*"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2
+}
+
+verificar_servicio() {
+    local servicio=$1    # local = variable local a la función
+    if systemctl is-active --quiet "$servicio"; then
+        log_info "$servicio está activo"
+        return 0
+    else
+        log_error "$servicio NO está activo"
+        return 1
+    fi
+}
+
+# Llamar las funciones
+verificar_servicio "nginx"
+verificar_servicio "ssh"
+```
+
+---
+
+## 8. Scripts sysadmin reales
+
+### Script de backup incremental diario
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ORIGEN="/var/www"
+DESTINO="/backup/www"
+FECHA=$(date +%Y-%m-%d)
+LOG="/var/log/backup.log"
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
+
+# Crear directorio de destino si no existe
+mkdir -p "$DESTINO"
+
+log "Iniciando backup de $ORIGEN"
+
+if rsync -av --delete "$ORIGEN/" "$DESTINO/"; then
+    log "Backup completado: $DESTINO"
+    exit 0
+else
+    log "ERROR: Backup fallido"
+    exit 1
+fi
+```
+
+### Script de auditoría de usuarios sin contraseña
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Usuarios con contraseña vacía o sin contraseña ==="
+while IFS=: read -r usuario _ uid _ _ _ _; do
+    if [[ $uid -ge 1000 ]]; then
+        estado=$(passwd -S "$usuario" 2>/dev/null | awk '{print $2}')
+        if [[ "$estado" == "NP" || "$estado" == "L" ]]; then
+            echo "  $usuario (UID $uid): $estado"
+        fi
+    fi
+done < /etc/passwd
+```
+
+### Script de monitorización de disco con alerta
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+UMBRAL=80
+DESTINATARIO="root"
+
+while IFS= read -r linea; do
+    uso=$(echo "$linea" | awk '{print $5}' | tr -d '%')
+    punto=$(echo "$linea" | awk '{print $6}')
+
+    if [[ $uso -gt $UMBRAL ]]; then
+        mensaje="ALERTA: $punto al ${uso}% de capacidad"
+        echo "$mensaje"
+        echo "$mensaje" | mail -s "Alerta disco $(hostname)" "$DESTINATARIO"
+    fi
+done < <(df -h | grep -v "^Filesystem\|tmpfs\|cdrom")
+```
+
+---
+
+## 9. Buenas prácticas en scripts de producción
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 1. Verificar que el script se ejecuta como root si es necesario
+if [[ $EUID -ne 0 ]]; then
+    echo "Este script debe ejecutarse como root" >&2
+    exit 1
+fi
+
+# 2. Usar rutas absolutas para comandos críticos
+/usr/bin/systemctl restart nginx
+
+# 3. Redirigir stderr a un log
+exec 2>>/var/log/mi_script_errores.log
+
+# 4. Limpiar recursos al salir (trap)
+tmp_dir=$(mktemp -d)
+trap "rm -rf $tmp_dir" EXIT    # Se ejecuta siempre al salir
+
+# Usar $tmp_dir con confianza
+echo "datos temporales" > "$tmp_dir/trabajo.txt"
+
+# 5. Validar entrada antes de usarla
+if [[ ! "$1" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "Nombre de usuario inválido" >&2
+    exit 1
+fi
+```
+
+<Aside type="tip" title="Truco LFCS para scripts en el examen">
+En el examen, cuando pidan "crea un script que haga X", siempre incluye el shebang `#!/usr/bin/env bash`, hazlo ejecutable con `chmod +x`, y prueba que funciona antes de considerar la tarea terminada. Un script que existe pero no se ejecuta no puntúa.
+</Aside>

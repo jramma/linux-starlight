@@ -1,0 +1,193 @@
+---
+title: 5.7 Cuotas de Disco
+description: Implementa límites de espacio por usuario y grupo con quota. Evita que un usuario llene el disco del servidor y entiende la diferencia entre límites soft y hard.
+sidebar:
+  order: 8
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Las **cuotas de disco** limitan cuánto espacio en disco (y cuántos inodos) puede usar cada usuario o grupo en un sistema de ficheros. Sin cuotas, un único usuario puede llenar el disco del servidor y derribar todos los servicios. Con cuotas, el daño queda contenido.
+
+---
+
+## 1. Activar cuotas en el sistema de ficheros
+
+Las cuotas se activan por sistema de ficheros y se configuran en `/etc/fstab`.
+
+```bash
+sudo nano /etc/fstab
+```
+
+Añade `usrquota` y/o `grpquota` a las opciones de montaje del sistema de ficheros que quieres controlar:
+
+```
+# Antes:
+UUID=xxxx  /home  ext4  defaults  0  2
+
+# Después (con cuotas de usuario y grupo):
+UUID=xxxx  /home  ext4  defaults,usrquota,grpquota  0  2
+```
+
+Remontar para aplicar:
+
+```bash
+sudo mount -o remount /home
+
+# Verificar que las opciones están activas
+cat /proc/mounts | grep /home
+# /dev/sda3 /home ext4 rw,relatime,quota,usrquota,grpquota 0 0
+```
+
+---
+
+## 2. Inicializar la base de datos de cuotas
+
+```bash
+# Instalar herramientas de cuota
+sudo apt install quota
+
+# Crear los ficheros de base de datos de cuotas (quota.user y quota.group)
+sudo quotacheck -cugm /home
+# -c = crear ficheros si no existen
+# -u = usuarios
+# -g = grupos
+# -m = no remontar en modo solo lectura
+
+# Activar el sistema de cuotas
+sudo quotaon /home
+
+# Verificar que está activo
+sudo quotaon -p /home
+# group quota on /home (/dev/sda3) is on
+# user quota on /home (/dev/sda3) is on
+```
+
+---
+
+## 3. Asignar cuotas a usuarios
+
+```bash
+# Editar cuotas de un usuario (abre editor interactivo)
+sudo edquota -u alice
+```
+
+El editor muestra una tabla como esta:
+
+```
+Disk quotas for user alice (uid 1001):
+  Filesystem  blocks  soft    hard    inodes  soft  hard
+  /dev/sda3   45200   500000  600000  312     0     0
+```
+
+| Campo | Significado |
+|-------|------------|
+| `blocks` | Uso actual (en bloques de 1 KB) |
+| `soft` (bloques) | Límite blando de espacio (puede superarse temporalmente) |
+| `hard` (bloques) | Límite duro absoluto (nunca puede superarse) |
+| `inodes` | Número de ficheros/directorios |
+| `soft` (inodes) | Límite blando de inodos |
+| `hard` (inodes) | Límite duro de inodos |
+
+Ejemplo de cuota de 500 MB soft, 600 MB hard:
+- 1 MB = 1024 KB = 1024 bloques
+- 500 MB = 512000 bloques, 600 MB = 614400 bloques
+
+```
+Filesystem  blocks  soft    hard    inodes  soft  hard
+/dev/sda3   45200   512000  614400  312     0     0
+```
+
+---
+
+## 4. Copiar cuotas entre usuarios
+
+Cuando tienes varios usuarios con la misma política, usa `-p` para copiar la configuración:
+
+```bash
+# Configurar cuotas para alice (como plantilla)
+sudo edquota -u alice
+
+# Copiar las mismas cuotas a bob y carol
+sudo edquota -p alice bob carol
+```
+
+---
+
+## 5. Cuotas de grupo
+
+```bash
+# Editar cuotas para un grupo
+sudo edquota -g webdevs
+```
+
+```
+Disk quotas for group webdevs (gid 1002):
+  Filesystem  blocks  soft     hard    inodes  soft  hard
+  /dev/sda3   0       1048576  2097152  0       0     0
+```
+
+---
+
+## 6. Periodo de gracia (grace period)
+
+El **límite soft** puede superarse temporalmente durante el "periodo de gracia". Pasado ese tiempo sin reducir el uso, el sistema trata el límite soft como hard.
+
+```bash
+# Ver/modificar el periodo de gracia
+sudo edquota -t
+```
+
+```
+Grace period before enforcing soft limits for users:
+Time units may be: days, hours, minutes, or seconds
+  Filesystem  Block grace period  Inode grace period
+  /dev/sda3   7days               7days
+```
+
+---
+
+## 7. Informes de cuotas
+
+```bash
+# Informe de todos los usuarios en /home
+sudo repquota /home
+
+# Informe de grupos
+sudo repquota -g /home
+
+# Informe de todos los sistemas de ficheros con cuotas
+sudo repquota -a
+
+# Ejemplo de salida:
+# User            used    soft    hard  grace    used  soft  hard  grace
+# root      --  204800       0       0          123     0     0
+# alice     --   45200  512000  614400            312     0     0
+# bob       --  612000  512000  614400  6days     201     0     0
+#   (bob ha superado el límite soft, tiene 6 días de gracia)
+```
+
+---
+
+## 8. Consulta de cuota individual
+
+```bash
+# Un usuario puede ver su propia cuota
+quota
+
+# Como root, ver la cuota de cualquier usuario
+quota -u alice
+
+# Salida:
+# Disk quotas for user alice (uid 1001):
+#   Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+#   /dev/sda3    45200  512000  614400               312       0       0
+```
+
+<Aside type="tip" title="Automatizar quotacheck al arranque">
+En sistemas modernos con `systemd`, el servicio `quota.service` ejecuta `quotacheck` automáticamente al arrancar si las cuotas están activadas en `/etc/fstab`. No es necesario configurarlo manualmente.
+</Aside>
+
+<Aside type="caution" title="Cuotas y LVM">
+Si usas LVM puedes redimensionar el volumen lógico para aumentar el espacio disponible. Las cuotas y LVM son complementarios: LVM controla el espacio total del volumen, las cuotas controlan cuánto de ese espacio puede usar cada usuario.
+</Aside>

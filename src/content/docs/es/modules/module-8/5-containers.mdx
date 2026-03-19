@@ -1,0 +1,299 @@
+---
+title: 8.5 Contenedores con Docker
+description: Despliega y gestiona contenedores Docker. Imágenes, volúmenes, redes y docker-compose orientados al perfil de Sysadmin Linux que gestiona servicios containerizados.
+sidebar:
+  order: 6
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+Los contenedores han cambiado cómo se despliegan los servicios: en lugar de instalar software directamente en el servidor, lo empaquetas junto con todas sus dependencias en una imagen reproducible. Como sysadmin ya no basta con saber gestionar servicios con systemd — necesitas saber gestionar contenedores Docker que corren junto a ellos.
+
+---
+
+## 1. Qué es Docker y cómo se relaciona con el kernel
+
+Docker no es un hipervisor: los contenedores comparten el kernel del host. Docker usa dos características del kernel Linux para aislarlos:
+
+- **Namespaces**: cada contenedor tiene su propio árbol de procesos, interfaces de red, usuarios y sistema de ficheros.
+- **Cgroups**: limitan la CPU, memoria y I/O que puede usar cada contenedor.
+
+```
+Host Linux (kernel compartido)
+├── Proceso: nginx (contenedor 1 — namespace propio)
+├── Proceso: postgres (contenedor 2 — namespace propio)
+└── Proceso: sshd (servicio del host — sin contenedor)
+```
+
+---
+
+## 2. Instalación
+
+```bash
+# Método oficial (repositorio Docker)
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/debian/gpg \
+  -o /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+  https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Verificar instalación
+sudo docker run hello-world
+
+# Permitir al usuario actual usar Docker sin sudo (requiere cerrar sesión)
+sudo usermod -aG docker $USER
+```
+
+---
+
+## 3. Imágenes y contenedores
+
+La relación imagen → contenedor es la misma que clase → instancia en programación.
+
+```bash
+# Buscar imágenes en Docker Hub
+docker search nginx
+
+# Descargar una imagen
+docker pull nginx:latest
+docker pull nginx:1.26-alpine    # versión específica
+
+# Listar imágenes descargadas
+docker images
+
+# Ver información de una imagen
+docker inspect nginx:latest
+
+# Eliminar una imagen
+docker rmi nginx:latest
+```
+
+---
+
+## 4. Ciclo de vida de un contenedor
+
+```bash
+# Ejecutar un contenedor (descarga la imagen si no está local)
+docker run nginx
+
+# Modo detached (en segundo plano) con nombre y puerto mapeado
+docker run -d --name mi-nginx -p 8080:80 nginx
+# -d = background
+# --name = nombre identificativo
+# -p host:contenedor = mapeo de puertos
+
+# Listar contenedores en ejecución
+docker ps
+
+# Listar todos (incluidos parados)
+docker ps -a
+
+# Ver logs del contenedor
+docker logs mi-nginx
+docker logs -f mi-nginx    # Follow (en tiempo real)
+
+# Ejecutar un comando dentro del contenedor
+docker exec -it mi-nginx bash
+# -i = interactivo, -t = terminal
+
+# Detener / iniciar / reiniciar
+docker stop mi-nginx
+docker start mi-nginx
+docker restart mi-nginx
+
+# Eliminar un contenedor (debe estar parado)
+docker rm mi-nginx
+
+# Parar y eliminar en un solo paso
+docker rm -f mi-nginx
+```
+
+---
+
+## 5. Volúmenes — persistencia de datos
+
+Por defecto, los datos dentro de un contenedor se pierden cuando se elimina. Los **volúmenes** persisten los datos fuera del contenedor.
+
+<Tabs>
+  <TabItem label="Bind mount (ruta del host)">
+```bash
+# Montar un directorio del host dentro del contenedor
+docker run -d \
+  --name nginx-web \
+  -p 80:80 \
+  -v /var/www/html:/usr/share/nginx/html:ro \
+  nginx
+# /var/www/html = ruta en el HOST
+# /usr/share/nginx/html = ruta en el CONTENEDOR
+# :ro = solo lectura (opcional)
+```
+  </TabItem>
+  <TabItem label="Volumen Docker gestionado">
+```bash
+# Crear un volumen nombrado
+docker volume create datos-postgres
+
+# Usar el volumen en un contenedor
+docker run -d \
+  --name postgres-db \
+  -e POSTGRES_PASSWORD=secreto \
+  -v datos-postgres:/var/lib/postgresql/data \
+  postgres:16
+
+# Listar volúmenes
+docker volume ls
+
+# Inspeccionar dónde está el volumen en el host
+docker volume inspect datos-postgres
+
+# Eliminar un volumen (debe estar sin uso)
+docker volume rm datos-postgres
+```
+  </TabItem>
+</Tabs>
+
+---
+
+## 6. Redes Docker
+
+```bash
+# Ver redes disponibles
+docker network ls
+# bridge   (por defecto — contenedores aislados pero pueden comunicarse por IP)
+# host     (el contenedor usa la red del host directamente)
+# none     (sin red)
+
+# Crear una red personalizada (los contenedores se comunican por nombre)
+docker network create mi-red
+
+# Iniciar contenedores en la misma red
+docker run -d --name app --network mi-red mi-app:latest
+docker run -d --name db  --network mi-red postgres:16
+
+# Dentro de "app", puede conectarse a "db" por nombre:
+# psql -h db -U postgres
+```
+
+---
+
+## 7. Docker Compose — varios contenedores coordinados
+
+`docker compose` define y levanta aplicaciones multi-contenedor con un fichero YAML.
+
+```bash
+# Verificar instalación (viene con docker-compose-plugin)
+docker compose version
+```
+
+Ejemplo de `compose.yaml` para una pila web+base de datos:
+
+```yaml
+# compose.yaml
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: miapp
+      MARIADB_USER: appuser
+      MARIADB_PASSWORD: apppass
+    volumes:
+      - datos-db:/var/lib/mysql
+
+volumes:
+  datos-db:
+```
+
+```bash
+# Levantar todos los servicios (en background)
+docker compose up -d
+
+# Ver estado
+docker compose ps
+
+# Ver logs de todos los servicios
+docker compose logs -f
+
+# Parar sin eliminar contenedores
+docker compose stop
+
+# Parar y eliminar contenedores, redes y volúmenes anónimos
+docker compose down
+
+# Eliminar también los volúmenes nombrados
+docker compose down -v
+```
+
+---
+
+## 8. Integrar Docker con systemd
+
+Para que un contenedor arranque automáticamente con el servidor sin depender del daemon Docker directamente:
+
+```bash
+# Crear un unit de systemd que use docker compose
+sudo nano /etc/systemd/system/mi-app.service
+```
+
+```ini
+[Unit]
+Description=Mi aplicación Docker
+After=docker.service
+Requires=docker.service
+
+[Service]
+WorkingDirectory=/opt/mi-app
+ExecStart=/usr/bin/docker compose up
+ExecStop=/usr/bin/docker compose down
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable mi-app
+sudo systemctl start mi-app
+```
+
+---
+
+## 9. Mantenimiento y limpieza
+
+```bash
+# Ver cuánto espacio ocupa Docker
+docker system df
+
+# Eliminar todo lo que no está en uso (imágenes, contenedores parados, redes, caché)
+docker system prune
+
+# Eliminar también volúmenes sin uso (¡cuidado con datos!)
+docker system prune --volumes
+
+# Eliminar solo imágenes sin tag (dangling images)
+docker image prune
+
+# Actualizar una imagen y recrear el contenedor
+docker pull nginx:latest
+docker compose up -d --pull always
+```
+
+<Aside type="tip" title="Docker y el examen LFCS">
+El objetivo LFCS de contenedores se centra en gestión básica: ejecutar, parar, listar, ver logs y gestionar volúmenes. No requiere construir imágenes (`Dockerfile`) ni registros privados. Domina los comandos de las secciones 4 y 5 y tendrás suficiente.
+</Aside>

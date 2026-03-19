@@ -1,0 +1,217 @@
+---
+title: 4.7 Enrutamiento Estático
+description: Configura rutas IP estáticas temporales y permanentes con ip route y Netplan. Comprende el proceso de decisión del kernel al enviar un paquete y diagnostica problemas de conectividad de red.
+sidebar:
+  order: 8
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+Cuando un paquete necesita salir del servidor, el kernel consulta su **tabla de enrutamiento** para decidir por qué interfaz enviarlo. Entender y manipular esa tabla es una habilidad LFCS fundamental, especialmente en servidores con múltiples interfaces o subredes privadas.
+
+---
+
+## 1. La tabla de enrutamiento
+
+```bash
+# Ver la tabla de enrutamiento (forma moderna)
+ip route show
+# o abreviado
+ip r
+
+# Salida típica de un servidor con una sola interfaz:
+# default via 192.168.1.1 dev eth0 proto dhcp src 192.168.1.50 metric 100
+# 192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.50
+```
+
+Cómo leer la salida:
+
+| Campo | Significado |
+|-------|------------|
+| `default` | Ruta por defecto (gateway de último recurso) |
+| `via 192.168.1.1` | Siguiente salto (el router) |
+| `dev eth0` | Interfaz de salida |
+| `proto dhcp` | Cómo se aprendió la ruta (dhcp/static/kernel) |
+| `metric 100` | Coste (menor = preferida si hay varias rutas al mismo destino) |
+
+```bash
+# Ver qué interfaz y ruta se usaría para alcanzar una IP concreta
+ip route get 8.8.8.8
+# 8.8.8.8 via 192.168.1.1 dev eth0 src 192.168.1.50 uid 1000
+
+ip route get 192.168.10.5
+# indica si hay ruta directa o necesita gateway
+```
+
+---
+
+## 2. Rutas temporales (ip route)
+
+Los cambios con `ip route` son inmediatos pero **no sobreviven al reinicio**.
+
+```bash
+# Añadir una ruta a una red concreta a través de un gateway
+sudo ip route add 10.20.0.0/16 via 192.168.1.254
+
+# Añadir una ruta a través de una interfaz específica (red directamente conectada)
+sudo ip route add 172.16.5.0/24 dev eth1
+
+# Cambiar el gateway por defecto
+sudo ip route add default via 192.168.1.1
+
+# Eliminar una ruta
+sudo ip route del 10.20.0.0/16 via 192.168.1.254
+
+# Eliminar el gateway por defecto
+sudo ip route del default
+
+# Reemplazar una ruta existente (add + del en una sola operación)
+sudo ip route replace default via 192.168.1.254
+```
+
+---
+
+## 3. Rutas permanentes (Netplan — Ubuntu/Debian moderno)
+
+En sistemas que usan **Netplan** (Ubuntu 18.04+ y Debian 12+), la configuración de red persistente vive en `/etc/netplan/*.yaml`:
+
+```bash
+ls /etc/netplan/
+# 01-netcfg.yaml  (o similar)
+```
+
+Editar para añadir una ruta estática:
+
+```yaml
+# /etc/netplan/01-netcfg.yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: false
+      addresses:
+        - 192.168.1.50/24
+      nameservers:
+        addresses: [8.8.8.8, 1.1.1.1]
+      routes:
+        # Gateway por defecto
+        - to: default
+          via: 192.168.1.1
+        # Ruta estática adicional a una red interna
+        - to: 10.20.0.0/16
+          via: 192.168.1.254
+          metric: 200
+```
+
+Aplicar:
+
+```bash
+# Validar sintaxis YAML antes de aplicar
+sudo netplan generate
+
+# Aplicar la configuración
+sudo netplan apply
+
+# Verificar
+ip route show
+```
+
+<Aside type="caution" title="Cuidado con netplan apply en SSH">
+Si tu sesión SSH llega a través de la interfaz que estás reconfigurando, un error puede dejarte sin acceso. Usa `sudo netplan try` (aplica y revierte automáticamente si no confirmas en 120 segundos) para mayor seguridad.
+</Aside>
+
+<Tabs>
+  <TabItem label="Netplan (Ubuntu/Debian 12+)">
+```yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      routes:
+        - to: 10.20.0.0/16
+          via: 192.168.1.254
+```
+```bash
+sudo netplan apply
+```
+  </TabItem>
+  <TabItem label="/etc/network/interfaces (Debian clásico)">
+```bash
+# /etc/network/interfaces
+auto eth0
+iface eth0 inet static
+    address 192.168.1.50/24
+    gateway 192.168.1.1
+    # Ruta estática adicional
+    post-up ip route add 10.20.0.0/16 via 192.168.1.254
+    pre-down ip route del 10.20.0.0/16 via 192.168.1.254
+```
+```bash
+sudo systemctl restart networking
+```
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Diagnóstico de conectividad paso a paso
+
+Cuando hay un problema de red, el protocolo LFCS es medir capa a capa antes de tocar nada:
+
+```bash
+# 1. ¿Tengo IP asignada?
+ip addr show
+
+# 2. ¿Tengo ruta de salida?
+ip route show
+# Busca "default via ..."
+
+# 3. ¿El gateway responde?
+ping -c 3 <ip_del_gateway>
+
+# 4. ¿Llego a internet?
+ping -c 3 8.8.8.8
+
+# 5. ¿Funciona el DNS?
+ping -c 3 google.com
+# Si el ping a 8.8.8.8 funciona pero google.com falla → problema de DNS
+
+# 6. ¿Qué ruta toma el paquete? (tracing)
+traceroute 8.8.8.8
+# o la versión moderna
+mtr 8.8.8.8
+```
+
+---
+
+## 5. Servidor como router (IP forwarding)
+
+Para que un servidor reenvíe paquetes entre interfaces (actúa como router o gateway NAT), el kernel necesita IP forwarding activado:
+
+```bash
+# Ver estado actual
+sysctl net.ipv4.ip_forward
+# 0 = desactivado, 1 = activado
+
+# Activar temporalmente
+sudo sysctl -w net.ipv4.ip_forward=1
+
+# Activar permanentemente
+echo "net.ipv4.ip_forward = 1" | sudo tee /etc/sysctl.d/99-ip-forward.conf
+sudo sysctl --system
+```
+
+Con IP forwarding activado y UFW/iptables configurado para hacer NAT, el servidor puede actuar como gateway para una red interna. Esta configuración es la base de redes de contenedores, VPNs y laboratorios de virtualización.
+
+<Aside type="tip" title="Truco LFCS: ip vs ifconfig/route">
+El examen puede tener sistemas con el paquete `net-tools` instalado (`ifconfig`, `route`). Aprende las equivalencias:
+
+| Antiguo | Moderno |
+|---------|---------|
+| `ifconfig` | `ip addr` |
+| `route -n` | `ip route show` |
+| `netstat -rn` | `ip route show` |
+| `netstat -tulpn` | `ss -tulpn` |
+
+Usa siempre el comando moderno en el examen: es el que garantiza la puntuación completa.
+</Aside>

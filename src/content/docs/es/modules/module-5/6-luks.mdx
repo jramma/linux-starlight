@@ -1,0 +1,201 @@
+---
+title: 5.6 Almacenamiento Cifrado (LUKS)
+description: Protege datos en reposo con LUKS y cryptsetup. Crea volúmenes cifrados, gestiona múltiples claves de acceso y configura el descifrado automático al arranque con /etc/crypttab.
+sidebar:
+  order: 7
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+**LUKS** (Linux Unified Key Setup) es el estándar de cifrado de discos en Linux. Cifra el contenido completo de una partición o disco: aunque alguien extraiga el disco físicamente, sin la clave solo verá datos aleatorios. Es el objetivo de almacenamiento más demandado en el examen LFCS.
+
+---
+
+## 1. Cómo funciona LUKS
+
+LUKS añade una cabecera al inicio del dispositivo con la configuración de cifrado y hasta **8 ranuras de clave** (key slots). Cada ranura puede contener una contraseña o una clave de fichero diferente. El cifrado real usa AES-256-XTS por defecto.
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Cabecera LUKS  │  Datos cifrados (AES-256-XTS)     │
+│  (metadatos +   │  (el filesystem está aquí dentro) │
+│  key slots x8)  │                                   │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Instalación
+
+```bash
+sudo apt install cryptsetup
+```
+
+---
+
+## 3. Crear un volumen LUKS
+
+<Aside type="caution" title="luksFormat destruye los datos del dispositivo">
+`cryptsetup luksFormat` sobrescribe la partición. Asegúrate de apuntar al dispositivo correcto y de que no tiene datos que quieras conservar.
+</Aside>
+
+```bash
+# Formatear la partición /dev/sdb1 como LUKS
+# Te pedirá confirmación (escribe YES en mayúsculas) y una passphrase
+sudo cryptsetup luksFormat /dev/sdb1
+
+# Con opciones explícitas (valores por defecto de LUKS2):
+sudo cryptsetup luksFormat \
+  --type luks2 \
+  --cipher aes-xts-plain64 \
+  --key-size 512 \
+  --hash sha256 \
+  /dev/sdb1
+```
+
+Verificar la cabecera LUKS:
+
+```bash
+sudo cryptsetup luksDump /dev/sdb1
+# LUKS header information
+# Version:        2
+# Epoch:          3
+# Metadata area:  16384 [bytes]
+# Keyslots area:  16744448 [bytes]
+# ...
+```
+
+---
+
+## 4. Abrir, formatear y montar
+
+```bash
+# Abrir el volumen LUKS: crea /dev/mapper/datos_cifrados
+sudo cryptsetup luksOpen /dev/sdb1 datos_cifrados
+# Te pedirá la passphrase
+
+# El dispositivo mapeado aparece como un disco normal
+ls /dev/mapper/datos_cifrados
+
+# Formatear el dispositivo descifrado
+sudo mkfs.ext4 /dev/mapper/datos_cifrados
+
+# Montar
+sudo mkdir -p /mnt/privado
+sudo mount /dev/mapper/datos_cifrados /mnt/privado
+
+# Usar normalmente
+df -h /mnt/privado
+```
+
+---
+
+## 5. Cerrar el volumen LUKS
+
+```bash
+# Desmontar primero
+sudo umount /mnt/privado
+
+# Cerrar el mapper (vuelve a ser datos cifrados)
+sudo cryptsetup luksClose datos_cifrados
+```
+
+---
+
+## 6. Descifrado automático al arranque (/etc/crypttab)
+
+Para que el volumen se descifre automáticamente durante el arranque, se configura `/etc/crypttab`.
+
+<Tabs>
+  <TabItem label="Con contraseña manual (prompt en arranque)">
+```bash
+# Obtener el UUID del dispositivo LUKS
+sudo blkid /dev/sdb1
+# /dev/sdb1: UUID="aaaa-bbbb-..." TYPE="crypto_LUKS"
+
+# Añadir a /etc/crypttab
+# formato: nombre_mapper  dispositivo  fichero_clave  opciones
+sudo nano /etc/crypttab
+```
+```
+# nombre          dispositivo                                   clave    opciones
+datos_cifrados   UUID=aaaa-bbbb-cccc-dddd-eeeeeeeeeeee        none     luks
+```
+  </TabItem>
+  <TabItem label="Con fichero de clave (sin prompt)">
+```bash
+# Crear un fichero de clave aleatoria (solo para volúmenes de datos, no del SO)
+sudo dd if=/dev/urandom of=/etc/luks-keyfile bs=4096 count=1
+sudo chmod 400 /etc/luks-keyfile
+
+# Añadir el fichero de clave al volumen LUKS (necesitas la passphrase original)
+sudo cryptsetup luksAddKey /dev/sdb1 /etc/luks-keyfile
+
+# Configurar crypttab para usar el fichero
+sudo nano /etc/crypttab
+```
+```
+datos_cifrados   UUID=aaaa-bbbb-cccc-dddd-eeeeeeeeeeee  /etc/luks-keyfile  luks
+```
+  </TabItem>
+</Tabs>
+
+Añadir a `/etc/fstab` para el montaje automático:
+
+```
+/dev/mapper/datos_cifrados  /mnt/privado  ext4  defaults  0  2
+```
+
+Actualizar initramfs para que incluya la configuración:
+
+```bash
+sudo update-initramfs -u
+```
+
+---
+
+## 7. Gestión de claves (key slots)
+
+LUKS soporta hasta 8 claves diferentes para el mismo volumen. Esto permite que varios administradores tengan su propia contraseña, o tener una clave de emergencia.
+
+```bash
+# Ver qué slots están en uso
+sudo cryptsetup luksDump /dev/sdb1 | grep "Key Slot"
+
+# Añadir una nueva passphrase (ocupa el siguiente slot libre)
+sudo cryptsetup luksAddKey /dev/sdb1
+# Primero pide una clave existente para verificar identidad
+
+# Cambiar la contraseña de un slot (no hay forma directa: añade nueva y borra la vieja)
+sudo cryptsetup luksAddKey /dev/sdb1  # Añade la nueva
+sudo cryptsetup luksRemoveKey /dev/sdb1  # Elimina la antigua (pide la clave a eliminar)
+
+# Eliminar una clave por número de slot (más preciso)
+sudo cryptsetup luksKillSlot /dev/sdb1 1
+```
+
+<Aside type="caution" title="Nunca elimines la última clave activa">
+Si eliminas todas las claves de un volumen LUKS, los datos quedan cifrados para siempre sin posibilidad de recuperación. Siempre verifica que tienes al menos una clave funcional antes de eliminar otra.
+</Aside>
+
+---
+
+## 8. Verificación y auditoría
+
+```bash
+# Estado del volumen abierto
+sudo cryptsetup status datos_cifrados
+#   /dev/mapper/datos_cifrados is active and is in use.
+#   type:    LUKS2
+#   cipher:  aes-xts-plain64
+#   keysize: 512 bits
+#   key location: keyring
+#   device:  /dev/sdb1
+
+# Verificar integridad de la cabecera LUKS
+sudo cryptsetup luksDump /dev/sdb1
+
+# Hacer backup de la cabecera LUKS (recomendado en producción)
+sudo cryptsetup luksHeaderBackup /dev/sdb1 --header-backup-file /root/sdb1-luks-header.bak
+# Guardar este fichero en lugar seguro separado del disco
+```

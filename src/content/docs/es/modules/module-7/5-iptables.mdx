@@ -1,0 +1,229 @@
+---
+title: 7.5 iptables y nftables
+description: Gestiona el firewall a nivel de kernel con iptables y su sucesor nftables. Comprende cadenas, tablas y políticas por defecto. Persiste reglas entre reinicios.
+sidebar:
+  order: 6
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+UFW (módulo 4.4) es una capa de abstracción sobre **iptables**, que a su vez es la interfaz de espacio de usuario para **netfilter**, el subsistema de filtrado de paquetes del kernel. El examen LFCS puede pedirte trabajar directamente con iptables cuando UFW no está disponible o cuando necesitas reglas más precisas.
+
+---
+
+## 1. Arquitectura: tablas y cadenas
+
+iptables organiza las reglas en **tablas**, y cada tabla contiene **cadenas**:
+
+| Tabla | Propósito | Cadenas principales |
+|-------|-----------|-------------------|
+| `filter` | Filtrado de paquetes (la más usada) | INPUT, FORWARD, OUTPUT |
+| `nat` | Traducción de direcciones | PREROUTING, POSTROUTING, OUTPUT |
+| `mangle` | Modificación de paquetes | PREROUTING, INPUT, FORWARD, OUTPUT, POSTROUTING |
+
+El flujo de un paquete entrante:
+
+```
+Paquete llega → PREROUTING → ¿destino local? → INPUT → proceso local
+                           ↘ ¿reenvío? → FORWARD → POSTROUTING → red
+```
+
+---
+
+## 2. Ver las reglas actuales
+
+```bash
+# Listar reglas de la tabla filter (por defecto)
+sudo iptables -L
+
+# Listado detallado con contadores y sin resolución de nombres (más útil)
+sudo iptables -L -n -v
+
+# Listar con números de línea (para insertar/borrar en posición concreta)
+sudo iptables -L -n -v --line-numbers
+
+# Listar la tabla NAT
+sudo iptables -t nat -L -n -v
+```
+
+---
+
+## 3. Políticas por defecto
+
+La **política por defecto** determina qué pasa con los paquetes que no coinciden con ninguna regla:
+
+```bash
+# Ver políticas actuales
+sudo iptables -L | grep "Chain "
+# Chain INPUT (policy ACCEPT)
+# Chain FORWARD (policy ACCEPT)
+# Chain OUTPUT (policy ACCEPT)
+
+# Cambiar política de INPUT a DROP (bloquea todo por defecto)
+# ¡PELIGRO: hazlo DESPUÉS de añadir reglas para no bloquearte!
+sudo iptables -P INPUT DROP
+sudo iptables -P FORWARD DROP
+sudo iptables -P OUTPUT ACCEPT
+```
+
+<Aside type="caution" title="Orden crítico al cambiar a política DROP">
+Si cambias INPUT a DROP sin haber añadido previamente una regla que permita SSH (puerto 22), perderás el acceso remoto inmediatamente. Añade siempre las reglas de ACCEPT antes de cambiar la política a DROP.
+</Aside>
+
+---
+
+## 4. Añadir y eliminar reglas
+
+### Añadir reglas
+
+```bash
+# -A = Append (añade al final de la cadena)
+# -I = Insert (inserta en la posición indicada, por defecto al inicio)
+
+# Permitir conexiones establecidas y relacionadas (fundamental)
+sudo iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Permitir loopback
+sudo iptables -A INPUT -i lo -j ACCEPT
+
+# Permitir SSH
+sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+
+# Permitir HTTP y HTTPS
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+# Permitir desde una IP concreta
+sudo iptables -A INPUT -s 192.168.1.100 -j ACCEPT
+
+# Permitir desde una subred
+sudo iptables -A INPUT -s 10.0.0.0/8 -j ACCEPT
+
+# Denegar explícitamente (con respuesta al origen)
+sudo iptables -A INPUT -j REJECT
+
+# Descartar silenciosamente (sin respuesta)
+sudo iptables -A INPUT -j DROP
+```
+
+### Eliminar reglas
+
+```bash
+# Eliminar una regla concreta (misma sintaxis que al añadir, pero con -D)
+sudo iptables -D INPUT -p tcp --dport 80 -j ACCEPT
+
+# Eliminar por número de línea (obtener con --line-numbers)
+sudo iptables -D INPUT 3
+
+# Vaciar todas las reglas de una cadena
+sudo iptables -F INPUT
+
+# Vaciar todas las reglas de todas las cadenas
+sudo iptables -F
+```
+
+---
+
+## 5. Reglas avanzadas: logging y rate limiting
+
+```bash
+# Registrar intentos de conexión rechazados (antes del DROP)
+sudo iptables -A INPUT -j LOG --log-prefix "IPTABLES-DROP: " --log-level 4
+sudo iptables -A INPUT -j DROP
+
+# Limitar intentos SSH (anti fuerza bruta: máx 3 conexiones nuevas por minuto)
+sudo iptables -A INPUT -p tcp --dport 22 -m state --state NEW \
+  -m limit --limit 3/min --limit-burst 3 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 22 -j DROP
+
+# Bloquear una IP concreta
+sudo iptables -I INPUT 1 -s 203.0.113.5 -j DROP
+```
+
+---
+
+## 6. Persistir las reglas entre reinicios
+
+Las reglas de iptables se pierden al reiniciar. Para persistirlas:
+
+```bash
+# Instalar herramienta de persistencia
+sudo apt install iptables-persistent
+
+# Guardar reglas actuales
+sudo netfilter-persistent save
+# Se guardan en:
+# /etc/iptables/rules.v4  (IPv4)
+# /etc/iptables/rules.v6  (IPv6)
+
+# Restaurar manualmente
+sudo netfilter-persistent reload
+
+# Ver las reglas guardadas
+cat /etc/iptables/rules.v4
+```
+
+---
+
+## 7. nftables — El sucesor moderno
+
+`nftables` reemplaza a iptables en sistemas modernos (Debian 10+). Es más eficiente, tiene sintaxis más clara y combina las funciones de iptables, ip6tables, arptables y ebtables en una sola herramienta.
+
+```bash
+# Ver el estado actual de nftables
+sudo nft list ruleset
+
+# Estructura básica de nftables
+# tabla → familia (ip, ip6, inet) + nombre
+# cadena → tipo (filter/nat) + hook (input/output/forward) + prioridad
+
+# Crear una tabla y cadenas básicas
+sudo nft add table inet mi_firewall
+sudo nft add chain inet mi_firewall input \
+  { type filter hook input priority 0 \; policy drop \; }
+sudo nft add chain inet mi_firewall output \
+  { type filter hook output priority 0 \; policy accept \; }
+
+# Añadir reglas
+sudo nft add rule inet mi_firewall input iif lo accept
+sudo nft add rule inet mi_firewall input ct state established,related accept
+sudo nft add rule inet mi_firewall input tcp dport 22 accept
+sudo nft add rule inet mi_firewall input tcp dport { 80, 443 } accept
+
+# Ver el resultado
+sudo nft list ruleset
+```
+
+Persistir nftables:
+
+```bash
+# Guardar la configuración activa
+sudo nft list ruleset > /etc/nftables.conf
+
+# Habilitar el servicio para que cargue al arrancar
+sudo systemctl enable nftables
+sudo systemctl start nftables
+```
+
+---
+
+## 8. UFW vs iptables vs nftables — Cuándo usar cada uno
+
+| Herramienta | Cuándo usarla |
+|-------------|--------------|
+| **UFW** | Servidor estándar, reglas simples, gestión rápida |
+| **iptables** | Compatibilidad con scripts antiguos, entornos legacy, examen LFCS |
+| **nftables** | Sistemas nuevos, alta carga de paquetes, reglas complejas |
+
+<Aside type="tip" title="No mezcles UFW e iptables directamente">
+UFW gestiona sus propias reglas de iptables. Si añades reglas de iptables manualmente mientras UFW está activo, pueden interferir. Para el examen LFCS, usa una sola herramienta a la vez para el firewall.
+</Aside>
+
+<Aside type="note" title="Comprobar qué backend usa el sistema">
+```bash
+# Ver si el sistema usa iptables-legacy o nft
+update-alternatives --list iptables
+# /usr/sbin/iptables-legacy  o  /usr/sbin/iptables-nft
+```
+En Debian 11+ y Ubuntu 22.04+, `iptables` es un wrapper de nftables por defecto.
+</Aside>

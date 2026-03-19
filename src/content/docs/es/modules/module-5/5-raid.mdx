@@ -1,0 +1,194 @@
+---
+title: 5.5 RAID por Software (mdadm)
+description: Crea arrays RAID 1 y RAID 5 con mdadm para redundancia y rendimiento. Simula fallos de disco, sustituye discos en caliente y entiende cuándo usar cada nivel RAID.
+sidebar:
+  order: 6
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+**RAID** (Redundant Array of Independent Disks) agrupa varios discos físicos para comportarse como uno solo, combinando redundancia y/o rendimiento. En Linux, `mdadm` (Multiple Device Admin) implementa RAID completamente en software, sin necesidad de hardware especial.
+
+---
+
+## 1. Niveles RAID relevantes para LFCS
+
+| Nivel | Mínimo discos | Redundancia | Rendimiento | Espacio útil | Uso típico |
+|-------|:---:|:---:|:---:|:---:|---|
+| **RAID 0** | 2 | ❌ Ninguna | ⚡ Doble lectura/escritura | 100% | Scratch/tmp (si el disco muere, pierdes todo) |
+| **RAID 1** | 2 | ✅ 1 disco | ✅ Lectura paralela | 50% | Boot, sistema operativo, BD pequeñas |
+| **RAID 5** | 3 | ✅ 1 disco | ✅ Buena lectura | ~67-93% | Almacenamiento de datos, NAS |
+| **RAID 6** | 4 | ✅ 2 discos | Buena lectura | ~50-88% | Archivos críticos (aguanta 2 fallos) |
+| **RAID 10** | 4 | ✅ 50% | ⚡ Excelente | 50% | Bases de datos de alto rendimiento |
+
+<Aside type="note" title="RAID no es un backup">
+RAID protege contra el fallo de un disco físico (hardware), pero no contra borrados accidentales, ransomware ni errores de ficheros. **RAID + backup** son estrategias complementarias, no alternativas.
+</Aside>
+
+---
+
+## 2. Instalación y herramientas
+
+```bash
+sudo apt install mdadm
+
+# Verificar discos disponibles
+lsblk
+# Identifica los discos que usarás (sin particiones montadas)
+```
+
+---
+
+## 3. Crear un RAID 1 (espejo)
+
+<Tabs>
+  <TabItem label="RAID 1 (2 discos)">
+```bash
+# Crear el array RAID 1 con /dev/sdb y /dev/sdc
+sudo mdadm --create /dev/md0 \
+  --level=1 \
+  --raid-devices=2 \
+  /dev/sdb /dev/sdc
+
+# Seguir la sincronización inicial (puede tardar minutos en discos grandes)
+watch cat /proc/mdstat
+
+# Verificar el array creado
+sudo mdadm --detail /dev/md0
+```
+  </TabItem>
+  <TabItem label="RAID 5 (3 discos)">
+```bash
+# Crear el array RAID 5 con /dev/sdb, /dev/sdc y /dev/sdd
+sudo mdadm --create /dev/md0 \
+  --level=5 \
+  --raid-devices=3 \
+  /dev/sdb /dev/sdc /dev/sdd
+
+# Con un disco de repuesto (hot spare) que se activa automáticamente:
+sudo mdadm --create /dev/md0 \
+  --level=5 \
+  --raid-devices=3 \
+  --spare-devices=1 \
+  /dev/sdb /dev/sdc /dev/sdd /dev/sde
+
+watch cat /proc/mdstat
+```
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Usar el array: formatear y montar
+
+```bash
+# Formatear el array como ext4
+sudo mkfs.ext4 /dev/md0
+
+# Crear punto de montaje y montar
+sudo mkdir -p /mnt/raid
+sudo mount /dev/md0 /mnt/raid
+
+# Verificar
+df -h /mnt/raid
+```
+
+---
+
+## 5. Hacer el array permanente
+
+### Guardar la configuración de mdadm
+
+```bash
+# Guardar la configuración en /etc/mdadm/mdadm.conf
+sudo mdadm --detail --scan | sudo tee -a /etc/mdadm/mdadm.conf
+
+# Actualizar initramfs para que reconozca el array al arrancar
+sudo update-initramfs -u
+```
+
+### Añadir a /etc/fstab
+
+```bash
+# Obtener el UUID del array
+sudo blkid /dev/md0
+
+# Añadir a /etc/fstab
+sudo nano /etc/fstab
+```
+
+```
+UUID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  /mnt/raid  ext4  defaults  0  2
+```
+
+---
+
+## 6. Monitorización del array
+
+```bash
+# Estado resumido de todos los arrays
+cat /proc/mdstat
+# Personalities : [raid1] [raid5]
+# md0 : active raid1 sdb[0] sdc[1]
+#       2096640 blocks super 1.2 [2/2] [UU]
+#       (U = activo, _ = fallo)
+
+# Estado detallado de un array
+sudo mdadm --detail /dev/md0
+
+# Ver estado de todos los arrays
+sudo mdadm --detail --scan
+```
+
+La columna `[UU]` indica el estado de cada disco: `U` = activo, `_` = fallo.
+
+---
+
+## 7. Simular fallo y recuperación (LFCS escenario clave)
+
+Este es uno de los escenarios más frecuentes en el examen LFCS:
+
+```bash
+# 1. SIMULAR fallo de un disco (marcarlo como defectuoso)
+sudo mdadm /dev/md0 --fail /dev/sdc
+
+# 2. Ver el estado del array degradado
+cat /proc/mdstat
+# md0 : active raid1 sdb[0] sdc[1](F)
+# [2/1] [U_]   ← un disco falla
+
+# 3. Eliminar el disco defectuoso del array
+sudo mdadm /dev/md0 --remove /dev/sdc
+
+# 4. (En producción: apagar, sustituir el disco físico, arrancar)
+# En lab: el disco /dev/sdc sigue disponible, simula el reemplazo
+
+# 5. Añadir el disco de reemplazo al array
+sudo mdadm /dev/md0 --add /dev/sdc
+
+# 6. Seguir la reconstrucción automática
+watch cat /proc/mdstat
+# md0 : active raid1 sdb[0] sdc[1]
+#       [2/1] [U_]
+#       [=====>..............] recovery = 25.3%
+```
+
+<Aside type="tip" title="El array sigue funcionando durante la reconstrucción">
+En RAID 1 y RAID 5, el array continúa sirviendo datos en modo degradado mientras se reconstruye. No es necesario detenerlo, aunque el rendimiento puede bajar durante la sincronización.
+</Aside>
+
+---
+
+## 8. Detener y ensamblar arrays
+
+```bash
+# Detener un array (desmontarlo antes)
+sudo umount /mnt/raid
+sudo mdadm --stop /dev/md0
+
+# Ensamblar un array existente (tras reiniciar o mover discos)
+sudo mdadm --assemble /dev/md0 /dev/sdb /dev/sdc
+
+# Ensamblar automáticamente todos los arrays en mdadm.conf
+sudo mdadm --assemble --scan
+```

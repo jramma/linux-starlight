@@ -1,0 +1,201 @@
+---
+title: 4.5 Parámetros del Kernel (sysctl)
+description: Controla el comportamiento del kernel en tiempo real y de forma permanente con sysctl. IP forwarding, límites de red, ajuste de memoria virtual y hardening desde /proc/sys.
+sidebar:
+  order: 6
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+El kernel de Linux no es una caja negra inmutable: expone cientos de parámetros ajustables en tiempo real a través del pseudo-sistema de ficheros `/proc/sys`. `sysctl` es la interfaz de comandos que permite leer y modificar esos parámetros sin reiniciar el sistema.
+
+---
+
+## 1. El universo de /proc/sys
+
+Cada fichero dentro de `/proc/sys/` es un parámetro del kernel. Su ruta determina la categoría:
+
+| Ruta | Ámbito |
+|------|--------|
+| `/proc/sys/kernel/` | Comportamiento del kernel (hostname, coredumps, sysrq) |
+| `/proc/sys/net/` | Pila de red (IP forwarding, syn cookies, buffers) |
+| `/proc/sys/vm/` | Memoria virtual (swappiness, overcommit) |
+| `/proc/sys/fs/` | Límites del sistema de ficheros (file-max, inotify) |
+
+`sysctl` traduce la ruta del fichero sustituyendo `/` por `.`:
+
+```
+/proc/sys/net/ipv4/ip_forward  ↔  net.ipv4.ip_forward
+```
+
+---
+
+## 2. Leer parámetros
+
+```bash
+# Ver todos los parámetros (más de 1.000)
+sysctl -a
+
+# Ver un parámetro concreto
+sysctl net.ipv4.ip_forward
+sysctl vm.swappiness
+
+# Leer directamente del fichero (equivalente)
+cat /proc/sys/net/ipv4/ip_forward
+
+# Buscar parámetros por patrón
+sysctl -a | grep "ipv4"
+sysctl -a | grep "file-max"
+```
+
+---
+
+## 3. Cambiar parámetros en tiempo real (temporal)
+
+Los cambios con `-w` son **inmediatos pero efímeros**: desaparecen al reiniciar.
+
+```bash
+# Habilitar IP forwarding (necesario para routers/VPN)
+sudo sysctl -w net.ipv4.ip_forward=1
+
+# Reducir agresividad del swap
+sudo sysctl -w vm.swappiness=10
+
+# Aumentar el límite de ficheros abiertos
+sudo sysctl -w fs.file-max=200000
+
+# Deshabilitar el "Magic SysRq" (hardening)
+sudo sysctl -w kernel.sysrq=0
+```
+
+<Aside type="caution" title="Cambios temporales vs permanentes">
+Un `sysctl -w` cambia el valor activo pero no sobrevive al reinicio. Para que el cambio persista debes escribirlo en un fichero de configuración (ver sección 4).
+</Aside>
+
+---
+
+## 4. Cambios permanentes (/etc/sysctl.d/)
+
+La forma correcta de persistir parámetros es crear un fichero en `/etc/sysctl.d/` con extensión `.conf`. El nombre del fichero determina el orden de carga (se aplican alfabéticamente).
+
+```bash
+# Crear un fichero de configuración propio
+sudo nano /etc/sysctl.d/99-mi-servidor.conf
+```
+
+Contenido de ejemplo:
+
+```ini
+# Habilitar enrutamiento IP (necesario si la máquina actúa como router)
+net.ipv4.ip_forward = 1
+
+# Reducir agresividad del swap (valor de producción recomendado)
+vm.swappiness = 10
+
+# Protección contra SYN flood (ya activo en Debian, pero explícito)
+net.ipv4.tcp_syncookies = 1
+
+# Ignorar pings ICMP broadcast (hardening)
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+
+# Deshabilitar redirecciones ICMP (hardening)
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+
+# Aumentar límite de ficheros abiertos
+fs.file-max = 200000
+```
+
+Aplicar sin reiniciar:
+
+```bash
+# Aplicar el fichero específico
+sudo sysctl -p /etc/sysctl.d/99-mi-servidor.conf
+
+# Aplicar TODOS los ficheros de sysctl.d/
+sudo sysctl --system
+```
+
+Verificar que el cambio se aplicó:
+
+```bash
+sysctl net.ipv4.ip_forward
+# net.ipv4.ip_forward = 1
+```
+
+---
+
+## 5. Parámetros LFCS más relevantes
+
+### IP Forwarding (enrutamiento)
+
+Imprescindible cuando el servidor actúa como gateway, VPN concentrador o contenedor host:
+
+```bash
+# Ver estado actual
+sysctl net.ipv4.ip_forward
+sysctl net.ipv6.conf.all.forwarding
+
+# Activar para IPv4
+sudo sysctl -w net.ipv4.ip_forward=1
+```
+
+### Ajuste de memoria virtual
+
+```bash
+# vm.swappiness: qué tan agresivamente usa swap el kernel (0-200)
+# 0  = solo swap si la RAM está completamente llena
+# 10 = recomendado para servidores de base de datos
+# 60 = valor por defecto Debian (desktop/server genérico)
+# 100 = agresivo (sistemas sin estado con mucho swap)
+sysctl vm.swappiness
+
+# vm.overcommit_memory:
+# 0 = heurística del kernel (por defecto)
+# 1 = siempre permite overcommit (Redis lo requiere)
+# 2 = nunca overcommit
+sysctl vm.overcommit_memory
+```
+
+### Límites de ficheros del kernel
+
+```bash
+# Número máximo de ficheros abiertos en todo el sistema
+sysctl fs.file-max
+
+# Ver uso actual
+cat /proc/sys/fs/file-nr
+# columnas: abiertos  liberados  máximo
+```
+
+### Parámetros de red (hardening típico LFCS)
+
+```bash
+# Protección SYN flood
+net.ipv4.tcp_syncookies = 1
+
+# No aceptar source routing
+net.ipv4.conf.all.accept_source_route = 0
+
+# Log de paquetes con IP de origen imposible (martians)
+net.ipv4.conf.all.log_martians = 1
+
+# No aceptar redirecciones ICMP
+net.ipv4.conf.all.accept_redirects = 0
+```
+
+---
+
+## 6. Verificar la configuración activa completa
+
+```bash
+# Ver todos los valores actuales y guardar para auditoría
+sysctl -a 2>/dev/null | sort > /tmp/sysctl_snapshot.txt
+
+# Comparar antes/después de un cambio
+sysctl -a 2>/dev/null | grep "net.ipv4" | sort
+```
+
+<Aside type="tip" title="Truco LFCS">
+En el examen es habitual pedir "habilita IP forwarding de forma permanente". La respuesta correcta siempre es editar `/etc/sysctl.d/` más `sysctl --system`, no solo el `sysctl -w` temporal.
+</Aside>

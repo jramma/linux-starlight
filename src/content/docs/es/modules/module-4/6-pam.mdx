@@ -1,0 +1,263 @@
+---
+title: 4.6 PAM — Autenticación Modular
+description: PAM (Pluggable Authentication Modules) es la capa que decide quién puede entrar, con qué condiciones y qué recursos puede usar. Configura políticas de contraseña, bloqueo de cuentas y límites de sesión.
+sidebar:
+  order: 7
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+Cuando escribes tu contraseña para hacer `sudo`, SSH o iniciar sesión en consola, no es el programa en cuestión quien verifica tu identidad: todos delegan esa responsabilidad en **PAM**. PAM actúa como un portero modular entre cualquier servicio y el sistema de autenticación del kernel.
+
+---
+
+## 1. La arquitectura de PAM
+
+PAM organiza la autenticación en cuatro tipos de gestión, cada uno con su propia pila de módulos:
+
+| Tipo | Qué gestiona |
+|------|-------------|
+| `auth` | Verifica la identidad (¿eres quien dices ser?) |
+| `account` | Verifica condiciones de cuenta (¿puede entrar ahora?, ¿está bloqueada?) |
+| `password` | Gestiona el cambio de contraseñas (complejidad, historial) |
+| `session` | Configura el entorno al abrir/cerrar sesión (montar home, límites) |
+
+Cada servicio (`sshd`, `sudo`, `login`, `su`) tiene su propio fichero de configuración en `/etc/pam.d/`:
+
+```bash
+ls /etc/pam.d/
+# common-auth  common-account  common-password  common-session
+# sshd  sudo  login  su  passwd  ...
+```
+
+Los ficheros `common-*` son incluidos por la mayoría de servicios con `@include`, por lo que cambiarlos afecta a todo el sistema.
+
+---
+
+## 2. Sintaxis de un fichero PAM
+
+Cada línea de un fichero PAM sigue este formato:
+
+```
+<tipo>  <control>  <módulo.so>  [argumentos]
+```
+
+### Flags de control
+
+| Flag | Comportamiento |
+|------|---------------|
+| `required` | Debe pasar. El fallo se notifica **al final** (continúa evaluando) |
+| `requisite` | Debe pasar. El fallo detiene la evaluación **inmediatamente** |
+| `sufficient` | Si pasa (y ningún `required` anterior falló), **concede acceso** |
+| `optional` | El resultado no afecta al resultado final |
+
+```bash
+# Ejemplo de /etc/pam.d/common-auth
+auth    required        pam_faillock.so preauth
+auth    [success=1 default=ignore]  pam_unix.so nullok
+auth    [default=die]   pam_faillock.so authfail
+auth    required        pam_permit.so
+```
+
+---
+
+## 3. pam_pwquality — Política de contraseñas
+
+Instalación:
+
+```bash
+sudo apt install libpam-pwquality
+```
+
+Configuración en `/etc/security/pwquality.conf`:
+
+```ini
+# Longitud mínima
+minlen = 12
+
+# Requisitos de caracteres (negativo = mínimo obligatorio)
+dcredit = -1      # al menos 1 dígito
+ucredit = -1      # al menos 1 mayúscula
+lcredit = -1      # al menos 1 minúscula
+ocredit = -1      # al menos 1 carácter especial
+
+# Máximo de caracteres consecutivos iguales
+maxrepeat = 3
+
+# Comprobar que la contraseña no contiene el nombre del usuario (campo GECOS)
+gecoscheck = 1
+
+# Número de intentos antes de error (en programas que usan retry)
+retry = 3
+```
+
+Verifica que el módulo está activo en `/etc/pam.d/common-password`:
+
+```bash
+grep pwquality /etc/pam.d/common-password
+# password  requisite  pam_pwquality.so retry=3
+```
+
+Prueba la política:
+
+```bash
+# Intenta asignar una contraseña débil (debe fallar)
+sudo passwd usuario_prueba
+# BAD PASSWORD: The password is too short
+# BAD PASSWORD: it does not contain enough DIFFERENT characters
+```
+
+---
+
+## 4. pam_faillock — Bloqueo por intentos fallidos
+
+`pam_faillock` registra los intentos de autenticación fallidos y bloquea la cuenta temporalmente cuando se supera un umbral. Reemplaza al antiguo `pam_tally2`.
+
+Configuración en `/etc/security/faillock.conf`:
+
+```ini
+# Número de fallos antes del bloqueo
+deny = 3
+
+# Ventana de tiempo en la que se cuentan los fallos (segundos)
+fail_interval = 300
+
+# Tiempo de bloqueo (segundos). 0 = bloqueo permanente hasta unlock manual
+unlock_time = 600
+
+# Registrar intentos en el log de auditoría
+audit
+
+# No mostrar mensajes informativos al atacante
+silent
+```
+
+Verificar el estado de una cuenta:
+
+```bash
+# Ver intentos fallidos registrados
+sudo faillock --user usuario
+
+# Desbloquear manualmente una cuenta (soporte sysadmin)
+sudo faillock --user usuario --reset
+```
+
+<Aside type="caution" title="Peligro: no bloquees a root en sistemas de producción">
+Si configuras `deny = 3` sin excluir a root y alguien lanza un ataque de fuerza bruta contra root, bloqueará la cuenta. Añade `even_deny_root` solo si tienes acceso físico o de consola garantizado.
+</Aside>
+
+---
+
+## 5. pam_limits — Límites de recursos por usuario
+
+`pam_limits` aplica los límites definidos en `/etc/security/limits.conf` a cada sesión de usuario. Esto controla cuántos procesos, ficheros abiertos o memoria puede usar cada usuario o grupo.
+
+Formato de `/etc/security/limits.conf`:
+
+```
+<dominio>  <tipo>  <ítem>  <valor>
+```
+
+| Dominio | Significa |
+|---------|-----------|
+| `usuario` | Usuario concreto |
+| `@grupo` | Todos los miembros del grupo |
+| `*` | Todos los usuarios |
+
+| Tipo | Efecto |
+|------|--------|
+| `soft` | Límite que el usuario puede aumentar hasta el `hard` |
+| `hard` | Techo absoluto que solo root puede superar |
+
+Ítems más usados en LFCS:
+
+```ini
+# /etc/security/limits.conf
+
+# Máximo de procesos simultáneos para el grupo webdevs
+@webdevs    soft    nproc       100
+@webdevs    hard    nproc       150
+
+# Máximo de ficheros abiertos para el usuario app_user
+app_user    soft    nofile      4096
+app_user    hard    nofile      8192
+
+# Tamaño máximo de ficheros core dump (0 = sin dumps)
+*           hard    core        0
+
+# Tiempo máximo de CPU (minutos) para todos los usuarios
+*           hard    cpu         60
+```
+
+También se pueden crear ficheros en `/etc/security/limits.d/` (misma sintaxis, mejor organización):
+
+```bash
+sudo nano /etc/security/limits.d/99-webdevs.conf
+```
+
+Verificar los límites de la sesión actual:
+
+```bash
+# Ver todos los límites de la sesión activa
+ulimit -a
+
+# Ver el límite de ficheros abiertos
+ulimit -n
+
+# Cambiar temporalmente (solo soft limit, sin sudo)
+ulimit -n 8192
+```
+
+<Aside type="note" title="Los límites solo se aplican a sesiones nuevas">
+Los cambios en `limits.conf` no afectan a las sesiones ya abiertas. El usuario debe cerrar sesión y volver a entrar para que los nuevos límites se apliquen.
+</Aside>
+
+---
+
+## 6. pam_env — Variables de entorno de sesión
+
+`pam_env` carga variables de entorno al iniciar sesión, configuradas en `/etc/security/pam_env.conf` o `/etc/environment`.
+
+```bash
+# /etc/environment — se carga para TODOS los usuarios en login
+LANG=es_ES.UTF-8
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+EDITOR=nano
+
+# También funciona para variables de aplicación
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+```
+
+---
+
+## 7. Perfiles de entorno del sistema
+
+Además de PAM, hay varios ficheros que configuran el entorno de shell para todos los usuarios:
+
+| Fichero | Cuándo se carga |
+|---------|----------------|
+| `/etc/environment` | Variables globales (no es un script, solo `CLAVE=valor`) |
+| `/etc/profile` | Script para todos los usuarios en shells de login |
+| `/etc/profile.d/*.sh` | Scripts modulares cargados por `/etc/profile` |
+| `/etc/bash.bashrc` | Para shells interactivos (no de login) |
+| `/etc/skel/` | Plantilla de ficheros que se copian al crear un usuario nuevo |
+
+```bash
+# Añadir un alias global para todos los usuarios
+sudo nano /etc/profile.d/00-aliases.sh
+```
+```bash
+# /etc/profile.d/00-aliases.sh
+alias ll='ls -lh --color=auto'
+alias la='ls -lAh --color=auto'
+```
+
+```bash
+# /etc/skel/ — qué tiene un usuario nuevo al crearse
+ls -la /etc/skel/
+# .bash_logout  .bashrc  .profile
+```
+
+<Aside type="tip" title="Truco LFCS">
+Cuando el examen pida "configura que todos los usuarios nuevos tengan un `.bashrc` personalizado", la respuesta es editar `/etc/skel/.bashrc`. Los usuarios ya existentes no se ven afectados; solo los creados después.
+</Aside>

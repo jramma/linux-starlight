@@ -1,0 +1,149 @@
+---
+title: 5.4 Gestión de Swap
+description: Crea y gestiona espacio de intercambio como partición o fichero. Entiende vm.swappiness y cuándo el swap salva el servidor o lo mata.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+El **swap** (espacio de intercambio) es una extensión de la RAM en disco. Cuando la RAM física se agota, el kernel mueve páginas de memoria poco usadas al swap para liberar espacio para los procesos activos. Es más lento que la RAM (miles de veces), pero puede marcar la diferencia entre un servidor que sobrevive un pico de carga y uno que mata procesos al azar con el OOM Killer.
+
+---
+
+## 1. Ver el estado actual del swap
+
+```bash
+# Resumen de swap activo
+swapon --show
+# NAME       TYPE  SIZE  USED PRIO
+# /dev/sda2  partition 2G  0B   -2
+
+# Ver uso de memoria y swap
+free -h
+#               total       used       free     shared  buff/cache   available
+# Mem:           7.7G       2.1G       3.2G       156M       2.4G       5.2G
+# Swap:          2.0G         0B       2.0G
+
+# Ver en lsblk
+lsblk
+```
+
+---
+
+## 2. Swap como fichero (el método moderno)
+
+Crear un fichero de swap es más flexible que una partición: puedes crearlo en cualquier momento sin reparticionar.
+
+```bash
+# 1. Crear el fichero (2 GB en este ejemplo)
+sudo fallocate -l 2G /swapfile
+
+# Si fallocate no está disponible:
+# sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+
+# 2. Permisos correctos (solo root puede leerlo — contiene RAM)
+sudo chmod 600 /swapfile
+
+# 3. Formatear como swap
+sudo mkswap /swapfile
+
+# 4. Activar
+sudo swapon /swapfile
+
+# 5. Verificar
+swapon --show
+free -h
+```
+
+### Hacer el fichero de swap permanente
+
+Añade la siguiente línea a `/etc/fstab`:
+
+```bash
+sudo nano /etc/fstab
+```
+
+```
+/swapfile  none  swap  sw  0  0
+```
+
+Verifica que la sintaxis es correcta:
+
+```bash
+sudo mount -a
+# No debe dar errores
+```
+
+---
+
+## 3. Swap como partición
+
+Si al instalar el sistema dejaste una partición de swap (tipo `82` en MBR o `8200` en GPT), se formatea y activa de la misma forma:
+
+```bash
+# Formatear la partición como swap
+sudo mkswap /dev/sda2
+
+# Activar
+sudo swapon /dev/sda2
+
+# En /etc/fstab (mejor con UUID para evitar cambios de nombre):
+UUID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  none  swap  sw  0  0
+```
+
+Obtener el UUID de la partición:
+
+```bash
+sudo blkid /dev/sda2
+```
+
+---
+
+## 4. Desactivar swap
+
+```bash
+# Desactivar un swap concreto (mueve las páginas de vuelta a RAM)
+sudo swapoff /swapfile
+sudo swapoff /dev/sda2
+
+# Desactivar todo el swap
+sudo swapoff -a
+
+# Eliminar el fichero de swap (tras swapoff)
+sudo rm /swapfile
+# Y eliminar la línea correspondiente en /etc/fstab
+```
+
+<Aside type="caution" title="swapoff puede fallar si la RAM está llena">
+`swapoff` intenta mover todas las páginas del swap de vuelta a RAM. Si no hay RAM libre suficiente, el comando fallará con "Cannot allocate memory". Libera memoria antes de desactivar el swap.
+</Aside>
+
+---
+
+## 5. Ajustar vm.swappiness
+
+`vm.swappiness` controla cuánto prefiere el kernel usar swap frente a liberar caché de página. Va de `0` a `200`:
+
+| Valor | Comportamiento | Cuándo usarlo |
+|-------|---------------|---------------|
+| `0` | Evita el swap hasta que sea absolutamente necesario | Servidores con mucha RAM |
+| `10` | Muy conservador | Servidores de base de datos (PostgreSQL, MySQL) |
+| `60` | Por defecto en Debian/Ubuntu | Uso general |
+| `100+` | Agresivo, prefiere mover a swap | Sistemas con mucha actividad de I/O |
+
+```bash
+# Ver valor actual
+sysctl vm.swappiness
+
+# Cambiar temporalmente
+sudo sysctl -w vm.swappiness=10
+
+# Cambiar permanentemente
+echo "vm.swappiness = 10" | sudo tee /etc/sysctl.d/99-swap.conf
+sudo sysctl --system
+```
+
+<Aside type="tip" title="Regla práctica para servidores">
+Para un servidor de base de datos o aplicación Java en producción, `vm.swappiness=10` es el valor estándar del sector. Reduce la latencia al mantener más datos en RAM activa en lugar de hacer swap preventivo.
+</Aside>
