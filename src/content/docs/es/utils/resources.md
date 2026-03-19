@@ -10,6 +10,8 @@ sidebar:
 ## Para practicar
 
 - [https://www.practicelinux.com/](https://www.practicelinux.com/)
+- [La línea de comandos de Linux (Archive.org)](https://archive.org/details/la-linea-de-comandos-de-linux/mode/1up)
+- Apuntes de LFCS en GitHub: busca "LFCS notes" o "LFCS study guide" en repositorios públicos para encontrar material comunitario actualizado.
 
 ### Máquinas Virtuales locales (recomendada para el curso)
 
