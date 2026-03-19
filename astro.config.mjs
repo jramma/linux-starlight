@@ -39,7 +39,7 @@ export default defineConfig({
   markdown: {
     rehypePlugins: [
       rehypeTasklistEnhancer(),
-      [rehypeMermaid, { strategy: "inline-svg" }],
+      [rehypeMermaid, { strategy: "pre-mermaid" }],
     ],
   },
 });
