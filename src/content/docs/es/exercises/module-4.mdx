@@ -273,27 +273,34 @@ Los errores son:
 
 ## 📤 Bloque de entrega
 
+Guarda la verificación del estado antes de empaquetar:
+
 ```bash
-echo "=== ENTREGA PRÁCTICA 4 ===" && \
-echo "" && \
-echo "--- 4.1: Estado del timer ---" && \
-systemctl status monitor-disco.timer && \
-echo "" && \
-echo "--- 4.1: Próxima ejecución ---" && \
-systemctl list-timers | grep monitor && \
-echo "" && \
-echo "--- 4.1: Últimas entradas del log ---" && \
-tail -5 /var/log/monitor_disco.log && \
-echo "" && \
-echo "--- 4.1: Archivo .service ---" && \
-cat /etc/systemd/system/monitor-disco.service && \
-echo "" && \
-echo "--- 4.1: Archivo .timer ---" && \
-cat /etc/systemd/system/monitor-disco.timer && \
-echo "" && \
-echo "--- 4.2: Estado del servicio reparado ---" && \
-systemctl status app-demo.service && \
-echo "" && \
-echo "--- 4.2: Archivo .service corregido ---" && \
-cat /etc/systemd/system/app-demo.service
+mkdir -p ~/practica4/entrega
+{
+  echo "=== ENTREGA PRÁCTICA 4 ==="
+  echo ""
+  echo "--- 4.1: Estado del timer ---"
+  systemctl status monitor-disco.timer
+  echo ""
+  echo "--- 4.1: Próxima ejecución ---"
+  systemctl list-timers | grep monitor
+  echo ""
+  echo "--- 4.1: Últimas entradas del log ---"
+  tail -5 /var/log/monitor_disco.log
+  echo ""
+  echo "--- 4.1: Archivo .service ---"
+  cat /etc/systemd/system/monitor-disco.service
+  echo ""
+  echo "--- 4.1: Archivo .timer ---"
+  cat /etc/systemd/system/monitor-disco.timer
+  echo ""
+  echo "--- 4.2: Estado del servicio reparado ---"
+  systemctl status app-demo.service
+  echo ""
+  echo "--- 4.2: Archivo .service corregido ---"
+  cat /etc/systemd/system/app-demo.service
+} > ~/practica4/entrega/verificacion.txt
 ```
+
+Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 4`).

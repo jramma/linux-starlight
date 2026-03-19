@@ -202,18 +202,25 @@ df -h /srv/proyectos
 
 ## 📤 Bloque de entrega
 
+Guarda la verificación del estado antes de empaquetar:
+
 ```bash
-echo "=== ENTREGA PRÁCTICA 5 ===" && \
-echo "" && \
-echo "--- LVM: resumen ---" && \
-sudo pvs && sudo vgs && sudo lvs && \
-echo "" && \
-echo "--- Montaje ---" && \
-df -h /srv/proyectos && \
-echo "" && \
-echo "--- fstab ---" && \
-grep proyectos /etc/fstab && \
-echo "" && \
-echo "--- lsblk ---" && \
-lsblk -f | grep -A3 sdb
+mkdir -p ~/practica5/entrega
+{
+  echo "=== ENTREGA PRÁCTICA 5 ==="
+  echo ""
+  echo "--- LVM: resumen ---"
+  sudo pvs && sudo vgs && sudo lvs
+  echo ""
+  echo "--- Montaje ---"
+  df -h /srv/proyectos
+  echo ""
+  echo "--- fstab ---"
+  grep proyectos /etc/fstab
+  echo ""
+  echo "--- lsblk ---"
+  lsblk -f | grep -A3 sdb
+} > ~/practica5/entrega/verificacion.txt
 ```
+
+Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 5`).

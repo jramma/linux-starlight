@@ -260,20 +260,27 @@ cat /var/log/informes/informe_$(date '+%Y-%m-%d').log
 
 ## 📤 Bloque de entrega
 
+Guarda la verificación del estado antes de empaquetar:
+
 ```bash
-echo "=== ENTREGA PRÁCTICA 6 ===" && \
-echo "" && \
-echo "--- Script de informe ---" && \
-cat /usr/local/bin/informe_sistema.sh && \
-echo "" && \
-echo "--- Estado del timer ---" && \
-systemctl status informe-sistema.timer && \
-echo "" && \
-echo "--- Próxima ejecución ---" && \
-systemctl list-timers | grep informe && \
-echo "" && \
-echo "--- Último informe generado ---" && \
-ls -la /var/log/informes/ && \
-echo "" && \
-sudo tail -30 /var/log/informes/informe_$(date '+%Y-%m-%d').log
+mkdir -p ~/practica6/entrega
+{
+  echo "=== ENTREGA PRÁCTICA 6 ==="
+  echo ""
+  echo "--- Script de informe ---"
+  cat /usr/local/bin/informe_sistema.sh
+  echo ""
+  echo "--- Estado del timer ---"
+  systemctl status informe-sistema.timer
+  echo ""
+  echo "--- Próxima ejecución ---"
+  systemctl list-timers | grep informe
+  echo ""
+  echo "--- Último informe generado ---"
+  ls -la /var/log/informes/
+  echo ""
+  sudo tail -30 /var/log/informes/informe_$(date '+%Y-%m-%d').log
+} > ~/practica6/entrega/verificacion.txt
 ```
+
+Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 6`).

@@ -1,0 +1,58 @@
+---
+title: "Cómo entregar las prácticas"
+description: "Instrucciones comunes para exportar el historial, empaquetar los entregables, descargar el archivo y enviarlo por correo."
+sidebar:
+  order: 1
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Estas instrucciones son iguales para todas las prácticas del curso. Sustitiye `N` por el número de tu práctica en todos los comandos.
+
+---
+
+## 1. Exporta tu historial de comandos
+
+```bash
+history > ~/practicaN/entrega/history.txt
+```
+
+---
+
+## 2. Crea el archivo comprimido final
+
+```bash
+tar -czf ~/practicaN/entrega_practicaN.tar.gz -C ~/practicaN entrega/
+```
+
+Comprueba que el archivo se ha creado correctamente:
+
+```bash
+ls -lh ~/practicaN/entrega_practicaN.tar.gz
+tar -tzf ~/practicaN/entrega_practicaN.tar.gz | head -20
+```
+
+---
+
+## 3. Descarga el archivo a tu equipo local
+
+Desde la terminal de **tu ordenador personal** (no desde la VM):
+
+```bash
+# Sustituye IP_DE_LA_VM por la IP de tu servidor y N por el número de práctica
+scp alumno@IP_DE_LA_VM:~/practicaN/entrega_practicaN.tar.gz ./
+```
+
+<Aside type="tip" title="Alternativas a scp">
+Si prefieres una interfaz gráfica, puedes usar **FileZilla** o **WinSCP** conectándote por SFTP con las mismas credenciales que usas para SSH.
+</Aside>
+
+---
+
+## 4. Envía el archivo por correo
+
+Adjunta el archivo `entrega_practicaN.tar.gz` y envíalo a [hola@casset.cat](mailto:hola@casset.cat) con el asunto:
+
+```
+Entrega Práctica N - [tu_nombre]
+```

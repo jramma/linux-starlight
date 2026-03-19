@@ -307,25 +307,243 @@ Guarda las líneas relevantes en `~/practica3/entrega/35_auth_log.txt`. Identifi
 
 ---
 
+## Ejercicio 3.6 ⚡ EXTRA — Autoridad Certificadora SSH interna
+
+<Aside type="tip" title="Ejercicio opcional — nivel avanzado">
+Este ejercicio no es obligatorio. Cubre una técnica de nivel empresarial (SSH CA) que va más allá del temario LFCS pero que usarás en entornos reales con decenas de servidores. Requiere haber completado el ejercicio 3.5.
+</Aside>
+
+### Contexto
+
+El modelo clásico de `authorized_keys` escala mal: si tienes 50 servidores y 10 administradores, gestionar qué clave va en qué fichero se convierte en una pesadilla. La solución de nivel empresarial es una **Autoridad Certificadora SSH** interna: firmas las claves de los usuarios con una CA privada y los servidores confían en la CA, no en cada clave individual. Añadir o revocar un acceso es cambiar un único fichero en el servidor, no editar `authorized_keys` en cada máquina.
+
+En este ejercicio simularás todo el flujo en localhost: crearás la CA, firmarás una clave de usuario, configurarás el servidor para confiar en la CA y verificarás que el acceso funciona sin entradas en `authorized_keys`.
+
+### Tareas
+
+1) **Crea la Autoridad Certificadora.** La clave de CA debe protegerse con passphrase y almacenarse fuera de `~/.ssh` (en un entorno real iría en un HSM o máquina aislada):
+
+```bash
+mkdir -p ~/practica3/ssh-ca
+ssh-keygen -t ed25519 -C "lab-ca@$(hostname)" -f ~/practica3/ssh-ca/lab_ca
+chmod 600 ~/practica3/ssh-ca/lab_ca
+chmod 644 ~/practica3/ssh-ca/lab_ca.pub
+```
+
+Guarda en `~/practica3/entrega/36_ca_info.txt`:
+- `ssh-keygen -lf ~/practica3/ssh-ca/lab_ca.pub` (huella de la CA)
+- Explica con un comentario `#` por qué la clave privada de la CA debe estar en una máquina dedicada y no en el servidor de destino.
+
+2) **Firma la clave del usuario `remoteops`.** El certificado incluye un identificador (`-I`), el principal permitido (`-n`), y una validez temporal (`-V`):
+
+```bash
+ssh-keygen -s ~/practica3/ssh-ca/lab_ca \
+  -I "remoteops@lab-$(date +%Y%m%d)" \
+  -n remoteops \
+  -V +8h \
+  /home/remoteops/.ssh/authorized_keys/../id_practica3.pub 2>/dev/null || \
+ssh-keygen -s ~/practica3/ssh-ca/lab_ca \
+  -I "remoteops@lab-$(date +%Y%m%d)" \
+  -n remoteops \
+  -V +8h \
+  ~/.ssh/id_practica3.pub
+```
+
+Esto genera `~/.ssh/id_practica3-cert.pub`. Inspecciona el certificado generado:
+
+```bash
+ssh-keygen -Lf ~/.ssh/id_practica3-cert.pub
+```
+
+Guarda la salida en `~/practica3/entrega/36_cert_inspeccion.txt`. Identifica con comentarios `#` los campos: `Key ID`, `Valid`, `Principals`, y explica qué pasará cuando expire el certificado.
+
+3) **Configura el servidor para confiar en la CA** (no en certificados individuales):
+
+```bash
+sudo cp ~/practica3/ssh-ca/lab_ca.pub /etc/ssh/lab_ca.pub
+sudo chmod 644 /etc/ssh/lab_ca.pub
+```
+
+Añade al final de `/etc/ssh/sshd_config`:
+
+```
+TrustedUserCAKeys /etc/ssh/lab_ca.pub
+```
+
+Valida y recarga:
+
+```bash
+sudo sshd -t && sudo systemctl reload ssh
+```
+
+4) **Retira la clave pública directa de `remoteops`** para demostrar que el acceso funciona *solo* por certificado:
+
+```bash
+sudo truncate -s 0 /home/remoteops/.ssh/authorized_keys
+```
+
+5) **Prueba el acceso con certificado.** SSH usará automáticamente el certificado si detecta `id_practica3-cert.pub` junto a `id_practica3`:
+
+```bash
+ssh -i ~/.ssh/id_practica3 -o PasswordAuthentication=no remoteops@localhost "whoami && echo 'Acceso por certificado CA OK'"
+```
+
+Debe funcionar. Guarda el comando y su salida en `~/practica3/entrega/36_acceso_cert.txt`.
+
+6) **Simula una revocación.** En producción, si una clave se compromete no puedes firmar un nuevo certificado con la misma CA sin más — necesitas una `KRL` (Key Revocation List). Crea una KRL que revoque el certificado actual y verifica que el acceso queda bloqueado:
+
+```bash
+# Genera la KRL revocando el certificado
+ssh-keygen -k -f ~/practica3/ssh-ca/lab_krl -s ~/practica3/ssh-ca/lab_ca.pub ~/.ssh/id_practica3-cert.pub
+
+# Activa la KRL en el servidor
+sudo cp ~/practica3/ssh-ca/lab_krl /etc/ssh/lab_krl
+sudo chmod 644 /etc/ssh/lab_krl
+echo "RevokedKeys /etc/ssh/lab_krl" | sudo tee -a /etc/ssh/sshd_config
+sudo sshd -t && sudo systemctl reload ssh
+
+# Prueba: debe fallar ahora
+ssh -i ~/.ssh/id_practica3 -o PasswordAuthentication=no remoteops@localhost "whoami" 2>&1
+```
+
+Guarda ambas pruebas (acceso OK y acceso denegado tras KRL) en `~/practica3/entrega/36_revocacion.txt`. Explica con un comentario `#` la diferencia operativa entre una KRL y simplemente borrar la entrada de `authorized_keys`.
+
+<Aside type="caution" title="Limpieza después del ejercicio">
+Antes de seguir, elimina la directiva `RevokedKeys` de `sshd_config` y restaura el `authorized_keys` de `remoteops` para que los ejercicios anteriores sigan funcionando:
+
+```bash
+sudo sed -i '/RevokedKeys/d' /etc/ssh/sshd_config
+cat ~/.ssh/id_practica3.pub | sudo tee /home/remoteops/.ssh/authorized_keys
+sudo systemctl reload ssh
+```
+</Aside>
+
+---
+
+## Ejercicio 3.7 ⚡ EXTRA — Política de contraseñas y bloqueo de cuentas con PAM
+
+<Aside type="tip" title="Ejercicio opcional — nivel avanzado">
+Este ejercicio no es obligatorio. PAM (Pluggable Authentication Modules) es uno de los subsistemas más potentes y menos comprendidos de Linux. Un error de configuración puede dejar el sistema inaccesible, por lo que se trabaja con extremo cuidado y con una sesión de rescate abierta en todo momento.
+</Aside>
+
+### Contexto
+
+Cuando un servidor tiene cuentas con contraseña, dos políticas son imprescindibles en cualquier auditoría de seguridad: **complejidad mínima de contraseñas** (para evitar contraseñas débiles) y **bloqueo automático tras intentos fallidos** (para mitigar ataques de fuerza bruta). Ambas se gestionan a través de PAM, que actúa como capa intermedia entre las aplicaciones (login, SSH, sudo) y el sistema de autenticación del kernel.
+
+### Setup
+
+```bash
+sudo apt install -y libpam-pwquality
+```
+
+### Tareas
+
+1) **Audita la configuración PAM actual antes de tocar nada.** Lee y guarda:
+
+```bash
+cat /etc/pam.d/common-password
+cat /etc/pam.d/common-auth
+sudo faillock --user dev_ana 2>/dev/null || echo "faillock no tiene entradas aún"
+```
+
+Guarda en `~/practica3/entrega/37_pam_previo.txt`. Identifica con comentarios `#` qué módulo gestiona actualmente la autenticación de contraseñas y cuál gestiona la autenticación de sesión.
+
+2) **Configura la política de complejidad de contraseñas** con `pam_pwquality`. Edita `/etc/security/pwquality.conf` y establece:
+
+```
+minlen = 12
+dcredit = -1
+ucredit = -1
+lcredit = -1
+ocredit = -1
+maxrepeat = 3
+gecoscheck = 1
+```
+
+<Aside type="note" title="Sintaxis de créditos en pwquality">
+Los valores negativos (`-1`) son **requisitos mínimos obligatorios**: `-1` en `dcredit` significa "al menos 1 dígito". Los valores positivos son créditos que reducen el requisito de `minlen`. Para un entorno de producción, siempre usa valores negativos.
+</Aside>
+
+Verifica que la política funciona intentando asignar contraseñas débiles:
+
+```bash
+# Debe fallar con mensaje de política
+sudo passwd dev_ana <<< $'abc\nabc\n'
+
+# Debe fallar por demasiado corta
+echo "dev_ana:short1A!" | sudo chpasswd 2>&1
+
+# Debe funcionar
+echo "dev_ana:C0mpl3ja!Pass#2024" | sudo chpasswd 2>&1
+```
+
+Guarda los tres intentos y sus salidas en `~/practica3/entrega/37_pwquality.txt`. Explica con un comentario `#` qué hace exactamente el parámetro `gecoscheck`.
+
+3) **Configura el bloqueo de cuenta con `faillock`** tras 3 intentos fallidos durante 5 minutos de ventana, con bloqueo de 10 minutos. Edita `/etc/security/faillock.conf`:
+
+```
+deny = 3
+fail_interval = 300
+unlock_time = 600
+audit
+silent
+```
+
+Verifica que el módulo `pam_faillock.so` está activo en `/etc/pam.d/common-auth`. Debe aparecer en dos posiciones (preauth y authfail):
+
+```bash
+grep faillock /etc/pam.d/common-auth
+```
+
+Si no aparece, lo está ya manejando automáticamente en Debian/Ubuntu moderno a través de `/etc/pam.d/login` y `/etc/pam.d/sshd`. Verifica:
+
+```bash
+grep -r faillock /etc/pam.d/
+```
+
+Guarda la salida en `~/practica3/entrega/37_faillock_config.txt`.
+
+4) **Provoca el bloqueo y observa el mecanismo.** Desde una segunda terminal, intenta autenticarte como `dev_ana` con contraseña incorrecta tres veces:
+
+```bash
+# Ejecuta esto 3 veces con contraseña incorrecta deliberadamente
+ssh -o PreferredAuthentications=password dev_ana@localhost
+```
+
+Después, inspecciona el estado del bloqueo:
+
+```bash
+sudo faillock --user dev_ana
+```
+
+La salida mostrará los intentos fallidos con timestamp. Guarda en `~/practica3/entrega/37_bloqueo_activo.txt`.
+
+5) **Desbloquea manualmente la cuenta** (como haría un sysadmin ante una llamada de soporte):
+
+```bash
+sudo faillock --user dev_ana --reset
+sudo faillock --user dev_ana
+```
+
+Verifica que el estado queda limpio. Guarda en el mismo fichero. Explica con un comentario `#`:
+- Por qué `faillock --reset` es preferible a esperar el `unlock_time` en producción
+- Qué diferencia hay entre `faillock` y el antiguo `pam_tally2`
+- Por qué el parámetro `audit` en `faillock.conf` es un arma de doble filo (pista: ¿qué aparece en los logs?)
+
+6) **Integración con SSH.** Comprueba que el bloqueo PAM afecta también a intentos de autenticación por SSH (no solo a login local). Busca en los logs evidencia de los intentos fallidos:
+
+```bash
+grep "dev_ana" /var/log/auth.log | grep -E "fail|FAIL|lock|pam" | tail -20
+```
+
+Guarda en `~/practica3/entrega/37_auth_log_pam.txt`. Identifica con comentarios `#` al menos dos líneas que demuestren que PAM interceptó los intentos fallidos de SSH.
+
+<Aside type="caution" title="Riesgo real — lee esto antes de empezar">
+Si cometes un error en `/etc/pam.d/common-auth` puedes perder acceso `sudo` y SSH simultáneamente. **Antes de modificar cualquier fichero PAM**, abre una segunda sesión SSH en la misma VM y mantenla abierta como rescate. Si te quedas sin acceso, necesitarás consola física o acceso a la VM desde el hipervisor para revertir el cambio.
+</Aside>
+
+---
+
 ## 📤 Bloque de entrega
 
-1. **Exporta tu historial de comandos:**
-
-   ```bash
-   history > ~/practica3/entrega/history.txt
-   ```
-
-2. **Crea el archivo comprimido final:**
-
-   ```bash
-   tar -czf ~/practica3/entrega_practica3.tar.gz -C ~/practica3 entrega/
-   ```
-
-3. **Descarga a tu equipo local** desde la terminal de tu ordenador personal:
-
-   ```bash
-   # Sustituye IP_DE_LA_VM por la IP de tu servidor
-   scp alumno@IP_DE_LA_VM:~/practica3/entrega_practica3.tar.gz ./
-   ```
-
-4. **Envía por correo** el archivo `entrega_practica3.tar.gz` a [hola@casset.cat](mailto:hola@casset.cat) con el asunto "Entrega Práctica 3 - [tu_nombre]".
+Sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 3`).

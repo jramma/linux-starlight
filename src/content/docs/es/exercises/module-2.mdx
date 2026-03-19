@@ -342,30 +342,15 @@ Guarda el comando de búsqueda que usaste y una evidencia (líneas relevantes) e
 
 ---
 
-## 📤 Bloque de entrega (finalización)
+## 📤 Bloque de entrega
 
-Para dar por terminada la práctica y enviar tus resultados, sigue estos pasos:
+El tar de esta práctica incluye el log descargado además de la carpeta de entrega:
 
-1. **Exporta tu historial de comandos** para que podamos ver cómo has trabajado:
-   ```bash
-   history > ~/practica2/entrega/history.txt
-   ```
+```bash
+tar -czf ~/practica2/entrega_practica2.tar.gz -C ~/practica2 entrega/ data/access.log
+```
 
-2. **Crea el archivo comprimido final** que contiene todos tus entregables y el log:
-   ```bash
-   tar -czf ~/practica2/entrega_practica2.tar.gz -C ~/practica2 entrega/ data/access.log
-   ```
-
-3. **Descarga el archivo a tu equipo local**:
-   Desde la terminal de **tu ordenador personal** (no desde la VM), puedes usar `scp` para descargar el archivo de entrega:
-   ```bash
-   # Sustituye IP_DE_LA_VM por la IP de tu servidor (la que usas para ssh)
-   scp alumno@IP_DE_LA_VM:~/practica2/entrega_practica2.tar.gz ./
-   ```
-   *Si lo prefieres, también puedes usar un cliente gráfico como FileZilla o WinSCP.*
-
-4. **Envía el archivo por correo**:
-   Adjunta el archivo `entrega_practica2.tar.gz` que acabas de descargar y envíalo a [hola@casset.cat](mailto:hola@casset.cat) con el asunto "Entrega Práctica 2 - [tu_nombre]".
+Para los pasos de exportar historial, descargar y enviar por correo, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 2`).
 
 ---
 

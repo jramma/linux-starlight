@@ -286,19 +286,26 @@ echo "umask 027" | sudo tee -a /etc/profile
 
 ## 📤 Bloque de entrega
 
+Guarda la verificación del estado antes de empaquetar:
+
 ```bash
-echo "=== ENTREGA PRÁCTICA 7 ===" && \
-echo "" && \
-echo "--- Firewall UFW ---" && \
-sudo ufw status verbose && \
-echo "" && \
-echo "--- fail2ban SSH ---" && \
-sudo fail2ban-client status sshd && \
-echo "" && \
-echo "--- Config SSH ---" && \
-grep "PermitRootLogin\|PasswordAuthentication\|PubkeyAuthentication" /etc/ssh/sshd_config && \
-echo "" && \
-echo "--- Lynis (hardening index) ---" && \
-sudo lynis show version && \
-sudo grep "Hardening index" /var/log/lynis.log | tail -1
+mkdir -p ~/practica7/entrega
+{
+  echo "=== ENTREGA PRÁCTICA 7 ==="
+  echo ""
+  echo "--- Firewall UFW ---"
+  sudo ufw status verbose
+  echo ""
+  echo "--- fail2ban SSH ---"
+  sudo fail2ban-client status sshd
+  echo ""
+  echo "--- Config SSH ---"
+  grep "PermitRootLogin\|PasswordAuthentication\|PubkeyAuthentication" /etc/ssh/sshd_config
+  echo ""
+  echo "--- Lynis (hardening index) ---"
+  sudo lynis show version
+  sudo grep "Hardening index" /var/log/lynis.log | tail -1
+} > ~/practica7/entrega/verificacion.txt
 ```
+
+Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 7`).

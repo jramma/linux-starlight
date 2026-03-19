@@ -549,25 +549,28 @@ timedatectl
 
 ---
 
-## Bloque de entrega
+## 📤 Bloque de entrega
 
-Cuando termines todos los pasos, ejecuta este comando **desde la sesión SSH** (o desde dentro del servidor si usas WSL2):
+Antes de empaquetar, guarda la verificación del estado del sistema:
 
 ```bash
-echo "=== ENTREGA PRÁCTICA 1 ===" && \
-echo "Hostname: $(hostname)" && \
-echo "Usuario: $(whoami)" && \
-uname -a && \
-echo "--- Red ---" && \
-ip addr show | grep "inet " && \
-echo "--- Zona horaria ---" && \
-timedatectl | grep "Time zone" && \
-echo "--- Sistema actualizado ---" && \
-sudo apt list --upgradable 2>/dev/null | wc -l && \
-echo "paquetes pendientes (0 = actualizado)"
+mkdir -p ~/practica1/entrega
+{
+  echo "=== ENTREGA PRÁCTICA 1 ==="
+  echo "Hostname: $(hostname)"
+  echo "Usuario: $(whoami)"
+  uname -a
+  echo "--- Red ---"
+  ip addr show | grep "inet "
+  echo "--- Zona horaria ---"
+  timedatectl | grep "Time zone"
+  echo "--- Paquetes pendientes ---"
+  sudo apt list --upgradable 2>/dev/null | wc -l
+  echo "paquetes pendientes (0 = actualizado)"
+} > ~/practica1/entrega/verificacion.txt
 ```
 
-Copia toda la salida y llévala al profesor.
+Para empaquetar y enviar la entrega, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 1`).
 
 <Aside type="tip" title="Snapshot / backup antes de continuar">
 **Multipass:**
