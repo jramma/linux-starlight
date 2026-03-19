@@ -247,6 +247,24 @@ PubkeyAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
 ```
 
+<Aside type="caution" title="Añade tu propia clave ANTES de deshabilitar contraseñas">
+Si deshabilitas `PasswordAuthentication` sin tener tu clave pública en `~/.ssh/authorized_keys`, **te quedarás bloqueado fuera de la VM** en cuanto cierres la sesión actual.
+
+Antes de continuar, asegúrate de que tu clave pública ya está en el servidor:
+
+```bash
+# Comprueba si ya tienes clave configurada para tu usuario
+cat ~/.ssh/authorized_keys 2>/dev/null || echo "SIN CLAVE — añádela primero"
+```
+
+Si no tienes clave, cópiala desde tu máquina host **ahora** (antes de tocar sshd_config):
+
+```bash
+# Desde tu ordenador personal (no desde la VM)
+ssh-copy-id alumno@IP_DE_LA_VM
+```
+</Aside>
+
 <Aside type="caution" title="Trampa AllowUsers — lee esto antes de continuar">
 Si añades la directiva `AllowUsers`, debes incluir **tu usuario actual** además de `remoteops`. Si solo pones `AllowUsers remoteops` y recargas, te quedarás **bloqueado fuera de tu propia sesión** en cuanto la cierres. Para este ejercicio, añade: `AllowUsers remoteops <tu_usuario_actual>`.
 </Aside>
@@ -306,8 +324,8 @@ Guarda las líneas relevantes en `~/practica3/entrega/35_auth_log.txt`. Identifi
 3. **Descarga a tu equipo local** desde la terminal de tu ordenador personal:
 
    ```bash
-   # Sustituye 'usuario' e 'IP_DE_LA_VM' por tus datos reales
-   scp usuario@IP_DE_LA_VM:~/practica3/entrega_practica3.tar.gz ./
+   # Sustituye IP_DE_LA_VM por la IP de tu servidor
+   scp alumno@IP_DE_LA_VM:~/practica3/entrega_practica3.tar.gz ./
    ```
 
 4. **Envía por correo** el archivo `entrega_practica3.tar.gz` a [hola@casset.cat](mailto:hola@casset.cat) con el asunto "Entrega Práctica 3 - [tu_nombre]".
