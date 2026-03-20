@@ -1,0 +1,314 @@
+---
+title: 7.6 Seguridad SSH Avanzada
+description: Blindaje total del protocolo de acceso remoto. Autenticación por clave pública, endurecimiento de sshd_config y protección anti fuerza bruta.
+sidebar:
+  order: 7
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Entenderás por qué SSH es el vector de ataque #1 en servidores expuestos a
+  internet. - Implementarás autenticación por **clave pública** eliminando
+  contraseñas del acceso remoto. - Endurecerás `/etc/ssh/sshd_config` para
+  desactivar vectores de entrada peligrosos. - Aprenderás a proteger SSH con
+  `fail2ban` como segunda línea de defensa automática.
+</PreCheck>
+
+SSH (Secure Shell) es la arteria vital que te conecta a tus servidores desde cualquier punto del planeta. También es la puerta que los bots automatizados bombardean **sin descanso, los 365 días del año**.
+
+Un servidor Debian recién conectado a internet con el puerto 22 abierto recibirá sus primeros intentos de intrusión en **menos de 60 segundos**. No es exageración; es matemática de internet.
+
+---
+
+## 1. El Problema: Contraseñas como Único Factor
+
+La configuración por defecto de SSH acepta contraseñas. Esto significa que cualquier bot con un diccionario de millones de combinaciones puede probarlas todas, una a una, indefinidamente.
+
+```bash
+# Evidencia del ataque constante en logs reales
+sudo journalctl -u ssh --since "1 hour ago" | grep "Failed password"
+# Jun 15 03:12:41 servidor sshd[1847]: Failed password for root from 185.234.219.45
+# Jun 15 03:12:43 servidor sshd[1849]: Failed password for root from 185.234.219.45
+# Jun 15 03:12:45 servidor sshd[1851]: Failed password for root from 185.234.219.45
+# (miles de líneas idénticas cada hora)
+```
+
+La solución definitiva: **eliminar las contraseñas del ecuación de SSH por completo**.
+
+---
+
+## 2. Autenticación por Clave Pública
+
+El sistema de claves asimétricas es la respuesta. Funciona como una cerradura y una llave:
+
+- **Clave privada**: Tu llave física. Vive en tu portátil. Nunca se comparte.
+- **Clave pública**: La cerradura. Se instala en cada servidor al que quieres entrar.
+
+Un bot sin tu clave privada no puede entrar aunque pruebe billones de contraseñas. Punto.
+
+### Paso 1: Generar el par de claves (en tu máquina local)
+
+```bash
+# Ed25519: el algoritmo moderno y recomendado (más seguro y rápido que RSA)
+ssh-keygen -t ed25519 -C "tu_email@dominio.com"
+
+# El sistema te preguntará dónde guardar la clave (acepta el default):
+# /home/tuusuario/.ssh/id_ed25519 (privada) y id_ed25519.pub (pública)
+
+# IMPORTANTE: Añade una passphrase para doble protección
+# Si alguien roba tu fichero de clave privada, aún necesita la passphrase
+```
+
+<Aside type="caution" title="Nunca compartas tu clave privada">
+El fichero `~/.ssh/id_ed25519` (sin extensión) es tu clave **privada**. Nunca la envíes por correo, chat ni la subas a GitHub. El fichero `id_ed25519.pub` (con `.pub`) es la clave **pública** y es la única que se copia al servidor.
+</Aside>
+
+### Paso 2: Copiar la clave pública al servidor
+
+<Tabs>
+  <TabItem label="Con ssh-copy-id (recomendado)">
+    ```bash
+    # Copia automáticamente la clave pública al servidor
+    ssh-copy-id -i ~/.ssh/id_ed25519.pub usuario@ip_servidor
+
+    # Deberás introducir tu contraseña SSH por última vez
+    # El comando añade tu clave a ~/.ssh/authorized_keys en el servidor
+    ```
+  </TabItem>
+  <TabItem label="Manual (si ssh-copy-id no está disponible)">
+    ```bash
+    # Ver el contenido de tu clave pública
+    cat ~/.ssh/id_ed25519.pub
+
+    # En el servidor, crear el directorio .ssh y el fichero authorized_keys
+    mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    nano ~/.ssh/authorized_keys
+    # Pega aquí el contenido de id_ed25519.pub
+    chmod 600 ~/.ssh/authorized_keys
+    ```
+  </TabItem>
+</Tabs>
+
+### Paso 3: Verificar antes de cerrar sesión
+
+```bash
+# Desde otra terminal (sin cerrar la sesión actual), prueba el acceso con clave
+ssh -i ~/.ssh/id_ed25519 usuario@ip_servidor
+
+# Si entras sin contraseña, el sistema funciona correctamente
+# Solo entonces continúa con el endurecimiento del sshd_config
+```
+
+<Aside type="danger" title="La regla de oro: nunca cierres la sesión sin verificar">
+Si deshabilitas la autenticación por contraseña sin haber verificado que las claves funcionan, te quedas encerrado fuera de tu propio servidor. Comprueba siempre desde una **segunda ventana de terminal** antes de aplicar cambios críticos.
+</Aside>
+
+---
+
+## 3. Endurecimiento de `/etc/ssh/sshd_config`
+
+Con las claves funcionando, el siguiente paso es eliminar todas las vías de entrada innecesarias:
+
+```bash
+# Editar la configuración del demonio SSH
+sudo nano /etc/ssh/sshd_config
+```
+
+### Directivas críticas de seguridad
+
+```text
+# =========================================================
+# ACCESO Y AUTENTICACIÓN
+# =========================================================
+
+# Nunca permitas login directo como root
+# (usa sudo desde una cuenta de usuario normal)
+PermitRootLogin no
+
+# Deshabilitar contraseñas completamente — solo claves
+# (hazlo SOLO después de verificar que tus claves funcionan)
+PasswordAuthentication no
+
+# Rechazar cuentas sin contraseña configurada
+PermitEmptyPasswords no
+
+# Deshabilitar autenticación basada en host (método antiguo e inseguro)
+HostbasedAuthentication no
+
+# =========================================================
+# LÍMITES Y TIMEOUTS
+# =========================================================
+
+# Máximo de intentos de autenticación por conexión
+MaxAuthTries 3
+
+# Tiempo máximo para completar la autenticación (en segundos)
+LoginGraceTime 20
+
+# Máximo de sesiones simultáneas por conexión
+MaxSessions 3
+
+# =========================================================
+# RESTRICCIONES ADICIONALES
+# =========================================================
+
+# Deshabilitar reenvío X11 (escritorio gráfico remoto) si no lo usas
+X11Forwarding no
+
+# Deshabilitar banner de versión SSH (no dar información al atacante)
+# DebianBanner no
+
+# Puerto alternativo (oscuridad, no es seguridad real, pero reduce ruido)
+# Port 2222
+```
+
+### Aplicar los cambios
+
+```bash
+# Verificar la sintaxis del fichero ANTES de reiniciar
+sudo sshd -t
+# Si no da errores, la sintaxis es correcta
+
+# Reiniciar el servicio para aplicar cambios
+sudo systemctl restart ssh
+
+# Verificar que el servicio arrancó correctamente
+sudo systemctl status ssh
+```
+
+<Aside type="tip" title="Prueba desde una segunda sesión">
+Después de reiniciar `sshd`, **mantén abierta tu sesión SSH actual** e intenta conectar desde otra ventana de terminal. Si la nueva conexión funciona, todo está correcto. Si algo falla, tienes la sesión existente para revertir los cambios.
+</Aside>
+
+---
+
+## 4. Fail2ban: La Segunda Línea de Defensa
+
+Incluso con claves obligatorias, los bots siguen intentando conexiones y generando ruido en los logs. `fail2ban` monitoriza los logs en tiempo real y **banea automáticamente** IPs que muestran comportamiento de fuerza bruta:
+
+```bash
+# Instalar fail2ban
+sudo apt install fail2ban
+
+# Copiar la configuración por defecto (nunca edites jail.conf directamente)
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+
+# Editar la configuración local
+sudo nano /etc/fail2ban/jail.local
+```
+
+### Configuración básica para SSH
+
+```ini
+[DEFAULT]
+# Tiempo de ban en segundos (3600 = 1 hora)
+bantime  = 3600
+
+# Ventana de tiempo para contar intentos (600 = 10 minutos)
+findtime = 600
+
+# Número de intentos fallidos antes del ban
+maxretry = 3
+
+# Tu IP de gestión (nunca te banees a ti mismo)
+ignoreip = 127.0.0.1/8 ::1
+
+[sshd]
+enabled = true
+port    = ssh
+logpath = /var/log/auth.log
+maxretry = 3
+```
+
+```bash
+# Habilitar e iniciar fail2ban
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+
+# Ver el estado y las IPs baneadas actualmente
+sudo fail2ban-client status sshd
+
+# Desbanear una IP manualmente (si te baneaste tú mismo)
+sudo fail2ban-client set sshd unbanip 192.168.1.100
+```
+
+---
+
+## 5. Verificación del Estado Final
+
+```bash
+# Verificar configuración activa de sshd
+sudo sshd -T | grep -E "permitrootlogin|passwordauthentication|maxauthtries"
+
+# Ver intentos de login fallidos en tiempo real
+sudo journalctl -u ssh -f
+
+# Comprobar qué IPs están baneadas por fail2ban
+sudo fail2ban-client status sshd
+
+# Verificar que el puerto SSH escucha correctamente
+ss -tlnp | grep :22
+```
+
+---
+
+## Comprueba tus conocimientos
+
+1. Un compañero junior acaba de configurar correctamente la autenticación por clave pública en el servidor de producción. Emocionado, ejecuta `PasswordAuthentication no` en `sshd_config` y reinicia el servicio SSH. Dos minutos después te llama diciendo que no puede entrar al servidor. ¿Cuál fue probablemente su error?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       No verificó que la autenticación por clave funcionaba desde una segunda
+       terminal **antes** de deshabilitar las contraseñas. Al reiniciar sshd con
+       `PasswordAuthentication no` sin claves válidas instaladas, quedó bloqueado
+       sin ningún método de acceso remoto.
+     </Option>
+     <Option>
+       Olvidó ejecutar `sudo update-grub` después de modificar sshd_config.
+     </Option>
+     <Option>
+       Debería haber usado `ssh-keygen -t rsa` en vez de `ed25519` para que
+       funcione con sshd.
+     </Option>
+   </MultipleChoice>
+
+2. Tu servidor recibe ataques de fuerza bruta constantes en el puerto 22 que saturan los logs. Ya tienes autenticación por clave pública activada y contraseñas deshabilitadas. ¿Qué herramienta añadirías como segunda capa de defensa para banear automáticamente las IPs atacantes?
+
+   <MultipleChoice>
+     <Option>
+       `ufw limit ssh` es suficiente ya que bloquea cualquier intento de login
+       automáticamente después del primer fallo.
+     </Option>
+     <Option isCorrect>
+       `fail2ban` monitoriza `/var/log/auth.log` y banea temporalmente las IPs
+       que superan el umbral de intentos fallidos configurado, reduciendo el ruido
+       y el riesgo residual aunque las contraseñas estén desactivadas.
+     </Option>
+     <Option>
+       AppArmor puede configurarse para bloquear IPs externas que intenten
+       autenticarse en SSH repetidamente.
+     </Option>
+   </MultipleChoice>
+
+3. ¿Cuál es la diferencia clave entre `PermitRootLogin no` y `PasswordAuthentication no` en `sshd_config`?
+
+   <MultipleChoice>
+     <Option>
+       Son sinónimos; ambas directivas hacen exactamente lo mismo en versiones
+       modernas de OpenSSH.
+     </Option>
+     <Option isCorrect>
+       `PermitRootLogin no` impide que el usuario `root` inicie sesión directamente
+       por SSH (debes entrar con un usuario normal y luego usar `sudo`).
+       `PasswordAuthentication no` elimina la autenticación por contraseña para
+       **todos** los usuarios, forzando el uso exclusivo de claves criptográficas.
+     </Option>
+     <Option>
+       `PermitRootLogin no` afecta solo a conexiones locales (localhost), mientras
+       que `PasswordAuthentication no` afecta solo a conexiones remotas.
+     </Option>
+   </MultipleChoice>

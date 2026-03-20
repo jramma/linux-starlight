@@ -1,6 +1,6 @@
 ---
 title: "Práctica 5 — Almacenamiento y LVM"
-description: Configura un disco adicional con LVM desde cero, crea volúmenes lógicos, formatea particiones y configura el montaje automático.
+description: "5 ejercicios LFCS: particionado de discos, formateo y fstab, LVM completo con extensión en caliente, swap y swappiness, y cuotas de disco por usuario."
 sidebar:
   order: 5
 ---
@@ -8,7 +8,7 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 
 <Aside type="tip" title="Antes de empezar">
-Para esta práctica necesitas añadir un segundo disco a tu VM. El profesor lo hará por ti en VirtualBox antes de la sesión, o sigue el Paso 0 si no lo tienes.
+Esta práctica requiere un segundo disco virtual en la VM. Los ejercicios 5.1, 5.2 y 5.3 trabajan directamente sobre él. Los ejercicios 5.4 y 5.5 (swap y cuotas) no lo necesitan. Sigue el Paso 0 si todavía no tienes el disco añadido. Léelos todos antes de empezar.
 </Aside>
 
 ---
@@ -29,174 +29,545 @@ Verifica que el disco aparece en el sistema:
 lsblk
 ```
 
-Deberías ver `/dev/sda` (disco del sistema) y `/dev/sdb` (disco nuevo, vacío, sin particiones).  
-Si ves `/dev/nvme0n1` en lugar de `sda`, el nuevo disco será `/dev/sdb` igualmente.
+Deberías ver `/dev/sda` (disco del sistema) y `/dev/sdb` (disco nuevo, vacío, sin particiones). Si ves `/dev/vdb` en lugar de `sdb`, úsalo en su lugar durante toda la práctica.
 
 ---
 
-## Contexto — ¿Qué es LVM?
-
-LVM (Logical Volume Manager) añade una capa de abstracción entre los discos físicos y los sistemas de archivos. Te permite:
-
-- Redimensionar particiones sin apagar el servidor
-- Combinar varios discos en un único espacio
-- Ampliar el almacenamiento añadiendo discos en caliente
-
-Hay tres conceptos clave:
-
-```
-Disco físico (/dev/sdb)
-    ↓ pvcreate
-Physical Volume (PV) — el disco inicializado para LVM
-    ↓ vgcreate
-Volume Group (VG) — pool de almacenamiento (puede tener varios PVs)
-    ↓ lvcreate
-Logical Volume (LV) — equivalente a una partición flexible
-    ↓ mkfs / mount
-Sistema de archivos montado y accesible
-```
-
----
-
-## Tarea 1 — Instalar las herramientas LVM
+## Setup — ejecutar una sola vez
 
 ```bash
-sudo apt update && sudo apt install -y lvm2
-
-# Verifica que las herramientas están disponibles
-pvs --version
+mkdir -p ~/practica5/{work,entrega}
+sudo apt update && sudo apt install -y lvm2 quota
 ```
+
+Todo lo que se pida "guardar" debe ir dentro de `~/practica5/entrega/`.
 
 ---
 
-## Tarea 2 — Crear el Physical Volume
+## Ejercicio 5.1 — Inventario de discos y particionado
+
+### Contexto
+
+Nunca operes un disco a ciegas. Un sysadmin LFCS empieza siempre haciendo un inventario completo antes de tocar nada. Aquí aprenderás a leer el mapa de discos y a crear particiones con las dos herramientas del examen: `fdisk` (interactiva) y `parted` (scriptable).
+
+### Tareas
+
+1) **Audita el estado inicial de los discos** antes de modificar nada:
 
 ```bash
-# Inicializa el disco /dev/sdb para su uso con LVM
-sudo pvcreate /dev/sdb
+lsblk
+lsblk -f
+sudo fdisk -l | head -40
+```
 
+Guarda la salida en `~/practica5/entrega/51_inventario_previo.txt`. Identifica con comentarios `#`:
+- Qué dispositivo es el disco del sistema y cuántas particiones tiene
+- Qué dispositivo es el disco nuevo y si tiene o no tabla de particiones
+
+2) **Examina la tabla de particiones del disco nuevo** sin modificarla:
+
+```bash
+sudo fdisk -l /dev/sdb
+sudo parted /dev/sdb print 2>/dev/null || echo "Sin tabla de particiones"
+```
+
+Guarda en `~/practica5/entrega/51_disco_nuevo.txt`. Explica con un comentario `#` la diferencia entre MBR y GPT.
+
+3) **Crea una tabla GPT y dos particiones con `parted`** (herramienta scriptable, clave en LFCS):
+
+```bash
+# Asignar tabla de particiones GPT
+sudo parted /dev/sdb mklabel gpt
+
+# Partición 1: 5 GB (para el ejercicio de LVM más adelante)
+sudo parted -a opt /dev/sdb mkpart primary 0% 50%
+
+# Partición 2: el resto del disco (~5 GB, para el ejercicio de LUKS extra)
+sudo parted -a opt /dev/sdb mkpart primary 50% 100%
+
+# Verificar el resultado
+lsblk /dev/sdb
+sudo parted /dev/sdb print
+```
+
+Guarda el resultado en `~/practica5/entrega/51_particionado.txt`.
+
+<Aside type="caution" title="Zona de peligro — una letra mal y pierdes datos">
+`parted` ejecuta los cambios inmediatamente al confirmar, a diferencia de `fdisk` que espera a que pulses `w`. Antes de pulsar Enter, confirma que apuntas a `/dev/sdb` y no a `/dev/sda` (disco del sistema).
+</Aside>
+
+4) **Crea una partición adicional con `fdisk`** para practicar la herramienta interactiva. Elimina las dos particiones anteriores con `parted` y recrea solo una con `fdisk`:
+
+```bash
+# Borrar la tabla existente
+sudo parted /dev/sdb mklabel gpt
+
+# Entrar a fdisk (interactivo)
+sudo fdisk /dev/sdb
+```
+
+Dentro de `fdisk`, sigue estos pasos:
+- `n` → nueva partición
+- `p` → primaria
+- Número `1`, Enter, Enter (acepta valores por defecto para usar todo el disco)
+- `p` → imprime para verificar
+- `w` → escribe y sale
+
+```bash
 # Verifica el resultado
-sudo pvs
-# Debes ver /dev/sdb en la lista con ~10 GiB de capacidad
+lsblk /dev/sdb
 ```
 
-Si `pvcreate` pide confirmación porque el disco tiene datos, escribe `y` para confirmar.
+Guarda los comandos y la salida final de `lsblk` en `~/practica5/entrega/51_fdisk.txt`. Añade un comentario `#` explicando por qué `q` en `fdisk` no destruye datos pero `q` en `parted` sí puede tener consecuencias.
 
 ---
 
-## Tarea 3 — Crear el Volume Group
+## Ejercicio 5.2 — Formateo, montaje y /etc/fstab
+
+### Contexto
+
+Un disco particionado sigue siendo metal bruto. Para que Linux pueda guardar archivos necesita un sistema de archivos (filesystem). Aquí formatearás, montarás manualmente y harás el montaje permanente usando la tabla sagrada `/etc/fstab` — el error más frecuente en el examen LFCS.
+
+### Tareas
+
+1) **Formatea la partición `/dev/sdb1` con ext4:**
 
 ```bash
-# Crea el Volume Group 'datos-vg' usando el PV
-sudo vgcreate datos-vg /dev/sdb
-
-# Verifica el resultado
-sudo vgs
-# Verás datos-vg con ~10 GiB disponibles
+sudo mkfs.ext4 /dev/sdb1
 ```
 
----
+Observa la salida: incluye el número de inodos, el UUID del dispositivo y el tamaño de bloque. Guarda el comando y su salida en `~/practica5/entrega/52_formato.txt`.
 
-## Tarea 4 — Crear el Logical Volume
+2) **Obtén el UUID del dispositivo** (nunca uses `/dev/sdb1` en fstab):
 
 ```bash
-# Crea un LV de 8 GB llamado 'proyectos-lv' dentro del VG
-sudo lvcreate -L 8G -n proyectos-lv datos-vg
-
-# Verifica el resultado
-sudo lvs
-# Verás proyectos-lv con 8 GiB
-
-# El LV es accesible como dispositivo:
-ls -la /dev/datos-vg/proyectos-lv
+sudo blkid /dev/sdb1
 ```
 
----
+Copia el UUID. Lo necesitarás en el siguiente paso. Guarda la salida en el mismo fichero.
 
-## Tarea 5 — Crear el sistema de archivos y montarlo
+3) **Monta manualmente el dispositivo** y prueba que funciona:
 
 ```bash
-# Formatea el LV con ext4
-sudo mkfs.ext4 /dev/datos-vg/proyectos-lv
+sudo mkdir -p /mnt/datos
+sudo mount /dev/sdb1 /mnt/datos
 
-# Crea el punto de montaje
-sudo mkdir -p /srv/proyectos
+# Verifica el montaje
+df -h /mnt/datos
+mount | grep sdb1
 
-# Monta el LV
-sudo mount /dev/datos-vg/proyectos-lv /srv/proyectos
-
-# Verifica que está montado
-df -h /srv/proyectos
-# Debe mostrar ~7.9 GB disponibles en /srv/proyectos
+# Prueba de escritura
+echo "prueba de escritura $(date)" | sudo tee /mnt/datos/test.txt
+cat /mnt/datos/test.txt
 ```
 
-Prueba que puedes escribir en él:
+Guarda la salida de `df -h` y `mount | grep sdb1` en `~/practica5/entrega/52_montaje_manual.txt`.
+
+4) **Configura el montaje permanente en `/etc/fstab`:**
 
 ```bash
-sudo touch /srv/proyectos/prueba.txt
-ls /srv/proyectos/
-```
-
----
-
-## Tarea 6 — Montaje automático con /etc/fstab
-
-El montaje actual desaparecería al reiniciar. Para que sea permanente, añade una entrada en `/etc/fstab`.
-
-**IMPORTANTE:** usa el UUID del LV, no el nombre del dispositivo. El UUID nunca cambia aunque añadas discos:
-
-```bash
-# Obtén el UUID del LV
-sudo blkid /dev/datos-vg/proyectos-lv
-```
-
-Copia el valor `UUID="xxxxx-xxxx-..."` (con las comillas).
-
-```bash
-# Edita /etc/fstab
 sudo nano /etc/fstab
 ```
 
-Añade esta línea al final (sustituye el UUID por el tuyo):
+Añade al final (sustituye `UUID-AQUI` por el UUID real de tu partición):
 
 ```
-UUID=tu-uuid-aqui  /srv/proyectos  ext4  defaults,noatime  0  2
+UUID=UUID-AQUI  /mnt/datos  ext4  defaults,noatime  0  2
 ```
 
-<Aside type="note" title="¿Qué significan los últimos dos números?">
-- El primer `0` → no se hace dump (backup clásico) de esta partición
-- El `2` → se comprueba con `fsck` al arranque, pero después del disco raíz (que es `1`)
+<Aside type="note" title="¿Qué significan los últimos dos campos?">
+- `0` → no se hace dump de esta partición
+- `2` → se verifica con fsck al arranque, después del disco raíz (que usa `1`)
+
+La opción `noatime` evita actualizar la fecha de último acceso en cada lectura, lo que reduce escrituras innecesarias en disco.
 </Aside>
 
-Verifica que la entrada de fstab es correcta antes de reiniciar:
+5) **Prueba la entrada de fstab sin reiniciar** — este paso es obligatorio en LFCS:
 
 ```bash
 # Desmonta primero
-sudo umount /srv/proyectos
+sudo umount /mnt/datos
 
 # Monta todo lo que aparece en fstab
 sudo mount -a
 
-# Si no hay errores, verifica que se montó
-df -h /srv/proyectos
+# Si no hay errores, verifica que se montó correctamente
+df -h /mnt/datos
+cat /mnt/datos/test.txt  # el archivo debe seguir ahí
 ```
 
-Si hay un error en fstab, el sistema puede no arrancar. Si algo sale mal, edita el fstab y elimina la línea.
+<Aside type="caution" title="La prueba de fuego — obligatoria antes de reiniciar">
+Un error de sintaxis en `/etc/fstab` puede dejar el servidor en modo de emergencia al arrancar. Siempre ejecuta `sudo mount -a` y espera que no devuelva ningún error antes de dar por válida la edición.
+</Aside>
+
+Guarda los comandos y sus salidas en `~/practica5/entrega/52_fstab.txt`. Incluye el contenido de la línea que añadiste con un comentario `#` explicando cada campo.
 
 ---
 
-## Tarea 7 — Verificar el montaje tras reiniciar (opcional)
+## Ejercicio 5.3 — LVM completo: crear, usar y extender en caliente
+
+### Contexto
+
+Las particiones clásicas son una trampa en producción: cuando se llenan no puedes ampliarlas sin parar el servidor. LVM añade una capa de abstracción que permite extender volúmenes mientras los servicios siguen corriendo. Aquí seguirás la tríada completa PV → VG → LV y extenderás un volumen en caliente.
+
+### Setup — preparar el disco para LVM
+
+Si hiciste el ejercicio 5.1 y 5.2, el disco tiene una partición montada. Desmóntala primero:
 
 ```bash
-sudo reboot
+sudo umount /mnt/datos 2>/dev/null || true
+
+# Borra la tabla de particiones para empezar limpio
+sudo parted /dev/sdb mklabel gpt
+
+# Verifica que el disco está vacío
+lsblk /dev/sdb
 ```
 
-Tras reconectar por SSH:
+### Tarea 1 — Physical Volume (PV)
 
 ```bash
-df -h /srv/proyectos
-# Debe montarse automáticamente sin hacer nada
+# Inicializa el disco para LVM
+sudo pvcreate /dev/sdb
+
+# Verifica el resultado
+sudo pvs
+sudo pvdisplay /dev/sdb
 ```
+
+Guarda la salida de `pvdisplay` en `~/practica5/entrega/53_pv.txt`. Identifica con un comentario `#` el campo "PE Size" (tamaño de Physical Extent, la unidad mínima de asignación LVM).
+
+### Tarea 2 — Volume Group (VG)
+
+```bash
+# Crea la piscina de almacenamiento 'datos-vg'
+sudo vgcreate datos-vg /dev/sdb
+
+# Verifica el resultado
+sudo vgs
+sudo vgdisplay datos-vg
+```
+
+Guarda la salida de `vgdisplay` en `~/practica5/entrega/53_vg.txt`. Identifica con un comentario `#` cuánto espacio libre tiene el VG.
+
+### Tarea 3 — Logical Volumes (LV)
+
+Crea dos volúmenes lógicos para simular un entorno real:
+
+```bash
+# LV para aplicación: 4 GB
+sudo lvcreate -L 4G -n app-lv datos-vg
+
+# LV para logs: 2 GB
+sudo lvcreate -L 2G -n logs-lv datos-vg
+
+# Verifica los dos volúmenes
+sudo lvs
+sudo lvdisplay datos-vg/app-lv
+```
+
+Guarda la salida de `lvs` en `~/practica5/entrega/53_lv.txt`.
+
+### Tarea 4 — Formatear, montar y usar los LVs
+
+```bash
+# Formatea ambos LVs
+sudo mkfs.ext4 /dev/datos-vg/app-lv
+sudo mkfs.ext4 /dev/datos-vg/logs-lv
+
+# Crea puntos de montaje
+sudo mkdir -p /srv/app /srv/logs
+
+# Monta ambos
+sudo mount /dev/datos-vg/app-lv /srv/app
+sudo mount /dev/datos-vg/logs-lv /srv/logs
+
+# Verifica
+df -h /srv/app /srv/logs
+
+# Prueba de escritura
+echo "app en funcionamiento $(date)" | sudo tee /srv/app/estado.txt
+echo "log de prueba $(date)" | sudo tee /srv/logs/app.log
+```
+
+Guarda la salida de `df -h` en `~/practica5/entrega/53_montaje_lv.txt`.
+
+### Tarea 5 — Extender un LV en caliente (la magia negra de LVM)
+
+Simula que el volumen de logs se está llenando. Amplíalo de 2 GB a 3 GB **sin desmontar**:
+
+```bash
+# Comprueba el espacio libre en el VG
+sudo vgs
+
+# Extiende el LV en +1G
+sudo lvextend -L +1G /dev/datos-vg/logs-lv
+
+# El LV creció, pero ext4 aún cree que mide 2 GB. Fuerza el recálculo:
+sudo resize2fs /dev/datos-vg/logs-lv
+
+# Verifica que el filesystem ya ve los 3 GB
+df -h /srv/logs
+```
+
+Guarda los tres estados (antes de lvextend, después de lvextend, después de resize2fs) en `~/practica5/entrega/53_lvextend.txt`. Añade un comentario `#` explicando por qué `resize2fs` es necesario aunque `lvextend` ya haya terminado.
+
+### Tarea 6 — Hacer los montajes permanentes con fstab
+
+```bash
+# Obtén los UUIDs de los LVs
+sudo blkid /dev/datos-vg/app-lv
+sudo blkid /dev/datos-vg/logs-lv
+```
+
+Añade las dos entradas a `/etc/fstab` (sustituye los UUIDs por los reales):
+
+```bash
+sudo nano /etc/fstab
+```
+
+```
+UUID=UUID-APP-LV   /srv/app   ext4  defaults  0  2
+UUID=UUID-LOGS-LV  /srv/logs  ext4  defaults  0  2
+```
+
+Prueba la sintaxis:
+
+```bash
+sudo umount /srv/app /srv/logs
+sudo mount -a
+df -h /srv/app /srv/logs
+```
+
+Guarda el resultado en `~/practica5/entrega/53_fstab_lvm.txt`.
+
+---
+
+## Ejercicio 5.4 — Swap y ajuste de swappiness
+
+### Contexto
+
+El swap es la válvula de seguridad de la RAM: cuando la memoria física se agota, el kernel mueve páginas poco usadas al disco para evitar matar procesos. En este ejercicio crearás un fichero de swap (más flexible que una partición) y ajustarás `vm.swappiness` para optimizar el comportamiento en un servidor de base de datos.
+
+### Tareas
+
+1) **Audita el estado del swap actual:**
+
+```bash
+swapon --show
+free -h
+cat /proc/meminfo | grep -i swap
+```
+
+Guarda en `~/practica5/entrega/54_swap_previo.txt`. Identifica con un comentario `#` si ya hay swap activo y de qué tipo (partición o fichero).
+
+2) **Crea un fichero de swap de 1 GB:**
+
+```bash
+# Crea el fichero (fallocate es más rápido que dd)
+sudo fallocate -l 1G /swapfile
+
+# Permisos correctos (solo root puede leer el swap — contiene RAM)
+sudo chmod 600 /swapfile
+
+# Formatea como swap
+sudo mkswap /swapfile
+
+# Activa el swap
+sudo swapon /swapfile
+
+# Verifica
+swapon --show
+free -h
+```
+
+Guarda la salida de `swapon --show` y `free -h` en `~/practica5/entrega/54_swap_creado.txt`.
+
+3) **Haz el swap permanente en fstab:**
+
+```bash
+sudo nano /etc/fstab
+```
+
+Añade al final:
+
+```
+/swapfile  none  swap  sw  0  0
+```
+
+Verifica la sintaxis:
+
+```bash
+sudo mount -a
+swapon --show
+```
+
+Guarda en `~/practica5/entrega/54_swap_fstab.txt`.
+
+4) **Ajusta `vm.swappiness` para un servidor de base de datos:**
+
+```bash
+# Ver el valor actual (60 por defecto en Debian)
+sysctl vm.swappiness
+
+# Cambiar temporalmente a 10 (estándar para servidores BD)
+sudo sysctl -w vm.swappiness=10
+
+# Verificar el cambio en caliente
+sysctl vm.swappiness
+```
+
+Hazlo permanente creando un fichero de configuración de sysctl:
+
+```bash
+echo "vm.swappiness = 10" | sudo tee /etc/sysctl.d/99-swappiness.conf
+sudo sysctl --system
+
+# Verifica que el valor persiste
+sysctl vm.swappiness
+```
+
+Guarda los comandos y salidas en `~/practica5/entrega/54_swappiness.txt`. Explica con un comentario `#` por qué un servidor de base de datos prefiere `vm.swappiness=10` en lugar del valor por defecto de 60.
+
+5) **Prueba el swapoff y vuelve a activar:**
+
+```bash
+# Desactiva el swap (mueve las páginas de vuelta a RAM)
+sudo swapoff /swapfile
+swapon --show
+
+# Activa de nuevo
+sudo swapon /swapfile
+swapon --show
+```
+
+Guarda la salida en `~/practica5/entrega/54_swapoff.txt`.
+
+---
+
+## Ejercicio 5.5 — Cuotas de disco por usuario
+
+### Contexto
+
+Sin cuotas, un usuario puede llenar el disco del servidor y derribar todos los servicios. Las cuotas permiten establecer límites soft (avisador con periodo de gracia) y hard (límite absoluto que el kernel nunca permite superar). Aquí configurarás cuotas sobre el volumen LVM `/srv/app` creado en el ejercicio anterior.
+
+### Setup — usuarios de prueba
+
+```bash
+# Crea usuarios de prueba (si no existen del módulo 3)
+id cuota_alice 2>/dev/null || sudo useradd -m -s /bin/bash cuota_alice
+id cuota_bob 2>/dev/null || sudo useradd -m -s /bin/bash cuota_bob
+echo "cuota_alice:linux123" | sudo chpasswd
+echo "cuota_bob:linux123" | sudo chpasswd
+```
+
+### Tareas
+
+1) **Activa cuotas en el volumen `/srv/app`:**
+
+Edita `/etc/fstab` y añade las opciones de cuota a la línea de `/srv/app`:
+
+```bash
+sudo nano /etc/fstab
+```
+
+Modifica la línea de `/srv/app`:
+
+```
+# Antes:
+UUID=UUID-APP-LV   /srv/app   ext4  defaults  0  2
+
+# Después:
+UUID=UUID-APP-LV   /srv/app   ext4  defaults,usrquota,grpquota  0  2
+```
+
+Remontar para aplicar las opciones:
+
+```bash
+sudo mount -o remount /srv/app
+
+# Verifica que las opciones están activas
+cat /proc/mounts | grep srv/app
+```
+
+Guarda la salida en `~/practica5/entrega/55_cuotas_activadas.txt`.
+
+2) **Inicializa la base de datos de cuotas:**
+
+```bash
+# Instala las herramientas si no están
+sudo apt install -y quota
+
+# Crea los ficheros de base de datos
+sudo quotacheck -cugm /srv/app
+
+# Activa el sistema de cuotas
+sudo quotaon /srv/app
+
+# Verifica que está activo
+sudo quotaon -p /srv/app
+```
+
+Guarda la salida en `~/practica5/entrega/55_quotaon.txt`.
+
+3) **Asigna cuotas a `cuota_alice`:**
+
+```bash
+sudo edquota -u cuota_alice
+```
+
+En el editor que se abre, modifica los campos soft y hard para bloques (1 MB = 1024 bloques):
+
+```
+# Establece: soft = 100 MB (102400 bloques), hard = 150 MB (153600 bloques)
+Filesystem  blocks  soft    hard    inodes  soft  hard
+/dev/...    0       102400  153600  0       0     0
+```
+
+Guarda y sal. Verifica la cuota asignada:
+
+```bash
+sudo quota -u cuota_alice
+```
+
+Guarda la salida en `~/practica5/entrega/55_quota_alice.txt`.
+
+4) **Copia la misma cuota a `cuota_bob`** usando la plantilla:
+
+```bash
+sudo edquota -p cuota_alice cuota_bob
+sudo quota -u cuota_bob
+```
+
+Guarda la salida en el mismo fichero.
+
+5) **Prueba los límites en la práctica.**
+
+Crea archivos como `cuota_alice` hasta superar el límite soft (deberías ver un aviso) y luego hasta el límite hard (debe fallar):
+
+```bash
+# Crea un directorio de trabajo para alice
+sudo mkdir -p /srv/app/cuota_alice
+sudo chown cuota_alice:cuota_alice /srv/app/cuota_alice
+
+# Escribe ~110 MB (supera el soft de 100 MB)
+sudo -u cuota_alice dd if=/dev/zero of=/srv/app/cuota_alice/fichero_grande.bin bs=1M count=110 2>&1 || true
+
+# Verifica el estado de la cuota
+sudo quota -u cuota_alice
+```
+
+Guarda los comandos y salidas en `~/practica5/entrega/55_prueba_limite.txt`. Documenta con comentarios `#`:
+- Si el sistema emitió un aviso al superar el soft
+- Si pudo superar el hard
+
+6) **Genera un informe de cuotas del sistema:**
+
+```bash
+sudo repquota /srv/app
+```
+
+Guarda la salida en `~/practica5/entrega/55_repquota.txt`. Identifica con comentarios `#` qué significa el símbolo `--` y `+-` en la columna de estado de cada usuario.
 
 ---
 
@@ -205,22 +576,242 @@ df -h /srv/proyectos
 Guarda la verificación del estado antes de empaquetar:
 
 ```bash
-mkdir -p ~/practica5/entrega
 {
   echo "=== ENTREGA PRÁCTICA 5 ==="
   echo ""
-  echo "--- LVM: resumen ---"
+  echo "--- 5.1: Mapa de discos ---"
+  lsblk
+  echo ""
+  echo "--- 5.2: Montajes activos ---"
+  df -h | grep -E "mnt|srv"
+  echo ""
+  echo "--- 5.3: Estado LVM ---"
   sudo pvs && sudo vgs && sudo lvs
   echo ""
-  echo "--- Montaje ---"
-  df -h /srv/proyectos
+  echo "--- 5.3: Tamaño real de /srv/logs tras lvextend ---"
+  df -h /srv/logs
   echo ""
-  echo "--- fstab ---"
-  grep proyectos /etc/fstab
+  echo "--- 5.4: Swap activo ---"
+  swapon --show
+  free -h | grep Swap
   echo ""
-  echo "--- lsblk ---"
-  lsblk -f | grep -A3 sdb
+  echo "--- 5.4: vm.swappiness ---"
+  sysctl vm.swappiness
+  echo ""
+  echo "--- 5.5: Cuotas activas ---"
+  sudo repquota /srv/app
+  echo ""
+  echo "--- fstab (líneas añadidas) ---"
+  grep -E "datos-vg|swapfile|srv" /etc/fstab
 } > ~/practica5/entrega/verificacion.txt
 ```
 
 Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 5`).
+
+---
+
+## 🧨 Desafíos extra (MUY DIFÍCILES) — Almacenamiento avanzado
+
+Estos ejercicios cubren técnicas de nivel empresarial. No son obligatorios pero son muy frecuentes en el examen LFCS real.
+
+Reglas:
+- **Solo** puedes usar comandos de terminal.
+- No reinstales ni recreces desde cero sin entender el error.
+- Todo el trabajo se documenta en `~/practica5/entrega/`.
+
+---
+
+## Ejercicio 5.6 ⚡ EXTRA — Volumen cifrado con LUKS
+
+<Aside type="tip" title="Ejercicio opcional — nivel avanzado">
+LUKS es el estándar de cifrado de discos en Linux y uno de los temas más demandados en el examen LFCS. Requiere que hayas conservado la segunda partición `/dev/sdb2` del ejercicio 5.1. Si no la tienes, recrea el particionado con dos particiones.
+</Aside>
+
+### Contexto
+
+LUKS cifra el contenido completo de una partición. Aunque alguien extraiga el disco físicamente, sin la clave solo verá datos aleatorios. Aquí crearás un volumen LUKS, aprenderás a abrirlo y cerrarlo, y configurarás el descifrado automático al arranque.
+
+### Setup
+
+```bash
+sudo apt install -y cryptsetup
+
+# Verifica que /dev/sdb2 existe
+lsblk /dev/sdb
+# Si no existe sdb2, crea las particiones de nuevo:
+# sudo parted /dev/sdb mklabel gpt
+# sudo parted -a opt /dev/sdb mkpart primary 0% 50%
+# sudo parted -a opt /dev/sdb mkpart primary 50% 100%
+```
+
+### Tareas
+
+1) **Crea el volumen LUKS sobre `/dev/sdb2`:**
+
+```bash
+# Formatea la partición como LUKS (escribe YES en mayúsculas cuando lo pida)
+# Elige una passphrase que recuerdes (ej. "practica5luks")
+sudo cryptsetup luksFormat /dev/sdb2
+```
+
+Verifica la cabecera LUKS:
+
+```bash
+sudo cryptsetup luksDump /dev/sdb2 | head -20
+```
+
+Guarda la salida en `~/practica5/entrega/56_luks_header.txt`.
+
+2) **Abre el volumen, formatea y monta:**
+
+```bash
+# Abre el volumen cifrado y lo expone como /dev/mapper/privado
+sudo cryptsetup luksOpen /dev/sdb2 privado
+
+# Formatea el dispositivo descifrado
+sudo mkfs.ext4 /dev/mapper/privado
+
+# Monta y usa
+sudo mkdir -p /mnt/privado
+sudo mount /dev/mapper/privado /mnt/privado
+echo "dato confidencial $(date)" | sudo tee /mnt/privado/secreto.txt
+df -h /mnt/privado
+```
+
+Guarda los comandos y la salida de `df -h` en `~/practica5/entrega/56_luks_montado.txt`.
+
+3) **Cierra el volumen y demuestra que los datos están cifrados:**
+
+```bash
+# Desmonta y cierra el mapper
+sudo umount /mnt/privado
+sudo cryptsetup luksClose privado
+
+# Intenta leer la partición sin descifrar (debe ser ilegible)
+sudo strings /dev/sdb2 | head -5 || echo "contenido ilegible — cifrado correcto"
+
+# Reabre para confirmar que los datos siguen ahí
+sudo cryptsetup luksOpen /dev/sdb2 privado
+sudo mount /dev/mapper/privado /mnt/privado
+cat /mnt/privado/secreto.txt
+```
+
+Guarda en `~/practica5/entrega/56_luks_verificacion.txt`.
+
+4) **Añade una segunda clave de acceso** (key slot):
+
+```bash
+# Añade una nueva passphrase (necesitas la original para autorizar)
+sudo cryptsetup luksAddKey /dev/sdb2
+
+# Verifica que hay dos slots activos
+sudo cryptsetup luksDump /dev/sdb2 | grep "Key Slot"
+```
+
+Guarda en `~/practica5/entrega/56_luks_slots.txt`. Explica con un comentario `#` para qué sirve tener múltiples key slots en un entorno de equipo.
+
+5) **Haz un backup de la cabecera LUKS** (práctica obligatoria en producción):
+
+```bash
+sudo cryptsetup luksHeaderBackup /dev/sdb2 \
+  --header-backup-file ~/practica5/entrega/56_sdb2_luks_header.bak
+
+ls -lh ~/practica5/entrega/56_sdb2_luks_header.bak
+```
+
+Explica con un comentario `#` qué pasaría si la cabecera LUKS se corrompe y no tienes backup.
+
+---
+
+## Ejercicio 5.7 ⚡ EXTRA — LVM con errores de fstab y montaje roto
+
+### Setup (ejecuta UNA sola vez)
+
+{/* Notas ocultas 5.7: el escenario incluye un LV con UUID incorrecto en fstab, un punto de montaje con permisos que impiden escribir, y un VG con un PV marcado como desaparecido. */}
+
+```bash
+bash -lc 'set -euo pipefail
+base="$HOME/practica5/work"
+mkdir -p "$base"
+
+# Crea un VG y LV de prueba sobre un dispositivo loop (no necesita disco extra)
+sudo fallocate -l 500M /tmp/lvm_disco_prueba.img
+LOOP=$(sudo losetup --find --show /tmp/lvm_disco_prueba.img)
+echo "Dispositivo loop: $LOOP" | tee "$base/loop_device.txt"
+
+sudo pvcreate "$LOOP"
+sudo vgcreate practica-vg "$LOOP"
+sudo lvcreate -L 200M -n datos-lv practica-vg
+sudo lvcreate -L 100M -n config-lv practica-vg
+
+sudo mkfs.ext4 /dev/practica-vg/datos-lv 2>/dev/null
+sudo mkfs.ext4 /dev/practica-vg/config-lv 2>/dev/null
+
+sudo mkdir -p /mnt/practica_datos /mnt/practica_config
+sudo mount /dev/practica-vg/datos-lv /mnt/practica_datos
+sudo mount /dev/practica-vg/config-lv /mnt/practica_config
+
+echo "datos de prueba OK" | sudo tee /mnt/practica_datos/archivo.txt
+echo "config de prueba OK" | sudo tee /mnt/practica_config/settings.conf
+
+# Siembra error 1: UUID incorrecto en fstab
+UUID_REAL=$(sudo blkid -s UUID -o value /dev/practica-vg/datos-lv)
+UUID_FALSO="00000000-0000-0000-0000-000000000000"
+echo "UUID_REAL=$UUID_REAL" >> "$base/loop_device.txt"
+echo "UUID_FALSO=$UUID_FALSO" >> "$base/loop_device.txt"
+
+# Siembra error 2: permisos del punto de montaje de config incorrectos (solo root puede entrar)
+sudo chmod 700 /mnt/practica_config
+
+sudo umount /mnt/practica_datos /mnt/practica_config
+
+echo "Escenario 5.7 creado"
+cat "$base/loop_device.txt"'
+```
+
+### Objetivo
+
+Desde tu terminal, debes conseguir que:
+
+1) El volumen `datos-lv` se monte correctamente en `/mnt/practica_datos` y sea accesible sin errores
+2) El volumen `config-lv` se monte en `/mnt/practica_config` y sea **escribible por usuarios normales** del grupo `webdevs` (o cualquier grupo que elijas)
+3) El contenido de los ficheros de prueba siga intacto tras los arreglos
+
+### Proceso de diagnóstico
+
+```bash
+# Inspecciona el estado actual del VG/LV
+sudo vgs
+sudo lvs
+
+# Intenta montar ambos y observa qué falla
+sudo mount /dev/practica-vg/datos-lv /mnt/practica_datos
+sudo mount /dev/practica-vg/config-lv /mnt/practica_config
+
+# Prueba acceso como usuario normal
+ls -la /mnt/practica_config
+```
+
+### Entregables
+
+Guarda en `~/practica5/entrega/57_solucion.txt`:
+
+- Qué errores encontraste en cada volumen (causa exacta)
+- Los comandos de corrección que ejecutaste (en orden)
+- Evidencia de que el objetivo se cumple:
+
+```bash
+{
+  echo "=== VERIFICACIÓN 5.7 ==="
+  echo ""
+  echo "--- Montajes activos ---"
+  df -h | grep practica
+  echo ""
+  echo "--- Contenido preservado ---"
+  cat /mnt/practica_datos/archivo.txt
+  cat /mnt/practica_config/settings.conf
+  echo ""
+  echo "--- Permisos corregidos ---"
+  ls -la /mnt/practica_config
+} >> ~/practica5/entrega/57_solucion.txt
+```

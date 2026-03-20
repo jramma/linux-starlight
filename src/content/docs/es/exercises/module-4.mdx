@@ -1,6 +1,6 @@
 ---
 title: "Práctica 4 — Arranque y Servicios"
-description: Crea una unidad systemd y un timer desde cero. Repara un servicio roto encontrando los errores de configuración.
+description: "5 ejercicios LFCS: diagnóstico del arranque, GRUB y módulos del kernel, gestión de servicios, creación de unidades systemd y auditoría con journalctl."
 sidebar:
   order: 4
 ---
@@ -8,21 +8,260 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 
 <Aside type="tip" title="Antes de empezar">
-Esta práctica tiene dos ejercicios. El primero es de creación (construyes una unidad desde cero). El segundo es de reparación (hay errores intencionales que debes localizar). Trabaja en orden.
+Conéctate a tu VM por SSH. Esta práctica está diseñada para durar ~2 horas. Los ejercicios siguen el orden del módulo: primero observas el arranque, luego controlas servicios y finalmente creas los tuyos. Léelos todos antes de empezar.
 </Aside>
 
 ---
 
-## Ejercicio 4.1 — Crear una unidad systemd y un timer
+## Setup — ejecutar una sola vez
+
+```bash
+mkdir -p ~/practica4/{work,entrega}
+sudo apt update && sudo apt install -y nginx
+```
+
+Todo lo que se pida "guardar" debe ir dentro de `~/practica4/entrega/`.
+
+---
+
+## Ejercicio 4.1 — Diagnóstico del proceso de arranque
 
 ### Contexto
 
-systemd es el sistema de init de Linux: gestiona todos los servicios del sistema. Cualquier programa puede convertirse en un servicio systemd creando un archivo de unidad (`.service`). Los timers son la alternativa moderna a cron, integrada con el sistema de logging.
+Un sysadmin real no espera a que el sistema falle para aprender cómo arranca. Antes de intervenir quirúrgicamente en un servidor, necesitas saber leer su historia de arranque: cuánto tardó cada fase, qué servicio fue el más lento, qué mensajes emitió el kernel al despertar. Aquí aprenderás a usar las tres fuentes de información del arranque.
 
-### Setup — preparar el script que vamos a automatizar
+### Tareas
+
+1) **Mide el tiempo de arranque del sistema.** El comando `systemd-analyze` descompone el tiempo total en fases. Guarda en `~/practica4/entrega/41_boot_time.txt`:
 
 ```bash
-# Crea el script que el servicio ejecutará
+systemd-analyze
+systemd-analyze blame | head -20
+systemd-analyze critical-chain
+```
+
+Añade un comentario `#` identificando qué servicio tardó más y en qué fase del arranque (firmware, loader, kernel, userspace).
+
+2) **Lee los mensajes del kernel.** El buffer de arranque del kernel contiene toda la comunicación interna de las primeras fases:
+
+```bash
+dmesg | head -30
+dmesg | grep -i "error\|fail\|warn" | head -15
+dmesg | grep -i "usb\|net\|eth\|ens" | head -10
+```
+
+Guarda la salida en `~/practica4/entrega/41_dmesg.txt`. Identifica con un comentario `#` si hay algún warning real o si el sistema arrancó limpio.
+
+3) **Inspecciona el arranque actual con journalctl.** A diferencia de `dmesg`, `journalctl -b` incluye los mensajes de todos los servicios de systemd desde el último arranque:
+
+```bash
+# Resumen del arranque actual
+journalctl -b --no-pager | wc -l
+
+# Errores y advertencias del arranque
+journalctl -b -p warning --no-pager | head -30
+
+# Tiempo de arranque de los servicios más lentos
+systemd-analyze blame | head -10
+```
+
+Guarda en `~/practica4/entrega/41_journal_boot.txt`.
+
+4) **Localiza los targets de systemd activos.** Los targets reemplazan a los runlevels clásicos:
+
+```bash
+systemctl get-default
+systemctl list-units --type=target --state=active
+```
+
+Guarda la salida en `~/practica4/entrega/41_targets.txt`. Explica en un comentario `#` la diferencia entre `multi-user.target` y `graphical.target`.
+
+---
+
+## Ejercicio 4.2 — GRUB y módulos del kernel
+
+### Contexto
+
+GRUB es la puerta de entrada al sistema. Un sysadmin LFCS debe saber configurarlo de forma permanente y entender cómo el kernel carga sus drivers (módulos) de forma dinámica. Aquí practicarás ambas habilidades sin poner en riesgo el arranque.
+
+### Tareas
+
+1) **Audita la configuración actual de GRUB.** Antes de tocar nada, documenta el estado actual:
+
+```bash
+cat /etc/default/grub
+ls -la /boot/grub/
+```
+
+Guarda en `~/practica4/entrega/42_grub_previo.txt`. Identifica con comentarios `#` el valor actual de `GRUB_TIMEOUT` y los parámetros del kernel en `GRUB_CMDLINE_LINUX_DEFAULT`.
+
+2) **Modifica el timeout de GRUB de forma permanente.** Edita el fichero maestro de GRUB:
+
+```bash
+sudo nano /etc/default/grub
+```
+
+Cambia `GRUB_TIMEOUT` a `3` (de 5 a 3 segundos). Luego aplica el cambio:
+
+```bash
+sudo update-grub
+```
+
+<Aside type="caution" title="Regla de oro de GRUB">
+Editar `/etc/default/grub` NO aplica los cambios. Ese fichero es solo una plantilla para humanos. El comando `update-grub` recompila el binario real del gestor de arranque. Sin ejecutarlo, el cambio no existe.
+</Aside>
+
+Verifica que el cambio se propagó al archivo binario compilado:
+
+```bash
+grep "set timeout" /boot/grub/grub.cfg
+```
+
+Guarda los comandos y su salida en `~/practica4/entrega/42_grub_modificado.txt`.
+
+3) **Inspecciona los módulos del kernel activos.** Los módulos son los drivers dinámicos del kernel:
+
+```bash
+# Lista todos los módulos cargados
+lsmod | head -20
+
+# Cuántos módulos hay activos en total
+lsmod | wc -l
+
+# Información detallada de un módulo concreto
+modinfo usbcore | head -15
+```
+
+Guarda en `~/practica4/entrega/42_lsmod.txt`.
+
+4) **Carga y descarga un módulo en caliente.** Usa el módulo `dummy` (un módulo de red virtual que no afecta al sistema):
+
+```bash
+# Comprueba que no está cargado
+lsmod | grep dummy
+
+# Cárgalo
+sudo modprobe dummy
+
+# Verifica que aparece ahora
+lsmod | grep dummy
+
+# Descárgalo
+sudo modprobe -r dummy
+
+# Verifica que ha desaparecido
+lsmod | grep dummy || echo "módulo descargado correctamente"
+```
+
+Guarda los comandos y su salida en `~/practica4/entrega/42_modprobe.txt`. Explica con un comentario `#` en qué se diferencia `modprobe` de `insmod`.
+
+---
+
+## Ejercicio 4.3 — Control de servicios con systemctl
+
+### Contexto
+
+`systemctl` es el mando a distancia de todos los demonios del servidor. El error más frecuente en producción es usar `restart` cuando debería usarse `reload`, cortando conexiones activas innecesariamente. Aquí practicarás el ciclo de vida completo de un servicio real: nginx.
+
+### Tareas
+
+1) **Audita el estado inicial de nginx** antes de tocarlo:
+
+```bash
+systemctl status nginx
+systemctl is-active nginx
+systemctl is-enabled nginx
+```
+
+Guarda en `~/practica4/entrega/43_nginx_previo.txt`. Identifica con comentarios `#` si está activo y si está habilitado para arrancar automáticamente.
+
+2) **Practica el ciclo de vida completo.** Ejecuta cada comando y guarda la salida de `status` después de cada cambio:
+
+```bash
+# Para el servicio
+sudo systemctl stop nginx
+systemctl status nginx --no-pager | head -5
+
+# Arráncalo de nuevo
+sudo systemctl start nginx
+systemctl status nginx --no-pager | head -5
+
+# Deshabilita el arranque automático
+sudo systemctl disable nginx
+systemctl is-enabled nginx
+
+# Habilítalo de nuevo
+sudo systemctl enable nginx
+systemctl is-enabled nginx
+```
+
+Guarda todo en `~/practica4/entrega/43_ciclo_vida.txt`.
+
+3) **Demuestra la diferencia entre `restart` y `reload`.** Esta es la distinción más importante para producción.
+
+Primero, observa el PID del proceso actual:
+
+```bash
+systemctl status nginx --no-pager | grep "Main PID"
+```
+
+Luego haz `restart` y comprueba el PID:
+
+```bash
+sudo systemctl restart nginx
+systemctl status nginx --no-pager | grep "Main PID"
+```
+
+El PID **cambió** — se mató y creó un proceso nuevo.
+
+Ahora haz `reload` y comprueba el PID:
+
+```bash
+sudo systemctl reload nginx
+systemctl status nginx --no-pager | grep "Main PID"
+```
+
+El PID **no cambió** — el proceso releyó la configuración sin morir.
+
+Guarda los tres estados (PID inicial, tras restart, tras reload) en `~/practica4/entrega/43_restart_vs_reload.txt`. Añade un comentario `#` explicando cuándo usarías cada uno en producción.
+
+4) **Usa el modificador `--now` para operaciones combinadas.** En LFCS es habitual necesitar habilitar Y arrancar en un solo paso:
+
+```bash
+# Deshabilita y para en un solo comando
+sudo systemctl disable --now nginx
+systemctl status nginx --no-pager | head -5
+
+# Habilita y arranca en un solo comando
+sudo systemctl enable --now nginx
+systemctl status nginx --no-pager | head -5
+```
+
+Guarda en `~/practica4/entrega/43_now_flag.txt`.
+
+5) **Lista todos los servicios y filtra por estado:**
+
+```bash
+# Servicios fallidos (si los hay)
+systemctl list-units --type=service --state=failed
+
+# Servicios activos
+systemctl list-units --type=service --state=active | head -20
+```
+
+Guarda en `~/practica4/entrega/43_list_services.txt`.
+
+---
+
+## Ejercicio 4.4 — Crear una unidad systemd y un timer
+
+### Contexto
+
+Cualquier script puede convertirse en un servicio gestionado por systemd. Los timers son la alternativa moderna a cron, integrados con journalctl para auditoría. Aquí construirás una unidad desde cero y la automatizarás.
+
+### Setup — preparar el script que el servicio ejecutará
+
+```bash
 sudo nano /usr/local/bin/monitor_disco.sh
 ```
 
@@ -39,12 +278,10 @@ USO=$(df -h / | tail -1 | awk '{print $5}')
 echo "[$FECHA] Uso del disco raíz: $USO" >> "$LOGFILE"
 ```
 
-Guarda y dale permisos de ejecución:
+Dale permisos y prueba que funciona:
 
 ```bash
 sudo chmod +x /usr/local/bin/monitor_disco.sh
-
-# Prueba manual que funciona
 sudo /usr/local/bin/monitor_disco.sh
 cat /var/log/monitor_disco.log
 # Debe aparecer una línea con la fecha y el porcentaje de uso del disco
@@ -58,7 +295,7 @@ Las unidades systemd viven en `/etc/systemd/system/`. Crea el archivo:
 sudo nano /etc/systemd/system/monitor-disco.service
 ```
 
-Escribe esto:
+Escribe:
 
 ```ini
 [Unit]
@@ -74,8 +311,8 @@ WantedBy=multi-user.target
 ```
 
 <Aside type="note" title="¿Qué significa cada sección?">
-- `[Unit]`: descripción del servicio y dependencias  
-- `[Service]`: cómo ejecutar el servicio. `Type=oneshot` significa que el servicio ejecuta el comando y termina (no es un proceso continuo)  
+- `[Unit]`: descripción del servicio y dependencias
+- `[Service]`: cómo ejecutar el servicio. `Type=oneshot` significa que el servicio ejecuta el comando y termina (no es un proceso continuo)
 - `[Install]`: cuándo habilitarlo. `multi-user.target` es el modo normal de funcionamiento del servidor
 </Aside>
 
@@ -117,7 +354,7 @@ WantedBy=timers.target
 ```
 
 <Aside type="note" title="¿Qué hace OnCalendar=*:0/5?">
-Se ejecuta cada 5 minutos en cualquier hora de cualquier día.  
+Se ejecuta cada 5 minutos en cualquier hora de cualquier día.
 Otros ejemplos:
 - `OnCalendar=daily` → cada día a medianoche
 - `OnCalendar=Mon *-*-* 08:00:00` → cada lunes a las 8:00
@@ -128,14 +365,8 @@ Activa y arranca el timer:
 
 ```bash
 sudo systemctl daemon-reload
-
-# Habilita el timer para que arranque automáticamente con el sistema
 sudo systemctl enable monitor-disco.timer
-
-# Arranca el timer ahora mismo
 sudo systemctl start monitor-disco.timer
-
-# Verifica el estado
 systemctl status monitor-disco.timer
 ```
 
@@ -153,8 +384,7 @@ Deberías ver la próxima ejecución programada.
 # Fuerza ejecución inmediata del servicio (no del timer)
 sudo systemctl start monitor-disco.service
 
-# Espera 5 minutos y comprueba que el timer lo ejecuta automáticamente
-# Mientras esperas, puedes ver el log en tiempo real:
+# Ve el log en tiempo real
 sudo tail -f /var/log/monitor_disco.log
 # (Pulsa Ctrl+C para salir)
 
@@ -162,13 +392,160 @@ sudo tail -f /var/log/monitor_disco.log
 journalctl -u monitor-disco.service -n 10 --no-pager
 ```
 
+Guarda el estado final en `~/practica4/entrega/44_timer_verificacion.txt`:
+
+```bash
+{
+  systemctl status monitor-disco.timer --no-pager
+  echo ""
+  systemctl list-timers | grep monitor
+  echo ""
+  tail -5 /var/log/monitor_disco.log
+  echo ""
+  cat /etc/systemd/system/monitor-disco.service
+  echo ""
+  cat /etc/systemd/system/monitor-disco.timer
+} > ~/practica4/entrega/44_timer_verificacion.txt
+```
+
 ---
 
-## Ejercicio 4.2 — Reparar una unidad systemd con errores
+## Ejercicio 4.5 — Auditoría forense con journalctl y /var/log
 
 ### Contexto
 
-Alguien creó una unidad systemd con errores tipográficos. El servicio no arranca. Tu trabajo es encontrar todos los errores y corregirlos.
+Un sysadmin senior **nunca adivina**. Cuando algo falla, va directamente a los logs con filtros precisos. Aquí aprenderás a interrogar el diario de systemd como un francotirador: por servicio, por tiempo, por severidad.
+
+### Tareas
+
+1) **Explora `/var/log` antes de usar journalctl.** Los logs de texto tradicionales siguen existiendo:
+
+```bash
+ls -lh /var/log/
+ls -lh /var/log/nginx/ 2>/dev/null || echo "nginx no tiene logs todavía"
+```
+
+Lee los últimos 20 accesos a SSH:
+
+```bash
+sudo tail -20 /var/log/auth.log
+```
+
+Guarda en `~/practica4/entrega/45_varlog.txt`. Identifica con comentarios `#` qué contiene cada fichero que veas en `/var/log`.
+
+2) **Filtra journalctl por servicio.** Practica los filtros más usados en LFCS:
+
+```bash
+# Todos los logs de nginx
+journalctl -u nginx --no-pager | wc -l
+
+# Últimas 15 líneas de nginx
+journalctl -u nginx -n 15 --no-pager
+
+# Logs de SSH de la sesión actual
+journalctl -u ssh -n 20 --no-pager
+```
+
+Guarda en `~/practica4/entrega/45_journal_servicios.txt`.
+
+3) **Filtra por tiempo.** Esta es la habilidad más valiosa para diagnosticar incidentes:
+
+```bash
+# Logs de hoy
+journalctl --since "today" --no-pager | wc -l
+
+# Logs de la última hora
+journalctl --since "1 hour ago" --no-pager | tail -20
+
+# Logs de nginx en un rango concreto (ajusta la hora a una que tenga entradas)
+journalctl -u nginx --since "$(date '+%Y-%m-%d') 00:00:00" --until "$(date '+%Y-%m-%d') 23:59:59" --no-pager | tail -10
+```
+
+Guarda en `~/practica4/entrega/45_journal_tiempo.txt`.
+
+4) **Filtra por severidad.** Los niveles van de 0 (emerg) a 7 (debug):
+
+```bash
+# Solo errores y superiores en todo el sistema
+journalctl -p err --no-pager | tail -20
+
+# Errores del arranque actual
+journalctl -b -p warning --no-pager | tail -15
+
+# La combinación definitiva: errores de un servicio en la última hora
+journalctl -u nginx -p warning --since "1 hour ago" --no-pager
+```
+
+Guarda en `~/practica4/entrega/45_journal_severidad.txt`.
+
+5) **Genera un informe de actividad SSH sospechosa.** Simula una investigación de seguridad básica:
+
+```bash
+# Intentos de login fallidos
+sudo grep "Failed password\|authentication failure" /var/log/auth.log | tail -10
+
+# Logins exitosos recientes
+sudo grep "Accepted\|session opened" /var/log/auth.log | tail -10
+
+# Accesos con sudo
+sudo grep "sudo" /var/log/auth.log | tail -10
+```
+
+Guarda en `~/practica4/entrega/45_auditoria_ssh.txt`. Añade comentarios `#` describiendo qué patrón representa cada bloque.
+
+---
+
+## 📤 Bloque de entrega
+
+Guarda la verificación del estado antes de empaquetar:
+
+```bash
+{
+  echo "=== ENTREGA PRÁCTICA 4 ==="
+  echo ""
+  echo "--- 4.1: Tiempo de arranque ---"
+  systemd-analyze
+  echo ""
+  echo "--- 4.2: GRUB timeout configurado ---"
+  grep "GRUB_TIMEOUT" /etc/default/grub
+  echo ""
+  echo "--- 4.3: Estado de nginx ---"
+  systemctl status nginx --no-pager | head -8
+  echo ""
+  echo "--- 4.4: Estado del timer ---"
+  systemctl status monitor-disco.timer --no-pager | head -8
+  echo ""
+  echo "--- 4.4: Próxima ejecución ---"
+  systemctl list-timers | grep monitor
+  echo ""
+  echo "--- 4.4: Últimas entradas del log ---"
+  tail -5 /var/log/monitor_disco.log
+  echo ""
+  echo "--- 4.5: Últimos errores del sistema ---"
+  journalctl -p err --no-pager | tail -5
+} > ~/practica4/entrega/verificacion.txt
+```
+
+Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 4`).
+
+---
+
+## 🧨 Desafíos extra (MUY DIFÍCILES) — Troubleshooting de servicios
+
+Estos ejercicios están diseñados para ser difíciles. No hay una sola pista mágica: tendrás que **leer los logs, analizar la sintaxis, reproducir el error y corregirlo sistemáticamente**.
+
+Reglas:
+- **Solo** puedes usar comandos de terminal y herramientas del módulo 4.
+- No se permite borrar y recrear el servicio desde cero sin entender el error.
+- Todo el trabajo se documenta en `~/practica4/entrega/`.
+
+---
+
+## Ejercicio 4.6 ⚡ EXTRA — Reparar una unidad systemd con errores
+
+### Contexto
+
+Alguien creó una unidad systemd con errores tipográficos. El servicio no arranca. Tu trabajo es encontrar **todos** los errores usando las herramientas de diagnóstico de systemd y corregirlos.
 
 ### Setup — crear el servicio roto
 
@@ -207,8 +584,6 @@ sudo systemctl start app-demo.service
 systemctl status app-demo.service
 ```
 
-¿Qué dice el error? Puede que systemd no encuentre el ejecutable o que haya errores de sintaxis.
-
 **Paso 2 — Verifica la sintaxis del archivo:**
 
 ```bash
@@ -225,8 +600,8 @@ journalctl -u app-demo.service -n 20 --no-pager
 
 **Pista:** hay exactamente **3 errores tipográficos** en el archivo y **1 problema adicional** (el binario no existe). Localiza y corrige cada uno:
 
-1. En `[Unit]`: hay una sección con un typo
-2. En `[Service]`: hay una directiva con un typo  
+1. En `[Unit]`: hay una dependencia con un typo
+2. En `[Service]`: hay una directiva con un typo
 3. En `[Install]`: hay un error al escribir el nombre de la sección
 
 Una vez corregidos los typos, crea el binario que falta:
@@ -269,38 +644,121 @@ Los errores son:
 3. `[Instal]` → `[Install]`
 </Aside>
 
----
-
-## 📤 Bloque de entrega
-
-Guarda la verificación del estado antes de empaquetar:
+Guarda en `~/practica4/entrega/46_reparacion.txt`:
 
 ```bash
-mkdir -p ~/practica4/entrega
 {
-  echo "=== ENTREGA PRÁCTICA 4 ==="
+  echo "--- Diagnóstico inicial ---"
+  systemd-analyze verify /etc/systemd/system/app-demo.service 2>&1 || true
   echo ""
-  echo "--- 4.1: Estado del timer ---"
-  systemctl status monitor-disco.timer
+  echo "--- Servicio reparado ---"
+  systemctl status app-demo.service --no-pager
   echo ""
-  echo "--- 4.1: Próxima ejecución ---"
-  systemctl list-timers | grep monitor
-  echo ""
-  echo "--- 4.1: Últimas entradas del log ---"
-  tail -5 /var/log/monitor_disco.log
-  echo ""
-  echo "--- 4.1: Archivo .service ---"
-  cat /etc/systemd/system/monitor-disco.service
-  echo ""
-  echo "--- 4.1: Archivo .timer ---"
-  cat /etc/systemd/system/monitor-disco.timer
-  echo ""
-  echo "--- 4.2: Estado del servicio reparado ---"
-  systemctl status app-demo.service
-  echo ""
-  echo "--- 4.2: Archivo .service corregido ---"
+  echo "--- Archivo corregido ---"
   cat /etc/systemd/system/app-demo.service
-} > ~/practica4/entrega/verificacion.txt
+} > ~/practica4/entrega/46_reparacion.txt
 ```
 
-Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 4`).
+---
+
+## Ejercicio 4.7 ⚡ EXTRA — Diagnóstico de arranque con fallos sembrados
+
+### Setup (ejecuta UNA sola vez)
+
+{/* Notas ocultas 4.7: el escenario incluye un servicio con dependencia circular, un unit file con ExecStart apuntando a un binario sin permisos de ejecución, y un servicio con un After= incorrecto que provoca timeout. */}
+
+```bash
+bash -lc 'set -euo pipefail
+base="$HOME/practica4/work"
+mkdir -p "$base"
+
+# Servicio 1: binario sin permisos de ejecución
+cat > /tmp/svc_sinpermisos.sh << '"'"'EOF'"'"'
+#!/bin/bash
+echo "$(date): servicio ejecutado" >> /var/log/svc_sinpermisos.log
+EOF
+sudo cp /tmp/svc_sinpermisos.sh /usr/local/bin/svc_sinpermisos.sh
+sudo chmod 644 /usr/local/bin/svc_sinpermisos.sh  # Sin permiso de ejecución (el error)
+
+sudo tee /etc/systemd/system/svc-sinpermisos.service > /dev/null << '"'"'EOF'"'"'
+[Unit]
+Description=Servicio con binario sin permisos de ejecución
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/svc_sinpermisos.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Servicio 2: dependencia de un target inexistente
+sudo tee /etc/systemd/system/svc-dependencia.service > /dev/null << '"'"'EOF'"'"'
+[Unit]
+Description=Servicio con dependencia inexistente
+After=network.target
+Requires=servicio-que-no-existe.service
+
+[Service]
+Type=simple
+ExecStart=/bin/sleep 3600
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+echo "Escenario 4.7 creado"
+echo "Servicios sembrados: svc-sinpermisos.service, svc-dependencia.service"'
+```
+
+### Objetivo
+
+Desde tu terminal, debes conseguir que:
+
+1) `svc-sinpermisos.service` arranque correctamente y escriba en su log
+2) `svc-dependencia.service` arranque correctamente (pista: la dependencia debe ser eliminada o corregida)
+3) Ambos servicios aparezcan como `active` en `systemctl status`
+
+### Proceso de diagnóstico
+
+Sigue este flujo sistemático para cada servicio:
+
+```bash
+# Paso 1: intenta arrancar y observa el código de error
+sudo systemctl start svc-sinpermisos.service
+echo "Código de salida: $?"
+
+# Paso 2: lee el status completo
+systemctl status svc-sinpermisos.service --no-pager
+
+# Paso 3: busca en el journal el motivo exacto
+journalctl -u svc-sinpermisos.service -n 30 --no-pager
+
+# Paso 4: verifica el archivo unit
+systemd-analyze verify /etc/systemd/system/svc-sinpermisos.service 2>&1 || true
+```
+
+Repite para `svc-dependencia.service`.
+
+### Entregables
+
+Guarda en `~/practica4/entrega/47_solucion.txt`:
+
+- Los comandos de diagnóstico que ejecutaste (en orden)
+- **Qué estaba roto** en cada servicio (causa exacta)
+- Evidencia de que el objetivo se cumple (salida de `systemctl status`)
+
+```bash
+{
+  echo "=== DIAGNÓSTICO Y SOLUCIÓN 4.7 ==="
+  echo ""
+  echo "--- svc-sinpermisos: estado final ---"
+  systemctl status svc-sinpermisos.service --no-pager
+  echo ""
+  echo "--- svc-dependencia: estado final ---"
+  systemctl status svc-dependencia.service --no-pager
+} >> ~/practica4/entrega/47_solucion.txt
+```

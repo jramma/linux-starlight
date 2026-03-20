@@ -1,6 +1,6 @@
 ---
 title: "Práctica 7 — Seguridad y Cortafuegos"
-description: Configura UFW para gestionar el tráfico de red, instala fail2ban para proteger SSH y usa lynis para auditar la seguridad del servidor.
+description: "5 ejercicios LFCS: principios de hardening, confinamiento con AppArmor, auditoría de puertos con ss/lsof, cortafuegos UFW completo e iptables desde cero."
 sidebar:
   order: 7
 ---
@@ -8,104 +8,410 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 
 <Aside type="tip" title="Antes de empezar">
-Esta práctica parte de un servidor en estado inseguro. El profesor habrá ejecutado el script de setup en tu VM. Si lo haces por tu cuenta, el Paso 0 lo explica.
+Conéctate a tu VM por SSH. Esta práctica parte de un servidor en estado parcialmente inseguro. El Setup inicial lo dejará en ese estado. Los ejercicios siguen el orden del módulo: principios, AppArmor, puertos, UFW e iptables. Léelos todos antes de empezar.
 </Aside>
 
 ---
 
-## Paso 0 — Estado inicial (servidor inseguro)
-
-El servidor empieza así (el profesor lo establece):
+## Setup — ejecutar una sola vez
 
 ```bash
-# (Para el profesor)
-sudo apt install -y nginx ufw fail2ban
-sudo ufw disable
-sudo systemctl stop fail2ban
-sudo sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-sudo sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-sudo systemctl reload sshd
+mkdir -p ~/practica7/{work,entrega}
+sudo apt update && sudo apt install -y nginx apparmor-utils ufw
 ```
 
-Verifica en qué estado está el servidor ahora mismo:
+Establece el estado inicial inseguro que irás corrigiendo durante la práctica:
 
 ```bash
-# ¿El firewall está activo?
+# Desactiva el firewall si estaba activo
+sudo ufw disable 2>/dev/null || true
+
+# Asegura que SSH acepta contraseñas y login root (estado inseguro de partida)
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sudo systemctl reload ssh
+
+# Verifica el estado inicial
 sudo ufw status
-# Esperado: Status: inactive
-
-# ¿fail2ban está corriendo?
-systemctl is-active fail2ban
-# Esperado: inactive
-
-# ¿Se permite el login de root por SSH?
-grep "PermitRootLogin" /etc/ssh/sshd_config
-# Esperado: PermitRootLogin yes  (inseguro)
-
-# ¿Se acepta autenticación por contraseña?
-grep "PasswordAuthentication" /etc/ssh/sshd_config
-# Esperado: PasswordAuthentication yes  (inseguro)
+grep "PermitRootLogin\|PasswordAuthentication" /etc/ssh/sshd_config
 ```
 
-Tu objetivo: pasar de este estado inseguro a un servidor correctamente protegido.
+Todo lo que se pida "guardar" debe ir dentro de `~/practica7/entrega/`.
 
 ---
 
-## Ejercicio 7.1 — Configurar el firewall con UFW
+## Ejercicio 7.1 — Principios de seguridad y hardening básico
 
 ### Contexto
 
-UFW (Uncomplicated Firewall) es la interfaz simplificada de iptables en Ubuntu. Por defecto, un servidor nuevo no tiene firewall activo — cualquier puerto expuesto es accesible desde internet.
+El primer pilar de la seguridad LFCS es reducir la superficie de ataque: deshabilitar lo que no se usa, auditar quién tiene acceso privilegiado y proteger físicamente el gestor de arranque. Aquí auditarás el estado de seguridad inicial y aplicarás las correcciones fundamentales.
 
-<Aside type="caution" title="⚠ Lee esto antes de activar UFW">
-Si activas UFW sin permitir SSH primero (puerto 22), perderás la conexión SSH y necesitarás acceder desde la consola de VirtualBox. Sigue el orden de los pasos exactamente.
-</Aside>
+### Tareas
 
-### Tarea 1 — Política por defecto: denegar todo
+1) **Audita el estado de seguridad inicial** antes de modificar nada:
 
 ```bash
-# Deniega todo el tráfico entrante por defecto
-sudo ufw default deny incoming
+# Usuarios con acceso a sudo
+grep -E "^sudo|^wheel" /etc/group
+sudo cat /etc/sudoers | grep -v "^#" | grep -v "^$"
 
-# Permite todo el tráfico saliente (para que el servidor pueda hacer peticiones)
-sudo ufw default allow outgoing
+# Última vez que cada usuario inició sesión
+last | head -15
+lastb | head -10 2>/dev/null || sudo lastb | head -10
+
+# Cuentas de usuario con shell activo (excluyendo sistema)
+grep -v "nologin\|false" /etc/passwd | grep -v "^#"
 ```
 
-### Tarea 2 — Permitir los puertos necesarios ANTES de activar
+Guarda en `~/practica7/entrega/71_auditoria_inicial.txt`. Identifica con comentarios `#` qué usuarios tienen shell activo y si alguno tiene acceso sudo que no debería.
+
+2) **Revisa y ajusta los permisos de ficheros críticos del sistema:**
 
 ```bash
-# PRIMERO: permite SSH (si lo pierdes, queda sin conexión)
-sudo ufw allow ssh
-# O de forma equivalente:
+# Permisos actuales de ficheros sensibles
+ls -la /etc/passwd /etc/shadow /etc/sudoers /etc/ssh/sshd_config
+
+# El shadow debe ser 640 (solo root y grupo shadow)
+sudo chmod 640 /etc/shadow
+sudo chown root:shadow /etc/shadow
+
+# sudoers debe ser 440 (solo lectura para root y wheel)
+sudo chmod 440 /etc/sudoers
+
+# Verificar el resultado
+ls -la /etc/shadow /etc/sudoers
+```
+
+Guarda en `~/practica7/entrega/71_permisos_criticos.txt`.
+
+3) **Configura sudo para requerir contraseña en operaciones sensibles:**
+
+```bash
+# Muestra la configuración actual de sudo
+sudo visudo -c 2>&1  # valida la sintaxis del sudoers actual
+
+# Lista los usuarios que pueden usar sudo sin contraseña (NOPASSWD)
+sudo grep -r "NOPASSWD" /etc/sudoers /etc/sudoers.d/ 2>/dev/null || echo "ninguno"
+
+# Crea una política de timeout de sudo (sesión caduca tras 5 minutos de inactividad)
+echo "Defaults timestamp_timeout=5" | sudo tee /etc/sudoers.d/timeout
+sudo chmod 440 /etc/sudoers.d/timeout
+sudo visudo -c  # verifica la sintaxis
+```
+
+Guarda en `~/practica7/entrega/71_sudo_config.txt`. Explica con un comentario `#` por qué el `timestamp_timeout` es importante en servidores compartidos.
+
+4) **Protege GRUB con contraseña para impedir consolas de rescate:**
+
+```bash
+# Genera el hash de la contraseña GRUB (usa la contraseña: grubseguro123)
+# El comando pedirá la contraseña dos veces
+grub-mkpasswd-pbkdf2
+```
+
+Crea el fichero de configuración de contraseña GRUB:
+
+```bash
+sudo nano /etc/grub.d/40_custom
+```
+
+Añade al final:
+
+```text
+set superusers="admin"
+password_pbkdf2 admin HASH_GENERADO_AQUI
+```
+
+```bash
+# Aplica la configuración
+sudo update-grub
+
+# Verifica que se incluyó en el grub.cfg
+sudo grep "superusers\|password_pbkdf2" /boot/grub/grub.cfg | head -5
+```
+
+<Aside type="caution" title="Solo en entornos de práctica">
+En un servidor real, esta contraseña debe ser segura y documentada en la bóveda de credenciales del equipo. Si la pierdes, perderás el acceso físico al arranque.
+</Aside>
+
+Guarda los comandos y la verificación en `~/practica7/entrega/71_grub_password.txt`.
+
+5) **Genera el informe de estado de seguridad inicial:**
+
+```bash
+{
+  echo "=== ESTADO DE SEGURIDAD — $(date) ==="
+  echo ""
+  echo "-- Usuarios con shell activo --"
+  grep -v "nologin\|false" /etc/passwd | cut -d: -f1,7
+
+  echo ""
+  echo "-- Sudoers activos --"
+  grep -E "^sudo|^wheel" /etc/group
+
+  echo ""
+  echo "-- Permisos de ficheros críticos --"
+  ls -la /etc/shadow /etc/sudoers /etc/ssh/sshd_config
+
+  echo ""
+  echo "-- Servicios en escucha --"
+  sudo ss -tlnp | grep LISTEN
+} > ~/practica7/entrega/71_informe_seguridad.txt
+```
+
+---
+
+## Ejercicio 7.2 — Confinamiento obligatorio con AppArmor
+
+### Contexto
+
+Los permisos `chmod` clásicos protegen archivos de usuarios. AppArmor va más lejos: confina los programas mismos, limitando qué ficheros pueden abrir, qué syscalls pueden hacer y qué puertos pueden escuchar — aunque el proceso sea root. Un demonio comprometido queda enjaulado.
+
+### Tareas
+
+1) **Audita el estado actual de AppArmor:**
+
+```bash
+# Estado general: perfiles cargados y su modo
+sudo aa-status
+
+# Versión y módulo del kernel
+sudo aa-status | head -5
+apparmor_parser --version
+
+# Perfil de nginx (uno de los más comunes en LFCS)
+sudo aa-status | grep nginx || echo "nginx sin perfil AppArmor activo"
+
+# Ver los perfiles disponibles en disco
+ls /etc/apparmor.d/ | head -20
+```
+
+Guarda en `~/practica7/entrega/72_apparmor_inicial.txt`. Identifica con comentarios `#` cuántos perfiles hay en modo `enforce` y cuántos en `complain`.
+
+2) **Practica los modos de AppArmor con un perfil real:**
+
+```bash
+# Instala el paquete de perfiles de AppArmor
+sudo apt install -y apparmor-profiles apparmor-profiles-extra
+
+# Muestra los perfiles disponibles para nginx
+ls /etc/apparmor.d/ | grep nginx
+
+# Activa el perfil de nginx en modo complain (solo registra, no bloquea)
+sudo aa-complain /etc/apparmor.d/usr.sbin.nginx 2>/dev/null || \
+sudo aa-complain nginx 2>/dev/null || echo "perfil no encontrado, usando otro"
+
+# Verifica que nginx está en modo complain
+sudo aa-status | grep nginx
+```
+
+<Aside type="note" title="Modos de AppArmor">
+- **enforce**: el perfil se aplica. Las acciones no autorizadas se bloquean y se registran en `/var/log/syslog`.
+- **complain**: el perfil se evalúa pero no bloquea. Solo registra las violaciones. Útil para depurar sin interrumpir el servicio.
+- **disabled**: el perfil no se aplica en absoluto.
+</Aside>
+
+```bash
+# Activa nginx en modo enforce
+sudo aa-enforce /etc/apparmor.d/usr.sbin.nginx 2>/dev/null || \
+sudo aa-enforce nginx 2>/dev/null || echo "usando perfil alternativo"
+
+# Estado final
+sudo aa-status | grep nginx
+```
+
+Guarda en `~/practica7/entrega/72_apparmor_modos.txt`.
+
+3) **Analiza un perfil AppArmor real:**
+
+```bash
+# Lee el perfil de /usr/sbin/ntpd o un perfil simple
+sudo cat /etc/apparmor.d/usr.sbin.ntpd 2>/dev/null || \
+sudo cat /etc/apparmor.d/usr.bin.man 2>/dev/null || \
+ls /etc/apparmor.d/ | head -5
+
+# Lee cualquier perfil disponible y observa su estructura
+PERFIL=$(ls /etc/apparmor.d/ | grep -v "^abstractions\|^tunables\|^force\|^local" | head -1)
+sudo cat /etc/apparmor.d/$PERFIL | head -40
+```
+
+Guarda en `~/practica7/entrega/72_perfil_analisis.txt`. Identifica con comentarios `#`:
+- Las reglas de acceso a ficheros (líneas con `r`, `w`, `rw`)
+- Las capacidades del sistema (líneas con `capability`)
+- Qué significa `#include <abstractions/base>`
+
+4) **Verifica AppArmor en los logs:**
+
+```bash
+# AppArmor registra violaciones en syslog
+sudo grep "apparmor" /var/log/syslog | tail -10 2>/dev/null || \
+sudo journalctl -k | grep "apparmor" | tail -10
+
+# Ver mensajes de denegación (DENIED) que indican que el perfil bloqueó algo
+sudo grep "DENIED" /var/log/syslog 2>/dev/null | tail -5 || \
+sudo journalctl -k | grep "DENIED" | tail -5
+```
+
+Guarda en `~/practica7/entrega/72_apparmor_logs.txt`.
+
+---
+
+## Ejercicio 7.3 — Radiografía de puertos con ss y lsof
+
+### Contexto
+
+Antes de configurar el firewall necesitas saber exactamente qué está escuchando en tu servidor. Un demonio mal configurado que escucha en `0.0.0.0` (todas las interfaces) en vez de `127.0.0.1` (solo local) es una puerta trasera involuntaria a internet. Aquí aprenderás a identificar y clasificar cada socket abierto.
+
+### Tareas
+
+1) **Audita todos los puertos en escucha con `ss`:**
+
+```bash
+# La combinación de oro para LFCS: TCP + UDP + listening + PIDs + numeric
+sudo ss -tulpn
+
+# Solo TCP en escucha
+sudo ss -tlnp
+
+# Solo UDP en escucha
+sudo ss -ulnp
+
+# Conexiones establecidas actualmente (quién está conectado ahora)
+sudo ss -tp state established
+```
+
+Guarda la salida completa de `ss -tulpn` en `~/practica7/entrega/73_ss_inicial.txt`. Para cada proceso que aparezca, añade un comentario `#` identificando:
+- Qué servicio es
+- Si escucha en `0.0.0.0` (todas las interfaces) o `127.0.0.1` (solo local)
+- Si debería estar expuesto a internet o solo accesible localmente
+
+2) **Usa `lsof` para investigar procesos específicos:**
+
+```bash
+# lsof -i: ficheros de red abiertos
+sudo lsof -i -P -n | head -30
+
+# Qué ficheros de red tiene abiertos nginx
+sudo lsof -i -P -n | grep nginx
+
+# Qué proceso usa el puerto 22
+sudo lsof -i :22 -P -n
+
+# Qué proceso usa el puerto 80
+sudo lsof -i :80 -P -n
+
+# Todos los ficheros abiertos por un proceso concreto (por PID)
+NGINX_PID=$(pgrep nginx | head -1)
+sudo lsof -p "$NGINX_PID" | head -20
+```
+
+Guarda en `~/practica7/entrega/73_lsof.txt`.
+
+3) **Identifica servicios innecesariamente expuestos:**
+
+```bash
+# Compara los puertos en escucha antes y después de detener nginx
+sudo ss -tlnp | grep -v "127.0.0.1\|::1" | grep LISTEN
+echo "--- nginx detenido ---"
+sudo systemctl stop nginx
+sudo ss -tlnp | grep -v "127.0.0.1\|::1" | grep LISTEN
+sudo systemctl start nginx
+```
+
+```bash
+# Lista todos los servicios activos y sus puertos
+systemctl list-units --type=service --state=active --no-pager | \
+  awk '{print $1}' | grep ".service" | \
+  while read svc; do
+    PIDS=$(systemctl show -p MainPID "$svc" 2>/dev/null | cut -d= -f2)
+    [[ "$PIDS" != "0" ]] && echo "$svc (PID: $PIDS)"
+  done | head -15
+```
+
+Guarda en `~/practica7/entrega/73_servicios_expuestos.txt`. Añade un comentario `#` indicando cuál es el riesgo de cada servicio expuesto innecesariamente.
+
+4) **Simula la detección de un puerto sospechoso:**
+
+```bash
+# Abre un puerto de escucha temporal (simula un proceso sospechoso)
+nc -lvp 9999 &
+NC_PID=$!
+sleep 1
+
+# Detecta el proceso que usa ese puerto
+sudo ss -tlnp | grep 9999
+sudo lsof -i :9999 -P -n
+
+# Identifica el proceso y mátalo
+echo "Proceso en puerto 9999: PID $NC_PID"
+kill $NC_PID 2>/dev/null || true
+
+# Verifica que el puerto ya no está en escucha
+sudo ss -tlnp | grep 9999 || echo "Puerto 9999 limpio"
+```
+
+Guarda en `~/practica7/entrega/73_puerto_sospechoso.txt`. Explica con un comentario `#` el proceso de investigación que seguirías si encontraras un puerto desconocido en producción.
+
+---
+
+## Ejercicio 7.4 — Cortafuegos completo con UFW
+
+### Contexto
+
+Un servidor sin firewall activo es un servidor muerto en cuestión de horas en internet público. UFW es la interfaz de alto nivel de iptables en Debian/Ubuntu. Aquí configurarás la muralla completa desde cero: política de denegación total, apertura selectiva y defensa anti fuerza bruta.
+
+<Aside type="caution" title="Lee esto antes de activar UFW">
+Si activas UFW sin permitir el puerto 22 primero, perderás la conexión SSH y necesitarás acceder desde la consola de VirtualBox. Sigue los pasos en el orden exacto que se indica.
+</Aside>
+
+### Tarea 1 — Audita el estado previo
+
+```bash
+# Estado actual del firewall
+sudo ufw status verbose
+
+# iptables subyacente (lo que UFW gestiona por debajo)
+sudo iptables -L -n -v | head -20
+
+# Puertos actualmente accesibles (antes del firewall)
+sudo ss -tlnp | grep LISTEN
+```
+
+Guarda en `~/practica7/entrega/74_ufw_previo.txt`.
+
+### Tarea 2 — Configura las políticas y abre puertos esenciales
+
+```bash
+# Política de denegación total por defecto
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# PRIMERO abre SSH — nunca actives el firewall sin esto
 sudo ufw allow 22/tcp
 
-# Permite HTTP (para que el servidor web funcione)
+# Abre el servidor web
 sudo ufw allow 80/tcp
-
-# Permite HTTPS
 sudo ufw allow 443/tcp
+
+# Verifica las reglas ANTES de activar
+sudo ufw show added
 ```
 
-### Tarea 3 — Activar UFW
+### Tarea 3 — Activa UFW y verifica
 
 ```bash
+# Activa el firewall (escribe 'y' cuando lo pida)
 sudo ufw enable
-# Escribe 'y' cuando pregunte si continuar
-```
 
-<Aside type="note" title="¿Sigue funcionando SSH?">
-Después de activar UFW, intenta abrir una nueva terminal y conectarte por SSH. Si funciona, perfecto. Si no, revisa que permitiste el puerto 22 en el paso anterior.
-</Aside>
-
-```bash
-# Verifica el estado completo del firewall
+# Verifica estado completo
 sudo ufw status verbose
 ```
 
-Debes ver:
+La salida debe mostrar:
+
 ```
 Status: active
-Default: deny (incoming), allow (outgoing), disabled (routed)
+Default: deny (incoming), allow (outgoing)
 To                         Action      From
 --                         ------      ----
 22/tcp                     ALLOW IN    Anywhere
@@ -113,174 +419,166 @@ To                         Action      From
 443/tcp                    ALLOW IN    Anywhere
 ```
 
-### Tarea 4 — Probar que UFW bloquea puertos no permitidos
+```bash
+# Desde otra terminal: verifica que SSH sigue funcionando
+# (no cierres la sesión actual hasta confirmarlo)
+ssh usuario@IP_VM "echo SSH funciona tras activar UFW"
+```
+
+Guarda en `~/practica7/entrega/74_ufw_activo.txt`.
+
+### Tarea 4 — Reglas avanzadas: origen específico y límite anti fuerza bruta
 
 ```bash
-# Lista los puertos en escucha en el servidor
-sudo ss -tlnp
+# Permite acceso a una base de datos SOLO desde el servidor web (10.0.0.5)
+# (En una red real: sustituye 10.0.0.5 por la IP de tu servidor de aplicación)
+sudo ufw allow from 127.0.0.1 to any port 3306 comment "MariaDB solo local"
 
-# Intenta conectar a un puerto no permitido (por ejemplo, el 8080)
-# Desde tu ordenador (fuera de la VM):
-nc -zv 192.168.56.X 8080
-# Debe dar timeout o "Connection refused"
+# Deniega una IP concreta (simula blacklist de atacante)
+sudo ufw deny from 192.0.2.100 comment "IP atacante bloqueada"
+
+# Aplica rate limiting a SSH: bloquea IPs con más de 6 intentos en 30 segundos
+# (reemplaza el allow básico por limit)
+sudo ufw delete allow 22/tcp
+sudo ufw limit 22/tcp comment "SSH anti fuerza bruta"
+
+# Estado final con todos los comentarios
+sudo ufw status verbose
+sudo ufw status numbered
 ```
+
+<Aside type="note" title="¿Qué hace ufw limit?">
+`ufw limit 22/tcp` implementa reglas iptables que rechazan conexiones de una IP si realiza más de 6 intentos de conexión en 30 segundos. Es la defensa básica contra ataques de diccionario automatizados.
+</Aside>
+
+Guarda en `~/practica7/entrega/74_ufw_avanzado.txt`.
+
+### Tarea 5 — Gestión de reglas y persistencia
+
+```bash
+# Lista reglas con número para poder eliminarlas fácilmente
+sudo ufw status numbered
+
+# Elimina una regla por número (la de denegación de IP que pusiste antes)
+REGLA_DENY=$(sudo ufw status numbered | grep "192.0.2.100" | head -1 | awk -F'[][]' '{print $2}')
+[[ -n "$REGLA_DENY" ]] && sudo ufw delete "$REGLA_DENY" || echo "regla no encontrada"
+
+# Verifica que UFW sobrevive a un reinicio (debe arrancar automáticamente)
+sudo systemctl status ufw | grep "Loaded\|Active"
+systemctl is-enabled ufw
+
+# Genera un resumen de las reglas activas
+sudo ufw status verbose
+```
+
+Guarda en `~/practica7/entrega/74_ufw_gestion.txt`.
 
 ---
 
-## Ejercicio 7.2 — Proteger SSH con fail2ban
+## Ejercicio 7.5 — iptables: el motor bajo el capó
 
 ### Contexto
 
-fail2ban monitoriza los logs del sistema y bloquea automáticamente las IPs que realizan demasiados intentos fallidos de autenticación. Es la defensa estándar contra ataques de fuerza bruta.
+UFW es un wrapper de iptables. El examen LFCS puede pedirte trabajar directamente con iptables cuando UFW no está disponible. Aquí aprenderás la arquitectura real: tablas, cadenas y reglas; y cómo persistir las reglas entre reinicios.
 
-### Tarea 1 — Instalar y activar fail2ban
-
-```bash
-sudo apt install -y fail2ban
-
-# Inicia el servicio
-sudo systemctl start fail2ban
-sudo systemctl enable fail2ban
-
-# Verifica que está corriendo
-systemctl status fail2ban
-```
-
-### Tarea 2 — Configurar la jail de SSH
-
-fail2ban usa "jails" (celdas) para definir qué monitorizan y qué IP bloquear. La configuración principal está en `/etc/fail2ban/jail.conf` pero **no debes editarla directamente** — se sobreescribe al actualizar. Usa un archivo local:
+### Tarea 1 — Inspecciona las reglas que UFW ha creado en iptables
 
 ```bash
-sudo nano /etc/fail2ban/jail.local
+# Lista las reglas de la tabla filter (la más usada)
+sudo iptables -L -n -v
+
+# Con números de línea (para poder borrar en posición concreta)
+sudo iptables -L -n -v --line-numbers
+
+# Observa cuántas reglas creó UFW en tu nombre
+sudo iptables -L INPUT -n --line-numbers | wc -l
 ```
 
-Escribe:
+Guarda en `~/practica7/entrega/75_iptables_actual.txt`. Identifica con comentarios `#`:
+- Las cadenas INPUT, FORWARD y OUTPUT
+- La política por defecto de cada cadena (ACCEPT o DROP)
+- Cuántas reglas ha generado UFW automáticamente
 
-```ini
-[DEFAULT]
-# tiempo de baneo en segundos (1 hora = 3600)
-bantime  = 3600
-# ventana de tiempo para contar intentos (10 minutos)
-findtime = 600
-# número de intentos fallidos antes de banear
-maxretry = 3
-
-[sshd]
-enabled = true
-port    = ssh
-logpath = /var/log/auth.log
-```
-
-Aplica la configuración:
+### Tarea 2 — Añade y elimina reglas iptables directamente
 
 ```bash
-sudo systemctl restart fail2ban
+# Crea una cadena de prueba aislada (no interfiere con UFW)
+sudo iptables -N PRUEBA_LFCS
 
-# Verifica el estado de la jail SSH
-sudo fail2ban-client status sshd
+# Añade reglas a la cadena de prueba
+sudo iptables -A PRUEBA_LFCS -p tcp --dport 9090 -j ACCEPT
+sudo iptables -A PRUEBA_LFCS -p tcp --dport 9091 -j DROP
+sudo iptables -A PRUEBA_LFCS -s 10.0.0.0/24 -j ACCEPT
+
+# Verifica la cadena creada
+sudo iptables -L PRUEBA_LFCS -n -v --line-numbers
+
+# Elimina una regla por número de línea
+sudo iptables -D PRUEBA_LFCS 2
+
+# Vacía la cadena y elimínala
+sudo iptables -F PRUEBA_LFCS
+sudo iptables -X PRUEBA_LFCS
+
+# Verifica que desapareció
+sudo iptables -L PRUEBA_LFCS 2>/dev/null || echo "Cadena eliminada correctamente"
 ```
 
-Debe mostrar que la jail `sshd` está activa con 0 IPs baneadas (a menos que alguien ya haya intentado entrar).
+Guarda en `~/practica7/entrega/75_iptables_reglas.txt`.
 
-### Tarea 3 — Simular un ataque para ver fail2ban en acción
-
-Desde un **terminal diferente** en tu ordenador (no en la VM):
+### Tarea 3 — Reglas útiles de iptables en producción
 
 ```bash
-# Intenta conectarte con una contraseña incorrecta 4 veces seguidas
-# (cambia la IP a la de tu VM)
-ssh -o ConnectTimeout=5 usuario_falso@192.168.56.X
-# Escribe cualquier contraseña incorrecta y repite hasta que deje de responder
+# Permite conexiones ya establecidas (regla fundamental — sin esta, las respuestas se bloquean)
+sudo iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Permite el loopback (comunicación interna del sistema)
+sudo iptables -A INPUT -i lo -j ACCEPT
+
+# Limita intentos SSH a 3 conexiones nuevas por minuto (anti fuerza bruta nativo)
+sudo iptables -A INPUT -p tcp --dport 22 -m state --state NEW \
+  -m limit --limit 3/min --limit-burst 3 -j ACCEPT
+
+# Registra paquetes descartados (forense)
+sudo iptables -A INPUT -j LOG --log-prefix "IPTABLES-DROP: " --log-level 4
+
+# Lista el resultado final
+sudo iptables -L INPUT -n -v --line-numbers
 ```
 
-Después comprueba en la VM:
-
-```bash
-# ¿Hay IPs baneadas?
-sudo fail2ban-client status sshd
-
-# ¿Aparece el baneo en el log?
-sudo tail -20 /var/log/auth.log | grep "Ban\|Failed"
-```
-
-Desbanea tu IP si te baneaste accidentalmente:
-```bash
-sudo fail2ban-client set sshd unbanip TU_IP
-```
-
----
-
-## Ejercicio 7.3 — Hardening de SSH
-
-### Tarea 1 — Desactivar el login de root por SSH
-
-```bash
-sudo nano /etc/ssh/sshd_config
-```
-
-Busca estas líneas y asegúrate de que tienen estos valores:
-
-```
-PermitRootLogin no
-PasswordAuthentication no
-PubkeyAuthentication yes
-```
-
-<Aside type="caution" title="Antes de desactivar contraseñas">
-Asegúrate de que tu usuario tiene las claves SSH configuradas (de la práctica 3). Si desactivas contraseñas sin tener claves, quedas sin acceso SSH.
+<Aside type="caution" title="Estas reglas se pierden al reiniciar">
+Las reglas de iptables son volátiles: se borran con cada reinicio. Para persistirlas necesitas `iptables-persistent` o guardarlas en un script que se ejecute al arrancar.
 </Aside>
 
 ```bash
-# Aplica los cambios
-sudo systemctl reload sshd
-
-# Prueba que root no puede conectarse:
-# (desde tu terminal fuera de la VM)
-ssh root@192.168.56.X
-# Debe decir: Permission denied, please try again
+# Limpia las reglas añadidas para no interferir con UFW
+sudo iptables -D INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+sudo iptables -D INPUT -i lo -j ACCEPT 2>/dev/null || true
 ```
 
----
+Guarda en `~/practica7/entrega/75_iptables_produccion.txt`.
 
-## Ejercicio 7.4 — Auditoría con Lynis
-
-### Tarea 1 — Instalar y ejecutar Lynis
+### Tarea 4 — Persistencia de reglas con iptables-persistent
 
 ```bash
-sudo apt install -y lynis
+# Instala la herramienta de persistencia
+sudo apt install -y iptables-persistent
 
-# La auditoría completa tarda unos minutos
-sudo lynis audit system
+# Guarda las reglas actuales (las de UFW + las que añadiste)
+sudo netfilter-persistent save
+
+# Verifica los ficheros generados
+ls -la /etc/iptables/
+cat /etc/iptables/rules.v4
+
+# Simula un reinicio: recarga las reglas guardadas
+sudo netfilter-persistent reload
+
+# Verifica que el servicio arranca automáticamente
+systemctl is-enabled netfilter-persistent
 ```
 
-Lynis puntúa la seguridad del servidor. Busca la línea:
-
-```
-Hardening index : XX [############            ]
-```
-
-### Tarea 2 — Revisar las sugerencias
-
-```bash
-# Las advertencias de lynis (las más importantes)
-sudo grep "warning\|suggestion" /var/log/lynis.log | head -20
-```
-
-Lynis clasifica los hallazgos en:
-- **WARNING** (amarillo) → problema de seguridad importante, corrígelo
-- **SUGGESTION** (azul) → mejora recomendable pero no crítica
-
-Implementa al menos **2 correcciones** de las que sugiera lynis. Dos sugerencias habituales:
-
-```bash
-# 1. Restringir permisos de /etc/crontab (suele sugerirlo)
-sudo chmod 600 /etc/crontab
-
-# 2. Configurar umask más restrictivo
-# Lynis suele pedir umask 027 en lugar del 022 por defecto
-# Añade al final de /etc/profile:
-echo "umask 027" | sudo tee -a /etc/profile
-```
+Guarda en `~/practica7/entrega/75_iptables_persistencia.txt`. Explica con un comentario `#` la diferencia entre guardar reglas con `netfilter-persistent` vs escribir un script de arranque propio.
 
 ---
 
@@ -293,19 +591,237 @@ mkdir -p ~/practica7/entrega
 {
   echo "=== ENTREGA PRÁCTICA 7 ==="
   echo ""
-  echo "--- Firewall UFW ---"
+
+  echo "--- 7.1: Permisos ficheros críticos ---"
+  ls -la /etc/shadow /etc/sudoers /etc/ssh/sshd_config
+  echo ""
+
+  echo "--- 7.1: Configuración sudo ---"
+  sudo cat /etc/sudoers.d/timeout 2>/dev/null || echo "sin timeout personalizado"
+  echo ""
+
+  echo "--- 7.2: Estado AppArmor ---"
+  sudo aa-status | head -10
+  echo ""
+
+  echo "--- 7.3: Puertos en escucha ---"
+  sudo ss -tulpn | grep LISTEN
+  echo ""
+
+  echo "--- 7.4: Reglas UFW activas ---"
   sudo ufw status verbose
   echo ""
-  echo "--- fail2ban SSH ---"
-  sudo fail2ban-client status sshd
+
+  echo "--- 7.4: UFW habilitado al arranque ---"
+  systemctl is-enabled ufw
   echo ""
-  echo "--- Config SSH ---"
-  grep "PermitRootLogin\|PasswordAuthentication\|PubkeyAuthentication" /etc/ssh/sshd_config
+
+  echo "--- 7.5: Reglas iptables (filter) ---"
+  sudo iptables -L -n | head -20
   echo ""
-  echo "--- Lynis (hardening index) ---"
-  sudo lynis show version
-  sudo grep "Hardening index" /var/log/lynis.log | tail -1
+
+  echo "--- 7.5: Persistencia iptables ---"
+  ls -la /etc/iptables/ 2>/dev/null || echo "iptables-persistent no instalado"
 } > ~/practica7/entrega/verificacion.txt
+
+cat ~/practica7/entrega/verificacion.txt
 ```
 
 Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 7`).
+
+---
+
+## 🧨 Desafíos extra (MUY DIFÍCILES) — Troubleshooting de seguridad
+
+Estos ejercicios simulan incidentes de seguridad reales. No hay pista directa: tendrás que **leer los logs, analizar reglas y reproducir el fallo** antes de corregirlo.
+
+Reglas:
+- **Solo** puedes usar comandos de terminal y herramientas del módulo 7.
+- No se permite desactivar UFW o AppArmor como solución.
+- Todo el trabajo se documenta en `~/practica7/entrega/`.
+
+---
+
+## Ejercicio 7.6 ⚡ EXTRA — Firewall roto: servicio bloqueado sin motivo aparente
+
+### Setup (ejecuta UNA sola vez)
+
+{/* Notas ocultas 7.6: errores sembrados: regla deny específica para puerto 80 que tiene prioridad sobre el allow, AppArmor en modo enforce bloqueando nginx, y SSH con MaxAuthTries demasiado bajo (1). */}
+
+```bash
+bash -lc 'set -euo pipefail
+
+# Error 1: añade una regla deny para el puerto 80 ANTES del allow existente
+# UFW procesa las reglas en orden; esta deny tiene prioridad sobre el allow 80/tcp
+sudo ufw insert 1 deny 80/tcp comment "ROTO: deny antes del allow"
+
+# Error 2: cambia MaxAuthTries en SSH a 1 (solo permite 1 intento de autenticación)
+sudo sed -i "s/^#\?MaxAuthTries.*/MaxAuthTries 1/" /etc/ssh/sshd_config
+sudo systemctl reload ssh
+
+# Error 3: crea un perfil AppArmor restrictivo para nginx que bloquea el acceso a sus logs
+sudo tee /etc/apparmor.d/local/nginx-extra > /dev/null << '"'"'EOF'"'"'
+# Perfil extra que bloquea escritura en logs (simula perfil mal configurado)
+deny /var/log/nginx/** w,
+deny /var/log/nginx/** rw,
+EOF
+sudo systemctl reload apparmor 2>/dev/null || true
+
+sudo systemctl restart nginx 2>/dev/null || true
+
+echo "Escenario 7.6 creado con 3 errores sembrados"
+echo "Síntomas: nginx no responde en puerto 80 y SSH falla al segundo intento"'
+```
+
+### Síntomas reportados
+
+- El navegador no carga la página web (puerto 80 bloqueado)
+- Los usuarios se quejan de que SSH los echa tras el primer intento fallido de contraseña
+- nginx genera errores al intentar escribir en sus logs
+
+### Proceso de diagnóstico
+
+Sigue este flujo sistemático:
+
+```bash
+# Síntoma 1: puerto 80 no responde
+curl -v --connect-timeout 5 http://localhost 2>&1 | head -10
+sudo ufw status numbered  # ¿hay reglas deny antes que allow?
+
+# Síntoma 2: SSH con un solo intento
+grep "MaxAuthTries" /etc/ssh/sshd_config
+
+# Síntoma 3: nginx y logs
+sudo systemctl status nginx --no-pager
+sudo journalctl -u nginx -n 20 --no-pager
+sudo grep "apparmor\|DENIED" /var/log/syslog 2>/dev/null | grep nginx | tail -10
+```
+
+### Objetivo
+
+1) Que `curl http://localhost` devuelva la página por defecto de nginx
+2) Que SSH permita al menos 3 intentos de autenticación antes de cerrar
+3) Que nginx pueda escribir en sus logs sin errores de AppArmor
+
+### Entregables
+
+Guarda en `~/practica7/entrega/76_solucion.txt`:
+
+- Qué encontraste en cada síntoma (causa exacta)
+- Los comandos de corrección en orden
+- Evidencia de que el objetivo se cumple:
+
+```bash
+{
+  echo "=== VERIFICACIÓN 7.6 ==="
+  echo ""
+  echo "--- Puerto 80 ---"
+  curl -s --connect-timeout 5 http://localhost | head -5 || echo "ERROR: sin respuesta"
+  echo ""
+  echo "--- Reglas UFW (sin deny 80) ---"
+  sudo ufw status numbered | grep -v "^$"
+  echo ""
+  echo "--- SSH MaxAuthTries ---"
+  grep "MaxAuthTries" /etc/ssh/sshd_config
+  echo ""
+  echo "--- nginx sin errores AppArmor ---"
+  sudo journalctl -u nginx --since "5 minutes ago" --no-pager | grep -i "error\|denied" || echo "Sin errores recientes"
+} > ~/practica7/entrega/76_solucion.txt
+```
+
+---
+
+## Ejercicio 7.7 ⚡ EXTRA — Investigación forense: intruso en el sistema
+
+### Setup (ejecuta UNA sola vez)
+
+{/* Notas ocultas 7.7: escenario de forensics básico. Se crea un usuario sospechoso, se añade a sudoers de forma oculta, se instala netcat escuchando en un puerto alto, y se deja un crontab sospechoso. */}
+
+```bash
+bash -lc 'set -euo pipefail
+
+# Simula actividad de un "intruso" en el sistema
+# Crea un usuario sospechoso con nombre parecido a uno legítimo
+sudo useradd -m -s /bin/bash sysadmin_ 2>/dev/null || true
+sudo usermod -aG sudo sysadmin_ 2>/dev/null || true
+
+# Añade un crontab sospechoso al usuario
+sudo crontab -u sysadmin_ - << '"'"'EOF'"'"'
+* * * * * /tmp/.hidden_script.sh
+EOF
+
+# Crea el script oculto
+sudo tee /tmp/.hidden_script.sh > /dev/null << '"'"'EOF'"'"'
+#!/bin/bash
+exit 0
+EOF
+sudo chmod +x /tmp/.hidden_script.sh
+
+# Abre un puerto de escucha en un puerto alto (simula backdoor)
+nohup nc -lvp 31337 > /tmp/.nc_out 2>&1 &
+echo $! > /tmp/.nc_pid
+
+echo "Escenario 7.7 creado"
+echo "Pistas: usuario sospechoso, crontab oculto, puerto extraño en escucha"'
+```
+
+### Objetivo
+
+Actúa como perito forense. Encuentra y documenta **todas** las anomalías introducidas:
+
+1) Usuarios sospechosos con acceso indebido
+2) Procesos o puertos no autorizados en escucha
+3) Crontabs sospechosos
+4) Limpia cada anomalía encontrada
+
+### Herramientas a usar
+
+```bash
+# Investigación de usuarios
+cat /etc/passwd | grep -v "nologin\|false"
+grep -E "^sudo" /etc/group
+
+# Puertos y procesos
+sudo ss -tulpn | grep -v "127.0.0.1\|::1"
+sudo lsof -i -P -n | grep LISTEN
+
+# Crontabs del sistema
+sudo ls /var/spool/cron/crontabs/
+sudo crontab -u sysadmin_ -l 2>/dev/null
+
+# Ficheros ocultos en /tmp
+ls -la /tmp/ | grep "^\."
+
+# Últimas acciones en el sistema
+sudo find /tmp -name ".*" -newer /etc/passwd 2>/dev/null
+last | head -10
+```
+
+### Entregables
+
+Guarda en `~/practica7/entrega/77_forense.txt`:
+
+- La lista completa de anomalías encontradas con sus evidencias
+- Los comandos usados para limpiarlas
+- Evidencia de que el sistema está limpio
+
+```bash
+{
+  echo "=== INFORME FORENSE 7.7 ==="
+  echo ""
+  echo "--- Usuarios activos ---"
+  cat /etc/passwd | grep -v "nologin\|false"
+  echo ""
+  echo "--- Sudoers ---"
+  grep -E "^sudo" /etc/group
+  echo ""
+  echo "--- Puertos en escucha (sin localhost) ---"
+  sudo ss -tulpn | grep -v "127.0.0.1\|::1\|\[::1\]"
+  echo ""
+  echo "--- Crontabs del sistema ---"
+  sudo ls /var/spool/cron/crontabs/ 2>/dev/null
+  echo ""
+  echo "--- Ficheros ocultos en /tmp ---"
+  ls -la /tmp/ | grep "^\."
+} > ~/practica7/entrega/77_forense.txt
+```

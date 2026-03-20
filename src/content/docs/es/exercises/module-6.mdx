@@ -1,260 +1,814 @@
 ---
-title: "Práctica 6 — Software y Tareas Automáticas"
-description: Gestiona paquetes con apt, crea un script de informe del sistema y prográmalo con un systemd timer para ejecución automática diaria.
+title: "Práctica 6 — Software, Tiempo y Automatización"
+description: "5 ejercicios LFCS: gestión de paquetes con apt, compilación desde fuente, sincronización NTP, automatización con cron y timers, y scripting Bash para sysadmins."
 sidebar:
   order: 6
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
+<Aside type="tip" title="Antes de empezar">
+Conéctate a tu VM por SSH. Esta práctica está diseñada para durar ~2 horas. Los ejercicios siguen el orden del módulo: paquetes, compilación, tiempo, automatización y scripting. Léelos todos antes de empezar.
+</Aside>
+
 ---
 
-## Ejercicio 6.1 — Gestión de paquetes con apt
+## Setup — ejecutar una sola vez
+
+```bash
+mkdir -p ~/practica6/{work,entrega}
+sudo apt update
+```
+
+Todo lo que se pida "guardar" debe ir dentro de `~/practica6/entrega/`.
+
+---
+
+## Ejercicio 6.1 — Gestión avanzada de paquetes con apt
 
 ### Contexto
 
-`apt` es el gestor de paquetes de Ubuntu/Debian. Cualquier software del sistema operativo —desde servidores web hasta herramientas de terminal— se instala, actualiza y elimina con apt.
+El repositorio de Debian/Ubuntu es la única fuente de software de confianza para un sysadmin LFCS. Aquí practicarás el ciclo completo: buscar, instalar, inspeccionar dependencias, gestionar repositorios y recuperarte de paquetes rotos.
 
-### Tarea 1 — Buscar, instalar y eliminar paquetes
+### Tareas
+
+1) **Audita el estado inicial del sistema de paquetes** antes de modificar nada:
 
 ```bash
-# Actualiza la lista de paquetes disponibles (no instala nada)
-sudo apt update
+# Número total de paquetes instalados
+dpkg -l | grep "^ii" | wc -l
 
-# Busca información sobre un paquete antes de instalarlo
-apt show htop
+# Ver las fuentes de repositorios activas
+cat /etc/apt/sources.list
+ls /etc/apt/sources.list.d/ 2>/dev/null
 
-# Instala htop (monitor de recursos mejorado)
-sudo apt install -y htop
-
-# Pruébalo
-htop
-# Pulsa Q para salir
+# Paquetes con actualizaciones pendientes
+apt list --upgradable 2>/dev/null | head -15
 ```
 
+Guarda la salida en `~/practica6/entrega/61_estado_inicial.txt`. Identifica con comentarios `#` qué repositorios tiene activos el sistema.
+
+2) **Diferencia entre `dpkg` y `apt`.** Instala y compara el nivel de información de cada herramienta:
+
 ```bash
-# Instala varias herramientas de una vez
-sudo apt install -y tree curl wget
+# Instala dos herramientas útiles
+sudo apt install -y htop tree
 
-# Prueba tree (muestra árbol de directorios)
-tree /etc/apt/
+# dpkg: información de bajo nivel del paquete instalado
+dpkg -l htop
+dpkg -L htop  # archivos que instaló este paquete
 
-# Elimina curl pero conserva su configuración
+# apt-cache: búsqueda en los repositorios
+apt-cache show htop | head -20
+apt-cache depends htop  # dependencias del paquete
+apt-cache rdepends --installed htop | head -10  # qué paquetes dependen de htop
+```
+
+Guarda en `~/practica6/entrega/61_dpkg_vs_apt.txt`. Añade un comentario `#` explicando la diferencia entre `dpkg` (gestión local) y `apt` (gestión con repositorios).
+
+3) **Practica el ciclo completo de instalación y eliminación:**
+
+```bash
+# Instala curl
+sudo apt install -y curl
+
+# Verifica que está instalado y su versión
+curl --version | head -1
+dpkg -l curl | grep "^ii"
+
+# Elimina pero conserva la configuración
 sudo apt remove curl
+dpkg -l curl | grep "^rc"  # "rc" = eliminado pero con configuración
+ls /etc/curl* 2>/dev/null || echo "(no hay ficheros de configuración de curl)"
 
-# Elimina curl y su configuración (purge)
+# Elimina también la configuración (purge)
 sudo apt purge curl
+dpkg -l curl 2>/dev/null | grep curl || echo "curl eliminado completamente"
 
-# Elimina paquetes huérfanos (instalados como dependencias y ya no necesarios)
+# Limpia paquetes huérfanos que ya no son necesarios
 sudo apt autoremove -y
 ```
 
-### Tarea 2 — Instalar un paquete .deb manualmente
+Guarda en `~/practica6/entrega/61_ciclo_paquete.txt`.
 
-A veces un paquete no está en los repositorios y debes descargarlo como `.deb`:
+4) **Instala un paquete `.deb` manualmente con `dpkg`:**
 
 ```bash
-# Descarga el paquete .deb de bat (un cat mejorado con sintaxis coloreada)
+# Descarga bat (cat mejorado con sintaxis coloreada) como .deb
 wget "https://github.com/sharkdp/bat/releases/download/v0.24.0/bat_0.24.0_amd64.deb" \
   -O /tmp/bat.deb
 
-# Instálalo con dpkg
+# Instala con dpkg
 sudo dpkg -i /tmp/bat.deb
 
-# Pruébalo
+# Si falla por dependencias, corrígelas automáticamente:
+sudo apt install -f -y
+
+# Prueba que funciona
 bat /etc/hosts
 ```
 
-Si `dpkg` falla por dependencias: `sudo apt install -f -y` y vuelve a intentarlo.
+Guarda en `~/practica6/entrega/61_dpkg_manual.txt`.
+
+5) **Añade un repositorio externo con clave GPG** (práctica real de producción):
+
+```bash
+# Inspecciona el fichero sources.list actual
+cat /etc/apt/sources.list
+
+# Crea un fichero de repositorio personalizado (usando el repositorio stable de Debian como ejemplo)
+# En producción añadirías aquí repositorios de terceros (Docker, NodeJS, etc.)
+cat /etc/apt/sources.list | grep "^deb " | head -3
+
+# Comprueba la integridad de los repositorios actuales
+sudo apt-get update 2>&1 | grep -E "error|warning|OK" | head -10
+```
+
+Guarda en `~/practica6/entrega/61_repositorios.txt`. Explica con un comentario `#` por qué es peligroso añadir repositorios de terceros sin verificar su clave GPG.
 
 ---
 
-## Ejercicio 6.2 — Script de informe del sistema
+## Ejercicio 6.2 — Compilación de software desde el código fuente
 
 ### Contexto
 
-Los sysadmins programan informes automáticos para detectar problemas antes de que los usuarios los reporten. Crearás un script que recopila el estado del servidor.
+Cuando un paquete no existe en los repositorios o necesitas una versión específica, compilas desde el código fuente. El ciclo GNU (`./configure → make → make install`) es una habilidad clave del examen LFCS.
 
-### Setup — una sola vez
+### Setup — herramientas de compilación
 
 ```bash
-# Crea el directorio donde iran los informes
-mkdir -p ~/informes
+sudo apt install -y build-essential libssl-dev wget
 ```
 
-### Tarea 1 — Crear el script paso a paso
+### Tareas
 
-Primero entiende cada pieza antes de montarlas juntas:
+1) **Audita las herramientas de compilación disponibles:**
 
 ```bash
-# Prueba en la terminal cada uno de estos comandos:
+# Versión del compilador C
+gcc --version
 
-# 1. Fecha y hora actual
-date '+%Y-%m-%d %H:%M:%S'
+# Make: el orquestador de compilación
+make --version | head -2
 
-# 2. Hostname del servidor
-hostname
-
-# 3. Uso de disco del raíz
-df -h / | tail -1
-
-# 4. Memoria disponible
-free -h | grep "Mem:"
-
-# 5. Carga del sistema (últimos 1, 5 y 15 minutos)
-uptime | awk -F'load average:' '{print $2}'
-
-# 6. Servicios caídos (si no hay ninguno, no muestra nada)
-systemctl list-units --failed --no-legend 2>/dev/null | head -5
+# Ver las librerías dinámicas del sistema
+ldconfig -p | wc -l
 ```
 
-Ahora crea el script:
+Guarda en `~/practica6/entrega/62_entorno_compilacion.txt`.
+
+2) **Descarga y prepara el código fuente de `htop`** (versión de referencia desde código):
 
 ```bash
-sudo nano /usr/local/bin/informe_sistema.sh
+# Crea un directorio de trabajo limpio
+mkdir -p ~/practica6/work/compilacion
+cd ~/practica6/work/compilacion
+
+# Descarga el tarball del código fuente de htop
+wget "https://github.com/htop-dev/htop/releases/download/3.3.0/htop-3.3.0.tar.xz" \
+  -O htop-3.3.0.tar.xz
+
+# Extrae el tarball
+tar xf htop-3.3.0.tar.xz
+
+# Inspecciona la estructura del proyecto descargado
+ls -la
+cd htop-3.3.0
+ls -la
+```
+
+Guarda la estructura del directorio en `~/practica6/entrega/62_estructura_fuente.txt`. Identifica con comentarios `#` para qué sirven los ficheros `configure`, `Makefile.am` y `README`.
+
+3) **Ejecuta el ciclo de compilación GNU completo:**
+
+```bash
+cd ~/practica6/work/compilacion/htop-3.3.0
+
+# Paso 1: configure — detecta el entorno y crea el Makefile definitivo
+# --prefix define dónde se instalará (aquí usamos /usr/local para no contaminar el sistema)
+sudo apt install -y libncurses-dev libnl-3-dev libnl-genl-3-dev libsensors-dev
+./configure --prefix=/usr/local 2>&1 | tail -10
+
+# Paso 2: make — compila el código fuente en binarios
+# -j$(nproc) usa todos los núcleos disponibles para acelerar la compilación
+make -j$(nproc) 2>&1 | tail -5
+
+# Paso 3: make install — copia los binarios compilados al destino
+sudo make install 2>&1 | tail -5
+
+# Verifica que se instaló correctamente
+which htop
+/usr/local/bin/htop --version
+```
+
+<Aside type="note" title="¿Qué hace cada paso?">
+- `./configure`: detecta librerías del sistema y genera un `Makefile` adaptado al entorno específico de tu máquina
+- `make`: lee el `Makefile` y compila el código C en binarios ejecutables
+- `make install`: copia los binarios, librerías y man pages al directorio especificado con `--prefix`
+</Aside>
+
+Guarda la salida de los tres pasos en `~/practica6/entrega/62_compilacion.txt`.
+
+4) **Inspecciona las dependencias de librerías dinámicas con `ldd`:**
+
+```bash
+# ldd muestra qué librerías .so necesita el binario en tiempo de ejecución
+ldd /usr/local/bin/htop
+
+# Compara con el htop del sistema (si existe)
+ldd /usr/bin/htop 2>/dev/null || echo "htop del sistema no encontrado"
+
+# Si una librería aparece como "not found", el binario no podrá ejecutarse
+# ldconfig actualiza la caché de librerías dinámicas
+sudo ldconfig
+```
+
+Guarda en `~/practica6/entrega/62_ldd.txt`. Explica con un comentario `#` qué significa "not found" en la salida de `ldd` y cómo se resolvería.
+
+5) **Desinstala el programa compilado manualmente:**
+
+```bash
+cd ~/practica6/work/compilacion/htop-3.3.0
+
+# make uninstall solo funciona si el Makefile lo soporta
+sudo make uninstall 2>&1 | head -10 || echo "Uninstall no soportado"
+
+# Alternativa manual: eliminar los ficheros copiados por make install
+sudo rm -f /usr/local/bin/htop
+sudo rm -f /usr/local/share/man/man1/htop.1
+which htop && echo "htop sigue instalado" || echo "htop eliminado correctamente"
+```
+
+Guarda en `~/practica6/entrega/62_desinstalacion.txt`. Añade un comentario `#` sobre por qué la compilación manual complica la gestión de actualizaciones frente a `apt`.
+
+---
+
+## Ejercicio 6.3 — Sincronización de tiempo (NTP)
+
+### Contexto
+
+Un servidor con la hora incorrecta es un servidor enfermo. Los certificados TLS fallan, los logs son inútiles para forensics y las bases de datos distribuidas pueden corromperse. Aquí aprenderás a diagnosticar y corregir la sincronización horaria.
+
+### Tareas
+
+1) **Audita el estado actual del tiempo en el sistema:**
+
+```bash
+# Muestra hora del sistema, zona horaria y estado de sincronización
+timedatectl status
+
+# Diferencia entre reloj hardware (BIOS) y reloj del sistema (kernel)
+sudo hwclock --show         # reloj BIOS
+date                        # reloj del sistema
+
+# Ver la zona horaria actual
+ls -la /etc/localtime
+```
+
+Guarda la salida en `~/practica6/entrega/63_tiempo_inicial.txt`. Identifica con comentarios `#` si el sistema ya está sincronizando NTP y con qué servicio.
+
+2) **Cambia la zona horaria del sistema:**
+
+```bash
+# Lista las zonas disponibles de Europa
+timedatectl list-timezones | grep Europe
+
+# Cambia temporalmente a Madrid (o mantén la tuya si ya es correcta)
+sudo timedatectl set-timezone Europe/Madrid
+
+# Verifica el cambio
+timedatectl status | grep "Time zone"
+date
+
+# Opcional: vuelve a la zona original después de documentar
+# sudo timedatectl set-timezone Europe/London
+```
+
+Guarda en `~/practica6/entrega/63_timezone.txt`.
+
+3) **Instala y configura `chrony` como servidor NTP:**
+
+```bash
+# Instala chrony
+sudo apt install -y chrony
+
+# Verifica que el servicio arrancó
+systemctl status chrony --no-pager | head -10
+
+# Estado de sincronización: muestra los servidores NTP y el offset actual
+chronyc tracking
+
+# Fuentes NTP actuales y su calidad (Poll, Reach, LastRx, Offset)
+chronyc sources -v
+```
+
+<Aside type="note" title="¿Qué es el 'offset'?">
+El offset es la diferencia entre la hora del servidor y la hora de referencia NTP. Un offset menor de 10ms es excelente. Mayor de 1 segundo puede causar problemas en certificados TLS y bases de datos distribuidas.
+</Aside>
+
+Guarda en `~/practica6/entrega/63_chrony_tracking.txt`.
+
+4) **Configura `chrony` con servidores NTP españoles:**
+
+```bash
+# Edita la configuración de chrony
+sudo nano /etc/chrony/chrony.conf
+```
+
+Sustituye los servidores `pool` existentes por los servidores de España:
+
+```text
+# Servidores NTP del pool español (alta disponibilidad)
+pool es.pool.ntp.org iburst
+server 0.es.pool.ntp.org iburst
+server 1.es.pool.ntp.org iburst
+```
+
+```bash
+# Recarga la configuración
+sudo systemctl restart chrony
+
+# Fuerza la sincronización inmediata (útil si el reloj lleva mucho tiempo mal)
+sudo chronyc makestep
+
+# Verifica las nuevas fuentes
+chronyc sources -v
+```
+
+Guarda los cambios del fichero de configuración y la salida de `sources` en `~/practica6/entrega/63_chrony_config.txt`.
+
+5) **Compara los dos mecanismos de sincronización NTP disponibles en Debian:**
+
+```bash
+# Muestra el estado de systemd-timesyncd (alternativa más ligera a chrony)
+systemctl status systemd-timesyncd --no-pager | head -8
+
+# En sistemas con chrony activo, timesyncd queda desactivado
+timedatectl show-timesync 2>/dev/null || echo "timesyncd no activo"
+
+# Muestra qué servicio gestiona el NTP ahora mismo
+timedatectl status | grep NTP
+```
+
+Guarda en `~/practica6/entrega/63_comparativa_ntp.txt`. Explica con un comentario `#` cuándo usarías `chrony` frente a `systemd-timesyncd`.
+
+---
+
+## Ejercicio 6.4 — Automatización con cron y systemd timers
+
+### Contexto
+
+Un sysadmin que trabaja manualmente en tareas repetibles está haciendo mal su trabajo. Cron y systemd timers son las dos herramientas de automatización del examen LFCS. Aquí dominarás ambas y comprenderás cuándo usar cada una.
+
+### Setup — script base para automatizar
+
+```bash
+# Crea un script de limpieza de logs de prueba
+sudo nano /usr/local/bin/limpia_logs.sh
 ```
 
 Escribe:
 
 ```bash
 #!/bin/bash
-# informe_sistema.sh — Informe diario del estado del servidor
+# limpia_logs.sh — elimina logs de /tmp mayores de 7 días
+LOGFILE="/var/log/limpieza.log"
+FECHA=$(date '+%Y-%m-%d %H:%M:%S')
+ELIMINADOS=$(find /tmp -name "*.log" -mtime +7 -type f 2>/dev/null | wc -l)
 
-LOGFILE="/var/log/informes/informe_$(date '+%Y-%m-%d').log"
-SEPARADOR="========================================"
+find /tmp -name "*.log" -mtime +7 -type f -delete 2>/dev/null
 
-# Crea el directorio si no existe
-mkdir -p /var/log/informes
-
-{
-  echo "$SEPARADOR"
-  echo "INFORME DEL SERVIDOR — $(date '+%Y-%m-%d %H:%M:%S')"
-  echo "$SEPARADOR"
-  echo ""
-
-  echo "## Servidor"
-  echo "Hostname: $(hostname)"
-  echo "Kernel:   $(uname -r)"
-  echo ""
-
-  echo "## Disco"
-  df -h | grep -v tmpfs
-  echo ""
-
-  echo "## Memoria"
-  free -h
-  echo ""
-
-  echo "## Carga del sistema"
-  uptime
-  echo ""
-
-  echo "## Servicios caídos"
-  FALLIDOS=$(systemctl list-units --failed --no-legend 2>/dev/null)
-  if [ -z "$FALLIDOS" ]; then
-    echo "Todos los servicios funcionan correctamente."
-  else
-    echo "$FALLIDOS"
-  fi
-  echo ""
-
-  echo "## Últimos errores del sistema"
-  journalctl -p err -n 5 --no-pager 2>/dev/null || echo "(sin errores recientes)"
-  echo ""
-
-  echo "$SEPARADOR"
-  echo "Fin del informe"
-} >> "$LOGFILE"
-
-echo "Informe guardado en: $LOGFILE"
+echo "[$FECHA] Limpieza completada. Ficheros eliminados: $ELIMINADOS" >> "$LOGFILE"
 ```
 
-Dale permisos de ejecución y pruébalo:
-
 ```bash
-sudo chmod +x /usr/local/bin/informe_sistema.sh
+sudo chmod +x /usr/local/bin/limpia_logs.sh
 
 # Prueba manual
-sudo /usr/local/bin/informe_sistema.sh
-
-# Lee el informe generado
-cat /var/log/informes/informe_$(date '+%Y-%m-%d').log
+sudo /usr/local/bin/limpia_logs.sh
+cat /var/log/limpieza.log
 ```
 
-El informe debe tener todas las secciones rellenas. Si alguna está vacía, revisa el comando correspondiente.
-
----
-
-## Ejercicio 6.3 — Programar con systemd timer
-
-### Tarea 1 — Crear el servicio
+### Tarea 1 — Cron: automatización clásica
 
 ```bash
-sudo nano /etc/systemd/system/informe-sistema.service
+# Inspecciona los crontabs del sistema
+ls -la /etc/cron.{d,daily,weekly,monthly}/ 2>/dev/null
+cat /etc/crontab
+
+# Abre el crontab personal del usuario actual
+crontab -e
+```
+
+Añade las siguientes tareas al crontab (usa el editor que se abra):
+
+```text
+# Sintaxis: minuto hora día-mes mes día-semana comando
+# m     h    dom  mon  dow   command
+
+# Ejecuta el script de limpieza cada día a las 3:00 AM
+0 3 * * * /usr/local/bin/limpia_logs.sh
+
+# Ejecuta una verificación de disco cada lunes a las 8:00
+0 8 * * 1 df -h / >> /var/log/disco_semanal.log
+
+# Ejecuta un backup de /etc cada domingo a las 23:00
+0 23 * * 0 tar czf /tmp/backup_etc_$(date +\%Y\%m\%d).tar.gz /etc 2>/dev/null
+```
+
+<Aside type="note" title="La sintaxis de los 5 campos">
+`* * * * *` significa "cada minuto de cada hora de cada día". Lee cada campo de izquierda a derecha: minuto (0-59), hora (0-23), día del mes (1-31), mes (1-12), día de la semana (0-7, donde 0 y 7 = domingo).
+</Aside>
+
+Verifica el crontab:
+
+```bash
+# Lista todas las tareas del usuario actual
+crontab -l
+
+# Lista el crontab del sistema (root)
+sudo crontab -l 2>/dev/null || echo "sin crontab de root"
+```
+
+Guarda la salida de `crontab -l` en `~/practica6/entrega/64_crontab.txt`.
+
+### Tarea 2 — at: ejecución diferida única
+
+```bash
+# Instala at si no está disponible
+sudo apt install -y at
+sudo systemctl enable --now atd
+
+# Programa una tarea para ejecutarse en 2 minutos
+echo "df -h / >> /var/log/disco_at.log && date >> /var/log/disco_at.log" | at now + 2 minutes
+
+# Lista las tareas programadas con at
+atq
+
+# Espera 2 minutos y verifica la ejecución
+sleep 120
+cat /var/log/disco_at.log 2>/dev/null || echo "El fichero aún no existe"
+```
+
+Guarda en `~/practica6/entrega/64_at.txt`. Explica con un comentario `#` la diferencia entre `at` y `cron`.
+
+### Tarea 3 — systemd timer: la alternativa moderna
+
+Crea una unidad de servicio y su timer correspondiente:
+
+```bash
+sudo nano /etc/systemd/system/limpia-logs.service
 ```
 
 ```ini
 [Unit]
-Description=Informe diario del estado del servidor
-After=network.target
+Description=Limpieza automática de logs de /tmp
+After=local-fs.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/informe_sistema.sh
+ExecStart=/usr/local/bin/limpia_logs.sh
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-### Tarea 2 — Crear el timer
-
 ```bash
-sudo nano /etc/systemd/system/informe-sistema.timer
+sudo nano /etc/systemd/system/limpia-logs.timer
 ```
 
 ```ini
 [Unit]
-Description=Timer para informe diario a las 7:00
+Description=Timer para limpieza diaria de logs (3:00 AM)
 
 [Timer]
-OnCalendar=*-*-* 07:00:00
+OnCalendar=*-*-* 03:00:00
 Persistent=true
 
 [Install]
 WantedBy=timers.target
 ```
 
-<Aside type="note" title="¿Qué hace Persistent=true?">
-Si el servidor estaba apagado a las 7:00, al encenderse ejecutará el informe que se perdió. Sin esta opción, la ejecución se perdería.
+<Aside type="note" title="¿Por qué Persistent=true?">
+Si el servidor estaba apagado a las 3:00, al encenderse ejecutará la tarea pendiente inmediatamente. Sin esta opción, la ejecución se perdería hasta el día siguiente.
 </Aside>
-
-### Tarea 3 — Activar y probar
 
 ```bash
 sudo systemctl daemon-reload
+sudo systemctl enable limpia-logs.timer
+sudo systemctl start limpia-logs.timer
 
-# Habilita el timer
-sudo systemctl enable informe-sistema.timer
+# Verifica el estado y la próxima ejecución
+systemctl status limpia-logs.timer --no-pager
+systemctl list-timers | grep limpia
 
-# Arranca el timer
-sudo systemctl start informe-sistema.timer
+# Fuerza ejecución inmediata para probar
+sudo systemctl start limpia-logs.service
+journalctl -u limpia-logs.service -n 10 --no-pager
+```
 
-# Verifica el estado
-systemctl status informe-sistema.timer
+Guarda en `~/practica6/entrega/64_timer.txt`:
 
-# Verifica cuándo es la próxima ejecución
-systemctl list-timers | grep informe
+```bash
+{
+  echo "--- Estado del timer ---"
+  systemctl status limpia-logs.timer --no-pager
+  echo ""
+  echo "--- Próxima ejecución ---"
+  systemctl list-timers | grep limpia
+  echo ""
+  echo "--- Log de ejecución ---"
+  journalctl -u limpia-logs.service -n 5 --no-pager
+  echo ""
+  echo "--- Unidad service ---"
+  cat /etc/systemd/system/limpia-logs.service
+  echo ""
+  echo "--- Unidad timer ---"
+  cat /etc/systemd/system/limpia-logs.timer
+} > ~/practica6/entrega/64_timer.txt
+```
 
-# Fuerza una ejecución inmediata para probar
-sudo systemctl start informe-sistema.service
+---
 
-# Verifica en los logs de systemd
-journalctl -u informe-sistema.service -n 5 --no-pager
+## Ejercicio 6.5 — Scripting Bash para sysadmins
 
-# Verifica que se generó el informe
+### Contexto
+
+Un sysadmin que no sabe Bash es un sysadmin lento. Los scripts automatizan diagnósticos, informes y respuestas a incidentes. Aquí construirás un script de informe completo paso a paso, incorporando las estructuras de control que aparecen en el examen LFCS.
+
+### Tarea 1 — Variables y argumentos de línea de comandos
+
+```bash
+sudo nano /usr/local/bin/info_sistema.sh
+```
+
+Empieza con las bases:
+
+```bash
+#!/bin/bash
+# info_sistema.sh — Informe modular del servidor
+# Uso: info_sistema.sh [--detalle] [--servicio nombre]
+
+# Variables de entorno del sistema
+HOSTNAME=$(hostname)
+FECHA=$(date '+%Y-%m-%d %H:%M:%S')
+USUARIO_ACTUAL=$(whoami)
+KERNEL=$(uname -r)
+
+# Variables con valores por defecto
+MODO_DETALLE=false
+SERVICIO_A_REVISAR=""
+
+# Procesar argumentos de línea de comandos
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --detalle)
+      MODO_DETALLE=true
+      shift
+      ;;
+    --servicio)
+      SERVICIO_A_REVISAR="$2"
+      shift 2
+      ;;
+    *)
+      echo "Opción desconocida: $1"
+      exit 1
+      ;;
+  esac
+done
+
+echo "=== INFORME DEL SERVIDOR ==="
+echo "Hostname:  $HOSTNAME"
+echo "Fecha:     $FECHA"
+echo "Usuario:   $USUARIO_ACTUAL"
+echo "Kernel:    $KERNEL"
+```
+
+```bash
+sudo chmod +x /usr/local/bin/info_sistema.sh
+
+# Prueba básica
+/usr/local/bin/info_sistema.sh
+
+# Con argumentos
+/usr/local/bin/info_sistema.sh --detalle
+```
+
+### Tarea 2 — Condicionales y funciones
+
+Amplía el script añadiendo estas funciones (edita el mismo fichero):
+
+```bash
+sudo nano /usr/local/bin/info_sistema.sh
+```
+
+Añade después de las variables:
+
+```bash
+# =========================================================
+# FUNCIONES
+# =========================================================
+
+comprobar_disco() {
+  local PUNTO_MONTAJE="${1:-/}"
+  local USO_PORCENTAJE
+  USO_PORCENTAJE=$(df "$PUNTO_MONTAJE" | tail -1 | awk '{print $5}' | tr -d '%')
+
+  echo ""
+  echo "--- Disco ($PUNTO_MONTAJE) ---"
+  df -h "$PUNTO_MONTAJE" | tail -1
+
+  if [[ "$USO_PORCENTAJE" -ge 90 ]]; then
+    echo "ALERTA CRÍTICA: disco al ${USO_PORCENTAJE}% — acción inmediata necesaria"
+  elif [[ "$USO_PORCENTAJE" -ge 80 ]]; then
+    echo "ADVERTENCIA: disco al ${USO_PORCENTAJE}% — revisar pronto"
+  else
+    echo "Estado: OK (${USO_PORCENTAJE}% usado)"
+  fi
+}
+
+comprobar_servicio() {
+  local NOMBRE="$1"
+  echo ""
+  echo "--- Servicio: $NOMBRE ---"
+
+  if systemctl is-active --quiet "$NOMBRE"; then
+    echo "Estado: ACTIVO"
+    systemctl status "$NOMBRE" --no-pager | grep -E "Active:|Main PID:|Memory:"
+  else
+    echo "Estado: CAÍDO — revisando logs..."
+    journalctl -u "$NOMBRE" -n 5 --no-pager 2>/dev/null
+  fi
+}
+
+mostrar_memoria() {
+  echo ""
+  echo "--- Memoria ---"
+  free -h | grep -E "Mem:|Swap:"
+
+  local LIBRE_MB
+  LIBRE_MB=$(free -m | awk '/^Mem:/{print $4}')
+  if [[ "$LIBRE_MB" -lt 100 ]]; then
+    echo "ALERTA: menos de 100 MB de RAM libre (${LIBRE_MB} MB)"
+  fi
+}
+
+# =========================================================
+# CUERPO PRINCIPAL
+# =========================================================
+
+comprobar_disco "/"
+mostrar_memoria
+
+if [[ "$MODO_DETALLE" == true ]]; then
+  comprobar_disco "/var"
+  comprobar_disco "/tmp"
+fi
+
+if [[ -n "$SERVICIO_A_REVISAR" ]]; then
+  comprobar_servicio "$SERVICIO_A_REVISAR"
+fi
+```
+
+```bash
+# Prueba con diferentes argumentos
+/usr/local/bin/info_sistema.sh
+/usr/local/bin/info_sistema.sh --detalle
+/usr/local/bin/info_sistema.sh --servicio ssh
+/usr/local/bin/info_sistema.sh --detalle --servicio nginx
+```
+
+Guarda la salida de cada ejecución en `~/practica6/entrega/65_script_pruebas.txt`.
+
+### Tarea 3 — Bucles y generación de informes
+
+Añade un bucle que compruebe múltiples servicios de una vez:
+
+```bash
+sudo nano /usr/local/bin/informe_diario.sh
+```
+
+```bash
+#!/bin/bash
+# informe_diario.sh — Informe completo del servidor con bucles
+
+LOGFILE="/var/log/informes/informe_$(date '+%Y-%m-%d').log"
+mkdir -p /var/log/informes
+
+SERVICIOS_CRITICOS=("ssh" "cron" "networking")
+
+{
+  echo "============================================"
+  echo "INFORME DIARIO — $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "Servidor: $(hostname)"
+  echo "============================================"
+  echo ""
+
+  echo "## ESTADO DE SERVICIOS CRÍTICOS"
+  for SERVICIO in "${SERVICIOS_CRITICOS[@]}"; do
+    if systemctl is-active --quiet "$SERVICIO" 2>/dev/null; then
+      ESTADO="OK"
+    else
+      ESTADO="CAÍDO"
+    fi
+    printf "  %-20s %s\n" "$SERVICIO" "$ESTADO"
+  done
+  echo ""
+
+  echo "## USO DE DISCO"
+  df -h | grep -v tmpfs | grep -v "Filesystem"
+  echo ""
+
+  echo "## MEMORIA"
+  free -h
+  echo ""
+
+  echo "## CARGA DEL SISTEMA"
+  uptime
+  echo ""
+
+  echo "## ÚLTIMOS ERRORES (últimas 6 horas)"
+  journalctl -p err --since "6 hours ago" --no-pager -n 10 2>/dev/null \
+    || echo "(sin errores recientes)"
+  echo ""
+
+  echo "============================================"
+  echo "Fin del informe"
+} | tee "$LOGFILE"
+
+echo "Informe guardado: $LOGFILE"
+```
+
+```bash
+sudo chmod +x /usr/local/bin/informe_diario.sh
+
+# Ejecuta y verifica
+sudo /usr/local/bin/informe_diario.sh
+
+# Lee el informe guardado
 ls -la /var/log/informes/
 cat /var/log/informes/informe_$(date '+%Y-%m-%d').log
 ```
+
+Guarda la salida en `~/practica6/entrega/65_informe_diario.txt`.
+
+### Tarea 4 — Manejo de errores y exit codes
+
+```bash
+sudo nano /usr/local/bin/backup_seguro.sh
+```
+
+```bash
+#!/bin/bash
+# backup_seguro.sh — Script con manejo de errores robusto
+set -euo pipefail  # e=salir en error, u=variables no definidas son error, o=pipefail
+
+# Configuración
+ORIGEN="${1:?ERROR: debes proporcionar el directorio de origen}"
+DESTINO="/tmp/backups"
+TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+FICHERO_BACKUP="$DESTINO/backup_${TIMESTAMP}.tar.gz"
+
+# Función de limpieza en caso de error
+limpiar_en_error() {
+  echo "ERROR: backup interrumpido. Limpiando archivos parciales..."
+  rm -f "$FICHERO_BACKUP" 2>/dev/null
+  exit 1
+}
+trap limpiar_en_error ERR
+
+# Verificaciones previas
+if [[ ! -d "$ORIGEN" ]]; then
+  echo "ERROR: el directorio '$ORIGEN' no existe"
+  exit 1
+fi
+
+mkdir -p "$DESTINO"
+
+echo "Iniciando backup de '$ORIGEN'..."
+tar czf "$FICHERO_BACKUP" "$ORIGEN" 2>/dev/null
+
+# Verifica que el backup no está vacío
+TAMANO=$(du -sh "$FICHERO_BACKUP" | cut -f1)
+echo "Backup completado: $FICHERO_BACKUP ($TAMANO)"
+```
+
+```bash
+sudo chmod +x /usr/local/bin/backup_seguro.sh
+
+# Prueba con directorio válido
+/usr/local/bin/backup_seguro.sh /etc/apt
+
+# Prueba con directorio inválido (debe mostrar error limpio)
+/usr/local/bin/backup_seguro.sh /directorio/inexistente || true
+
+# Sin argumento (debe mostrar error)
+/usr/local/bin/backup_seguro.sh || true
+
+ls -lh /tmp/backups/ 2>/dev/null
+```
+
+Guarda en `~/practica6/entrega/65_backup_script.txt`. Explica con un comentario `#` para qué sirve `set -euo pipefail` y qué hace `trap`.
 
 ---
 
@@ -267,20 +821,161 @@ mkdir -p ~/practica6/entrega
 {
   echo "=== ENTREGA PRÁCTICA 6 ==="
   echo ""
-  echo "--- Script de informe ---"
-  cat /usr/local/bin/informe_sistema.sh
+
+  echo "--- 6.1: Paquetes instalados ---"
+  dpkg -l | grep "^ii" | wc -l
   echo ""
-  echo "--- Estado del timer ---"
-  systemctl status informe-sistema.timer
+
+  echo "--- 6.1: Estado de htop ---"
+  dpkg -l htop | grep "^ii" || echo "htop no instalado por apt"
+  /usr/local/bin/htop --version 2>/dev/null && echo "(htop compilado disponible)" || true
   echo ""
-  echo "--- Próxima ejecución ---"
-  systemctl list-timers | grep informe
+
+  echo "--- 6.2: Compilación htop ---"
+  ls ~/practica6/work/compilacion/htop-3.3.0/ 2>/dev/null | head -5 || echo "directorio no encontrado"
   echo ""
-  echo "--- Último informe generado ---"
-  ls -la /var/log/informes/
+
+  echo "--- 6.3: Sincronización NTP ---"
+  timedatectl status | grep -E "Local time|Time zone|NTP"
+  chronyc tracking 2>/dev/null | grep -E "System time|Stratum" || echo "chrony no activo"
   echo ""
-  sudo tail -30 /var/log/informes/informe_$(date '+%Y-%m-%d').log
+
+  echo "--- 6.4: Crontab activo ---"
+  crontab -l 2>/dev/null || echo "(sin crontab personal)"
+  echo ""
+
+  echo "--- 6.4: Timer activo ---"
+  systemctl status limpia-logs.timer --no-pager | grep -E "Active:|Next"
+  echo ""
+
+  echo "--- 6.4: Próxima ejecución ---"
+  systemctl list-timers | grep limpia
+  echo ""
+
+  echo "--- 6.5: Scripts creados ---"
+  ls -la /usr/local/bin/info_sistema.sh /usr/local/bin/informe_diario.sh /usr/local/bin/backup_seguro.sh
+  echo ""
+
+  echo "--- 6.5: Último informe generado ---"
+  ls -la /var/log/informes/ 2>/dev/null
+  tail -5 /var/log/informes/informe_$(date '+%Y-%m-%d').log 2>/dev/null || echo "(sin informe hoy)"
 } > ~/practica6/entrega/verificacion.txt
+
+cat ~/practica6/entrega/verificacion.txt
 ```
 
 Para empaquetar y enviar, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 6`).
+
+---
+
+## 🧨 Desafíos extra (MUY DIFÍCILES) — Troubleshooting de automatización
+
+Estos ejercicios están diseñados para ser difíciles. No hay pista directa: tendrás que **leer los logs, analizar la sintaxis y reproducir el fallo**.
+
+Reglas:
+- **Solo** puedes usar comandos de terminal y herramientas del módulo 6.
+- No se permite recrear desde cero sin entender el error.
+- Todo el trabajo se documenta en `~/practica6/entrega/`.
+
+---
+
+## Ejercicio 6.6 ⚡ EXTRA — Reparar un crontab y un timer rotos
+
+### Setup (ejecuta UNA sola vez)
+
+{/* Notas ocultas 6.6: errores sembrados: crontab con sintaxis incorrecta de hora (25 en campo hora), script con permisos de ejecución ausentes, timer con OnCalendar mal formado. */}
+
+```bash
+bash -lc 'set -euo pipefail
+
+# Crea un script que el cron intentará ejecutar
+sudo tee /usr/local/bin/monitor_practica.sh > /dev/null << '"'"'EOF'"'"'
+#!/bin/bash
+echo "$(date): monitor ejecutado" >> /var/log/monitor_practica.log
+EOF
+
+# Error 1: el script no tiene permisos de ejecución
+sudo chmod 644 /usr/local/bin/monitor_practica.sh
+
+# Crea un crontab de sistema con sintaxis incorrecta
+sudo tee /etc/cron.d/practica6-roto > /dev/null << '"'"'EOF'"'"'
+# Error 2: la hora "25" no existe (válido: 0-23)
+0 25 * * * root /usr/local/bin/monitor_practica.sh
+EOF
+
+# Crea un timer roto
+sudo tee /etc/systemd/system/monitor-practica.service > /dev/null << '"'"'EOF'"'"'
+[Unit]
+Description=Monitor de práctica
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/monitor_practica.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo tee /etc/systemd/system/monitor-practica.timer > /dev/null << '"'"'EOF'"'"'
+[Unit]
+Description=Timer del monitor de práctica
+
+[Timer]
+# Error 3: OnCalendar con formato incorrecto (falta el año)
+OnCalendar=*-* 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+echo "Escenario 6.6 creado con 3 errores sembrados"'
+```
+
+### Objetivo
+
+Conseguir que:
+
+1) `cron.d/practica6-roto` ejecute el script sin errores cada día a las **6:00 AM** (no a las 25:00)
+2) `/usr/local/bin/monitor_practica.sh` sea ejecutable
+3) `monitor-practica.timer` active y muestre la próxima ejecución correctamente
+
+### Proceso de diagnóstico
+
+```bash
+# Intenta arrancar el timer y observa el error
+sudo systemctl start monitor-practica.timer
+systemctl status monitor-practica.timer --no-pager
+
+# Verifica la sintaxis del timer
+systemd-analyze verify /etc/systemd/system/monitor-practica.timer 2>&1 || true
+
+# Inspecciona el crontab del sistema
+sudo cat /etc/cron.d/practica6-roto
+
+# Intenta ejecutar el script manualmente
+/usr/local/bin/monitor_practica.sh 2>&1 || echo "Error al ejecutar"
+```
+
+**Pista:** hay exactamente **3 errores**. Localiza y corrige cada uno antes de seguir al siguiente.
+
+Guarda en `~/practica6/entrega/66_solucion.txt`:
+
+```bash
+{
+  echo "=== DIAGNÓSTICO Y SOLUCIÓN 6.6 ==="
+  echo ""
+  echo "--- Crontab corregido ---"
+  sudo cat /etc/cron.d/practica6-roto
+  echo ""
+  echo "--- Permisos del script ---"
+  ls -la /usr/local/bin/monitor_practica.sh
+  echo ""
+  echo "--- Timer corregido y activo ---"
+  systemctl status monitor-practica.timer --no-pager
+  echo ""
+  echo "--- Próxima ejecución ---"
+  systemctl list-timers | grep monitor-practica
+} > ~/practica6/entrega/66_solucion.txt
+```

@@ -1,54 +1,290 @@
 ---
-title: 4.4 Montajes Persistentes y NFS
-description: Hacer que los montajes sobrevivan a un reinicio.
+title: 4.5 Montajes Persistentes con fstab
+description: Domina /etc/fstab para que tus discos, particiones y unidades de red sobrevivan a cada reinicio sin intervención manual.
 sidebar:
-  order: 5
+  order: 6
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
 
-## /etc/fstab
+<PreCheck>
+  - Comprenderás por qué los montajes manuales (`mount`) desaparecen al
+  reiniciar y cómo hacerlos permanentes. - Aprenderás a leer y escribir correctamente
+  las 6 columnas de `/etc/fstab`. - Usarás **UUIDs** en vez de rutas `/dev/sdX`
+  para evitar errores de dispositivo al cambiar discos. - Verificarás la
+  configuración sin reiniciar el sistema con `mount -a`.
+</PreCheck>
 
-Los montajes de línea de comandos (`sudo mount`) desaparecen cuando reinicias. Para hacerlos permanentes, edita `/etc/fstab`.
+Imagina que pasas 20 minutos particionando un disco nuevo, formateándolo con `ext4` y montándolo en `/mnt/datos`. Todo funciona. Reinicias el servidor la noche siguiente para aplicar actualizaciones... y el disco ha desaparecido del árbol de directorios. El montaje nunca ocurrió.
 
-<Aside type="danger">
-  Un error en `/etc/fstab` puede causar que tu sistema falle al arrancar.
-  ¡Verifica siempre antes de reiniciar!
-</Aside>
+Esto es el comportamiento correcto del kernel: **los montajes `mount` son temporales por diseño**. La memoria que los describe vive en el RAM del sistema y se borra con cada reinicio. Para que persistan, necesitas registrarlos en el libro de órdenes permanente de Linux: `/etc/fstab`.
 
-### Mejor Práctica: Usar UUIDs
+---
 
-Los nombres de dispositivo (`/dev/sdb1`) pueden cambiar si desconectas/conectas discos. Los **UUIDs** (Identificadores Únicos Universales) nunca cambian.
+## 1. Anatomía de `/etc/fstab`
 
-1. Encontrar UUID: `sudo blkid`
-2. Editar archivo: `sudo nano /etc/fstab`
+`/etc/fstab` es un fichero de texto plano que el sistema lee automáticamente durante el arranque (cuando systemd ejecuta las unidades `local-fs.target`) para montar todos los dispositivos registrados.
 
-**Format**:
-`<UUID Dispositivo> <Punto Montaje> <Sistema Archivos> <Opciones> <Volcado> <Paso>`
-
-**Ejemplo**:
-
-```text
-UUID=1234-abcd-5678  /mnt/data  ext4  defaults  0  2
+```bash
+# Ver el contenido actual
+cat /etc/fstab
 ```
 
-1. **Verificar**: ejecuta `sudo mount -a`. Si no da errores, estás seguro.
+Cada línea que no empiece por `#` es una instrucción de montaje con **6 columnas**:
 
-## Sistema de Archivos en Red (NFS)
+```text
+<dispositivo>  <punto_montaje>  <tipo_fs>  <opciones>  <dump>  <pass>
+```
 
-Acceder al almacenamiento a través de la red.
+### Ejemplo real comentado
 
-**Configuración del Cliente**:
+```text
+# Disco raíz del sistema (instalado automáticamente por el instalador)
+UUID=a1b2c3d4-e5f6-7890-abcd-ef1234567890  /          ext4  errors=remount-ro  0  1
 
-1. Instalar comunes: `sudo apt install nfs-common` (Ubuntu) o `sudo dnf install nfs-utils` (Rocky).
-2. Probar montaje:
+# Partición de swap
+UUID=dead-beef-1234-5678-abcdef012345      none       swap  sw                 0  0
 
-   ```bash
-   sudo mount ip_servidor:/recurso/compartido /mnt/punto_montaje_local
-   ```
+# Disco de datos montado en /mnt/datos
+UUID=1234-abcd-5678-ef90-fedcba987654      /mnt/datos ext4  defaults           0  2
 
-3. Añadir a `fstab` para persistencia:
+# Partición VFAT (USB, UEFI)
+UUID=AB12-CD34                             /boot/efi  vfat  umask=0077         0  1
+```
 
-   ```text
-   ip_servidor:/recurso  /mnt/local  nfs  defaults  0  0
-   ```
+### Significado de cada columna
+
+| Columna | Nombre | Descripción |
+|---------|--------|-------------|
+| 1 | Dispositivo | `UUID=...`, `/dev/sdX`, `LABEL=nombre` o dirección de red |
+| 2 | Punto de montaje | Directorio donde aparecerá el dispositivo |
+| 3 | Tipo de FS | `ext4`, `xfs`, `btrfs`, `vfat`, `swap`, `nfs`, `tmpfs` |
+| 4 | Opciones | `defaults`, `ro`, `noexec`, `noatime`, `nofail`... |
+| 5 | dump | `0` = no backup con `dump` (casi siempre 0) |
+| 6 | pass | Orden de comprobación `fsck`: `0`=ninguna, `1`=raíz primero, `2`=resto |
+
+---
+
+## 2. El Problema de `/dev/sdX`: Por qué son Peligrosos
+
+Los nombres de dispositivo como `/dev/sda`, `/dev/sdb` **no son estables**. El kernel los asigna en el orden en que detecta el hardware durante el arranque. Si desconectas un disco USB y lo reconectas, puede aparecer como `/dev/sdb` en vez de `/dev/sdc`. Si usas esos nombres en fstab, montarás el dispositivo equivocado.
+
+```bash
+# MAL: nombre de dispositivo inestable
+/dev/sdb1  /mnt/datos  ext4  defaults  0  2  # ← Peligroso
+
+# BIEN: UUID único e inmutable
+UUID=1234-abcd-5678  /mnt/datos  ext4  defaults  0  2  # ← Correcto
+```
+
+### Obtener el UUID de un dispositivo
+
+```bash
+# Listar todos los dispositivos con sus UUIDs, tipos y LABELs
+sudo blkid
+
+# Ejemplo de salida:
+# /dev/sda1: UUID="a1b2c3d4-..." TYPE="ext4" PARTUUID="..."
+# /dev/sdb1: UUID="1234-abcd-..." TYPE="ext4"
+# /dev/sdc1: UUID="AB12-CD34" TYPE="vfat"
+
+# Ver solo la información de un dispositivo concreto
+sudo blkid /dev/sdb1
+
+# Alternativa: lsblk con columna UUID
+lsblk -o NAME,UUID,FSTYPE,SIZE,MOUNTPOINT
+```
+
+---
+
+## 3. Opciones de Montaje más Importantes
+
+La columna de opciones controla cómo se comporta el dispositivo montado:
+
+| Opción | Descripción |
+|--------|-------------|
+| `defaults` | Equivale a `rw,suid,dev,exec,auto,nouser,async` |
+| `ro` | Solo lectura |
+| `rw` | Lectura y escritura (por defecto) |
+| `noexec` | Prohíbe ejecutar binarios (seguridad en `/tmp`, `/home`) |
+| `nosuid` | Ignora el bit SUID (evita escalada de privilegios) |
+| `noatime` | No actualiza el tiempo de acceso al leer (mejora rendimiento) |
+| `nofail` | El sistema arranca aunque el dispositivo no esté disponible |
+| `user` | Permite montaje a usuarios no root |
+| `_netdev` | Marca el dispositivo como de red (espera red antes de montar) |
+
+<Aside type="tip" title="nofail: imprescindible para discos externos y de red">
+Si un disco registrado en fstab no está disponible al arrancar (USB desconectado, servidor NFS caído), el sistema se detendrá esperándolo durante **90 segundos** antes de lanzar una shell de emergencia. Añade `nofail` a cualquier dispositivo que no sea crítico para el arranque.
+
+```text
+UUID=1234-abcd  /mnt/backup  ext4  defaults,nofail  0  2
+```
+</Aside>
+
+---
+
+## 4. Añadir un Disco a fstab Paso a Paso
+
+<Tabs>
+  <TabItem label="Disco con ext4">
+    ```bash
+    # 1. Identificar el dispositivo y su UUID
+    sudo blkid /dev/sdb1
+    # /dev/sdb1: UUID="9f3a1234-ab12-cd34-ef56-789012345678" TYPE="ext4"
+
+    # 2. Crear el punto de montaje si no existe
+    sudo mkdir -p /mnt/datos
+
+    # 3. Editar fstab
+    sudo nano /etc/fstab
+
+    # 4. Añadir la línea al final del fichero:
+    # UUID=9f3a1234-ab12-cd34-ef56-789012345678  /mnt/datos  ext4  defaults,nofail  0  2
+
+    # 5. Verificar sin reiniciar (monta todo lo registrado en fstab)
+    sudo mount -a
+
+    # 6. Confirmar que está montado
+    df -h /mnt/datos
+    mount | grep /mnt/datos
+    ```
+  </TabItem>
+  <TabItem label="Partición swap">
+    ```bash
+    # 1. Obtener UUID de la partición swap
+    sudo blkid /dev/sdb2
+    # /dev/sdb2: UUID="deadbeef-1234-5678-abcd-ef0123456789" TYPE="swap"
+
+    # 2. Añadir a fstab:
+    # UUID=deadbeef-1234-5678-abcd-ef0123456789  none  swap  sw  0  0
+
+    # 3. Activar el swap sin reiniciar
+    sudo swapon -a
+
+    # 4. Verificar
+    swapon --show
+    free -h
+    ```
+  </TabItem>
+  <TabItem label="tmpfs en memoria">
+    ```bash
+    # Montar /tmp en RAM (mejora velocidad y protege disco en producción)
+    # Añadir a fstab:
+    # tmpfs  /tmp  tmpfs  defaults,size=2G,noexec,nosuid  0  0
+
+    # Aplicar
+    sudo mount -a
+
+    # Verificar
+    df -h /tmp
+    # tmpfs  2.0G  0  2.0G  0%  /tmp
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## 5. Verificación y Diagnóstico
+
+<Aside type="danger" title="Un error en fstab puede impedir el arranque">
+Un UUID incorrecto, un punto de montaje inexistente o una opción inválida en `/etc/fstab` puede hacer que el sistema no arranque y caiga a una shell de emergencia. **Siempre verifica con `mount -a` antes de reiniciar**.
+</Aside>
+
+```bash
+# Verificar la sintaxis y montar todo lo declarado en fstab
+# Este comando es tu red de seguridad antes de reiniciar
+sudo mount -a
+
+# Si hay errores, los verás aquí:
+# mount: /mnt/datos: can't read superblock
+# mount: /mnt/backup: special device UUID=... does not exist
+
+# Ver todos los sistemas de archivos montados actualmente
+findmnt
+
+# Ver en formato árbol
+findmnt --tree
+
+# Comparar lo que debería estar montado (fstab) con lo que está montado
+findmnt --verify
+
+# Comprobar un punto de montaje concreto
+findmnt /mnt/datos
+```
+
+### Recuperación si el sistema no arranca por fstab corrupto
+
+```bash
+# Si el sistema cae a shell de emergencia por un fstab malo:
+
+# 1. El sistema monta raíz en modo solo lectura; remontarla en rw:
+mount -o remount,rw /
+
+# 2. Editar fstab y corregir el error
+nano /etc/fstab
+
+# 3. Verificar
+mount -a
+
+# 4. Reiniciar
+reboot
+```
+
+---
+
+## Comprueba tus conocimientos
+
+1. Acabas de formatear un nuevo disco como `ext4` y lo has montado manualmente con `sudo mount /dev/sdb1 /mnt/datos`. Funciona perfectamente. Al reiniciar el servidor al día siguiente, el directorio `/mnt/datos` está vacío y el disco no aparece montado. ¿Por qué?
+
+   <MultipleChoice>
+     <Option>
+       El kernel de Linux desmonta automáticamente todos los discos secundarios al
+       detectar un reinicio limpio como medida de seguridad.
+     </Option>
+     <Option isCorrect>
+       Los montajes realizados con `mount` son **temporales**; viven en la memoria
+       RAM y desaparecen con cada reinicio. Para que persistan hay que registrarlos
+       en `/etc/fstab` con el UUID del dispositivo, el punto de montaje, el tipo
+       de sistema de archivos y las opciones correspondientes.
+     </Option>
+     <Option>
+       Falta ejecutar `sudo systemctl enable mount@mnt-datos.service` después de
+       cada montaje manual.
+     </Option>
+   </MultipleChoice>
+
+2. Tu compañero ha editado `/etc/fstab` añadiendo un disco NAS de empresa y quiere reiniciar para aplicar los cambios. ¿Qué comando deberías ejecutar antes del reinicio para asegurarte de que la entrada es correcta?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       `sudo mount -a` — Este comando intenta montar todos los dispositivos
+       declarados en fstab que aún no están montados. Si hay algún error
+       (UUID incorrecto, punto de montaje inexistente, opción inválida), lo
+       reportará **sin reiniciar el sistema**, permitiendo corregirlo antes de
+       que sea demasiado tarde.
+     </Option>
+     <Option>
+       `sudo fsck -a /etc/fstab` — Comprueba la sintaxis del fichero y valida
+       todos los UUID antes de aplicar cambios.
+     </Option>
+     <Option>
+       `sudo systemctl daemon-reload` — Recarga la configuración de fstab en
+       systemd sin necesidad de reiniciar.
+     </Option>
+   </MultipleChoice>
+
+3. Tienes un disco USB de backup registrado en fstab. Al arrancar el servidor en el centro de datos, el técnico olvidó conectar el USB. ¿Qué opción en fstab evita que el sistema se quede esperando 90 segundos y caiga a shell de emergencia?
+
+   <MultipleChoice>
+     <Option>`noatime` — Indica al kernel que no espere confirmación del dispositivo al arrancar.</Option>
+     <Option>`_netdev` — Marca el dispositivo como remoto para que el arranque no dependa de él.</Option>
+     <Option isCorrect>
+       `nofail` — Esta opción le dice al sistema que si el dispositivo no está
+       disponible al arrancar, **continúe el proceso de arranque normalmente** en
+       vez de detenerse. Es imprescindible para discos externos, USB o de red que
+       no son críticos para el funcionamiento del sistema.
+     </Option>
+   </MultipleChoice>
