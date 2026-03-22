@@ -101,7 +101,28 @@ sudo apt autoremove
 
 ---
 
-## 5. Hackeando los Orígenes (`sources.list`)
+## 5. Bloquear versiones con `apt-mark`
+
+En producción es crítico poder fijar una versión de un paquete para evitar que `apt upgrade` lo actualice automáticamente (p.ej. un kernel o una versión de MySQL validada):
+
+```bash
+# Bloquear un paquete (pin/hold) — no se actualizará
+sudo apt-mark hold nginx
+
+# Ver todos los paquetes bloqueados
+apt-mark showhold
+
+# Desbloquear para permitir actualizaciones
+sudo apt-mark unhold nginx
+```
+
+<Aside type="caution">
+Los paquetes en _hold_ quedan excluidos de `apt upgrade` pero siguen instalados. Si hay una vulnerabilidad de seguridad crítica, recuerda desbloquear, parchear y volver a bloquear.
+</Aside>
+
+---
+
+## 6. Hackeando los Orígenes (`sources.list`)
 
 "¿Y de qué webs se baja apt sus cosas escondidas?"
 Todo reside en un diminuto y peligroso fichero de texto. Si lo vacías por error, `apt` morirá y creerá que no existe el internet.

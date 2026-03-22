@@ -100,6 +100,23 @@ sudo parted -a opt /dev/sdb mkpart primary 0% 100%
 
 Al terminar con cualquiera de las dos utilidades, si vuelves a ejecutar tu radar `lsblk`, verás que ha nacido con éxito un nuevo hijo llamado `sdb1` esperando a ser formateado en la siguiente lección.
 
+### Verificar e informar al kernel
+
+```bash
+# Listar la tabla de particiones de todos los discos con detalle
+sudo fdisk -l
+
+# Listar solo un disco concreto
+sudo fdisk -l /dev/sdb
+
+# Tras crear o modificar particiones, informar al kernel sin reiniciar
+sudo partprobe /dev/sdb
+```
+
+<Aside type="tip" title="Por qué se necesita partprobe">
+Después de escribir cambios con `fdisk` (`w`) o `parted`, el kernel puede no detectar las nuevas particiones inmediatamente. `partprobe` le pide al kernel que relea la tabla de particiones del disco sin necesidad de reiniciar. Si no está disponible, `sudo blockdev --rereadpt /dev/sdb` es equivalente.
+</Aside>
+
 ---
 
 ## Comprueba tus conocimientos

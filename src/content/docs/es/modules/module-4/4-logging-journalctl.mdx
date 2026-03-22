@@ -73,6 +73,33 @@ Ejecutar `journalctl` a secas te escupiría 500,000 líneas a la cara. Siempre d
   journalctl -u nginx -p err --since "1 hour ago"
   ```
 
+- **Filtrar por arranque (`-b`)** — uno de los filtros más útiles en diagnóstico:
+  ```bash
+  # Logs del arranque actual (desde que el sistema encendió hoy)
+  journalctl -b
+
+  # Logs del arranque anterior (imprescindible tras un crash o reinicio inesperado)
+  journalctl -b -1
+
+  # Logs de hace dos arranques
+  journalctl -b -2
+
+  # Ver cuántos arranques hay registrados
+  journalctl --list-boots
+  ```
+
+- **Gestión del espacio en disco**:
+  ```bash
+  # Ver cuánto ocupa el diario en disco
+  journalctl --disk-usage
+
+  # Reducir el diario a un máximo de 500 MB
+  sudo journalctl --vacuum-size=500M
+
+  # Eliminar logs más antiguos de 2 semanas
+  sudo journalctl --vacuum-time=2weeks
+  ```
+
 ---
 
 ## Comprueba tus conocimientos

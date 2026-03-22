@@ -60,6 +60,28 @@ En este momento, cualquier cosa que tires a `cp foto.jpg /var/www/fotos/` se est
 
 _(Para desconectarlo en caliente como si fuera un USB extraíble, usa `sudo umount /var/www/fotos`)_.
 
+### Montar con opciones de seguridad
+
+El comando `mount` acepta opciones con `-o` que controlan el comportamiento del sistema de ficheros montado:
+
+```bash
+# Solo lectura (útil para backups o discos de inspección)
+sudo mount -o ro /dev/sdb1 /mnt/datos
+
+# Sin ejecución de binarios y sin setuid (seguridad en particiones de datos compartidas)
+sudo mount -o rw,noexec,nosuid /dev/sdb1 /mnt/datos
+```
+
+### Verificar qué está montado
+
+```bash
+# Ver todos los sistemas de ficheros montados y filtrar por punto de montaje
+mount | grep /mnt
+
+# Ver uso de espacio de todos los sistemas montados
+df -h
+```
+
 ---
 
 ## 3. La Inmortalidad y el Peligro: `/etc/fstab`

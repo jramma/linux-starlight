@@ -54,7 +54,7 @@ server {
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
         # Lanzando el balón de trabajo al socket unix ultrarrápido del obrero FPM versión 8
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
     }
 }
 ```

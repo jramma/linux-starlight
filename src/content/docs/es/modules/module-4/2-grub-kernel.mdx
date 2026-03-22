@@ -81,6 +81,35 @@ sudo modprobe bluetooth
 
 _(Si quisieras quitarle el módulo, como quien le saca un cable, usarías `modprobe -r`)_.
 
+### Obtener información de un módulo (`modinfo`)
+
+Antes de cargar un módulo desconocido puedes inspeccionar su ficha técnica: descripción, autor, versión, parámetros que acepta y dependencias con otros módulos.
+
+```bash
+modinfo e1000
+# name:        e1000
+# description: Intel(R) PRO/1000 Network Driver
+# author:      Intel Corporation ...
+# depends:     (lista de módulos requeridos)
+# parm:        InterruptThrottleRate: ...
+```
+
+### Carga permanente al arrancar (`/etc/modules-load.d/`)
+
+`modprobe` carga el módulo solo hasta el próximo reinicio. Para que un módulo se inyecte automáticamente en cada arranque, crea un fichero en `/etc/modules-load.d/`:
+
+```bash
+# Hacer permanente la carga del driver e1000
+echo "e1000" | sudo tee /etc/modules-load.d/e1000.conf
+
+# Verificar que systemd lo procesará en el próximo arranque
+cat /etc/modules-load.d/e1000.conf
+```
+
+<Aside type="tip" title="Truco LFCS">
+El fichero puede tener cualquier nombre con extensión `.conf`. Cada línea es el nombre de un módulo. Los comentarios se inician con `#`. El servicio `systemd-modules-load.service` los procesa durante la Fase 5 del arranque.
+</Aside>
+
 ---
 
 ## Comprueba tus conocimientos

@@ -41,8 +41,11 @@ Tomamos los discos vírgenes y los "marcamos" con el sello de LVM para indicarle
 ```bash
 sudo pvcreate /dev/sdb /dev/sdc
 
-# Comprobar el trabajo
+# Comprobar el trabajo (resumen)
 sudo pvs
+
+# Vista detallada de cada PV (tamaño, espacio libre, metadatos)
+sudo pvdisplay
 ```
 
 ### Paso 2: Grupo de Volúmenes (VG - Volume Group)
@@ -63,6 +66,9 @@ Ahora somos dioses. Usamos una espumadera para sacar 15GB de esa piscina (no imp
 ```bash
 # Crear un volumen lógico (-n) llamado BD de tamaño (-L) 15GB desde el grupo almacen_datos.
 sudo lvcreate -n BD -L 15G almacen_datos
+
+# Crear un LV que consuma el 100% del espacio libre restante en el VG
+sudo lvcreate -n resto -l 100%FREE almacen_datos
 
 # Comprobar
 sudo lvs

@@ -76,6 +76,20 @@ sudo aa-enforce /usr/sbin/mysqld
 
 \*_(NOTA: Los perfiles completos, escritos con sintaxis arcana, suelen alojarse todos juntos estáticos en la caja fuerte local en `/etc/apparmor.d/`)_.\*
 
+### Generar un perfil desde los logs (`aa-logprof`)
+
+Cuando un programa en modo `complain` genera alertas, puedes convertir esas alertas en reglas de perfil automáticamente:
+
+```bash
+# Leer las alertas de AppArmor del kernel y proponer reglas
+sudo aa-logprof
+
+# Ver las denegaciones directamente en el log del kernel
+journalctl -k | grep apparmor
+```
+
+`aa-logprof` analiza `/var/log/syslog` o el journal buscando eventos `ALLOWED` de perfiles en complain y pregunta interactivamente si añadir cada permiso al perfil. Es la forma estándar LFCS de construir perfiles para software propio.
+
 ---
 
 ## Comprueba tus conocimientos

@@ -91,6 +91,67 @@ sudo systemctl enable --now nginx
 
 ---
 
+## 3. Targets de Systemd (Runlevels modernos)
+
+Los **targets** son el equivalente moderno de los runlevels de SysVinit. Definen el estado al que el sistema debe llegar al arrancar.
+
+| Target | Equivalente runlevel | Uso |
+|--------|---------------------|-----|
+| `poweroff.target` | 0 | Apagado |
+| `rescue.target` | 1 | Modo monousuario (rescate) |
+| `multi-user.target` | 3 | Servidor sin entorno gráfico |
+| `graphical.target` | 5 | Escritorio completo |
+| `reboot.target` | 6 | Reinicio |
+
+```bash
+# Ver el target activo actualmente
+systemctl get-default
+
+# Cambiar el target por defecto (pasar a modo servidor sin escritorio)
+sudo systemctl set-default multi-user.target
+
+# Cambiar el target en caliente sin reiniciar
+sudo systemctl isolate multi-user.target
+```
+
+---
+
+## 4. Escribir Unit Files personalizados
+
+Cuando necesitas que un script o programa propio funcione como un servicio del sistema, creas un **unit file** en `/etc/systemd/system/`. Este conocimiento entra directamente en el examen LFCS.
+
+```ini
+# /etc/systemd/system/mi-monitor.service
+[Unit]
+Description=Script de monitorización propio
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/mi-monitor.sh
+User=monitoring
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# Tras crear o editar cualquier unit file, recargar la configuración de systemd
+sudo systemctl daemon-reload
+
+# Habilitar y arrancar en un solo paso
+sudo systemctl enable --now mi-monitor.service
+
+# Verificar
+sudo systemctl status mi-monitor.service
+```
+
+<Aside type="tip" title="Truco LFCS">
+La sección `[Unit]` declara dependencias (`After=`, `Requires=`). La sección `[Service]` define cómo ejecutar el proceso (`Type=simple` para daemons que no terminan, `Type=oneshot` para scripts). La sección `[Install]` establece en qué target se activa con `enable`.
+</Aside>
+
+---
+
 ## Comprueba tus conocimientos
 
 1. Has editado el archivo `/etc/ssh/sshd_config` tal y como aprendimos en la Clase 3 para desactivar los reseteos de contraseña. Actualmente hay otros 5 sysadmins de tu empresa conectados al servidor simultáneamente transfiriendo grandes configuraciones críticas y no quieres desconectarlos de golpe. ¿Cómo recomunidas al demonio SSH que acate tus cambios en la configuración reduciendo la fricción a cero?
