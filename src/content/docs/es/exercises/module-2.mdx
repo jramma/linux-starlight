@@ -387,7 +387,7 @@ mkdir -p "$base/logs" "$base/conf" "$base/conf.d" "$base/artifact" "$base/tmp" "
 printf "%s\n%s\n%s\n" "PORT=8080" "MODE=prod" "LOG=logs/app.log" > "$base/conf/app.env"
 printf "%s\n%s\n%s\n" "PORT=8081" "MODE=debug" "LOG=logs/app-debug.log" > "$base/conf.d/app.env"
 
-printf "%s\n%s\n%s\n%s\n%s\n" \
+printf "%s\n%s\n%s\n%s\n" \
   "#!/usr/bin/env bash" \
   "set -e" \
   "source conf/app.env" \
@@ -450,7 +450,7 @@ printf "%s\n" "nada que ver" > "$base/tmp/cache/"$'nota\u00a0interna.txt'
   (cd "$base" && ls -la)
   echo
   echo "--- Árbol (1 nivel) ---"
-  (cd "$base" && ls -la conf conf.d logs run run/hooks src bin tmp tmp/cache)
+  (cd "$base" && ls -la conf conf.d logs run run/hooks src bin tmp tmp/cache 2>/dev/null || true)
 } | tee "$out" >/dev/null
 echo "OK"'
 ```
