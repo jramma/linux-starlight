@@ -376,9 +376,12 @@ Ejecuta este comando tal cual:
 {/* Notas ocultas 2.6: el escenario incluye conf/ sin permiso de traversal, PATH contaminado con wrappers de grep/awk/sed, link roto, hard link, ficheros con NBSP */}
 
 ```bash
-bash -lc 'set -euo pipefail
+bash -l <<'ENDSCRIPT'
+set -euo pipefail
 base="$HOME/practica2/work/escenario_26"
 out="$HOME/practica2/entrega/26_estado_inicial.txt"
+# Restaurar permisos antes de borrar (por si conf quedó con chmod 600 de una ejecución anterior)
+chmod -R u+rwX "$base" 2>/dev/null || true
 rm -rf "$base"
 # Creación de directorios sin expansión de llaves para mayor compatibilidad
 mkdir -p "$base/src" "$base/src/old" "$base/bin" "$base/run" "$base/run/hooks"
@@ -452,7 +455,8 @@ printf "%s\n" "nada que ver" > "$base/tmp/cache/"$'nota\u00a0interna.txt'
   echo "--- Árbol (1 nivel) ---"
   (cd "$base" && ls -la conf conf.d logs run run/hooks src bin tmp tmp/cache 2>/dev/null || true)
 } | tee "$out" >/dev/null
-echo "OK"'
+echo "OK"
+ENDSCRIPT
 ```
 
 ### Objetivo
