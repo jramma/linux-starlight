@@ -1,0 +1,117 @@
+---
+title: "Extra 1 — El Interrogatorio del Log"
+description: "Ejercicio de lógica: analiza un fichero de log con comandos de terminal para responder cinco preguntas de seguridad concretas."
+sidebar:
+  order: 9
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="tip" title="Antes de empezar">
+Este ejercicio no requiere permisos de root. Trabaja directamente en tu VM o máquina local. Tiempo estimado: 15 minutos.
+</Aside>
+
+---
+
+## Escenario
+
+Tu jefe te manda este mensaje a las 8:30 AM:
+
+> _"Anoche hubo actividad sospechosa en el servidor. Te mando el log de la madrugada. Necesito que me respondas cinco preguntas concretas antes de que llegue el cliente."_
+
+Te adjunta el fichero. Tu trabajo es responder las cinco preguntas usando **solo comandos de terminal**.
+
+---
+
+## Paso 1 — Crear el fichero de log
+
+Ejecuta esto exactamente para crear el fichero de datos:
+
+```bash
+cat > ~/servidor.log << 'EOF'
+2024-03-24 02:11:03 ERROR   nginx    Connection refused from 192.168.1.45
+2024-03-24 02:12:17 INFO    sshd     Accepted password for alice from 10.0.0.5
+2024-03-24 02:13:44 WARNING nginx    High memory usage: 87%
+2024-03-24 02:14:09 ERROR   sshd     Failed password for bob from 10.0.0.99
+2024-03-24 02:15:22 INFO    cron     Job completed: backup.sh
+2024-03-24 02:16:00 ERROR   nginx    Disk space critical: 95%
+2024-03-24 02:17:38 INFO    sshd     Accepted key for alice from 10.0.0.5
+2024-03-24 02:18:55 WARNING sshd     Multiple failed attempts from 10.0.0.99
+2024-03-24 02:19:01 ERROR   nginx    Connection refused from 192.168.1.102
+2024-03-24 02:20:14 INFO    nginx    Service restarted successfully
+2024-03-24 02:21:47 ERROR   sshd     Failed password for root from 10.0.0.99
+2024-03-24 02:22:33 INFO    cron     Job started: cleanup.sh
+2024-03-24 02:23:00 WARNING nginx    High memory usage: 92%
+2024-03-24 02:24:11 ERROR   nginx    Connection refused from 192.168.1.45
+2024-03-24 02:25:59 INFO    sshd     Accepted key for carlos from 10.0.0.8
+2024-03-24 02:26:03 ERROR   nginx    Connection refused from 192.168.1.45
+2024-03-24 02:27:18 WARNING sshd     Multiple failed attempts from 10.0.0.99
+2024-03-24 02:28:40 INFO    nginx    Config reloaded
+2024-03-24 02:29:05 ERROR   sshd     Failed password for root from 10.0.0.99
+2024-03-24 02:30:00 INFO    cron     Job completed: cleanup.sh
+EOF
+```
+
+Verifica que se creó bien:
+
+```bash
+wc -l ~/servidor.log   # debe mostrar 20
+```
+
+---
+
+## Paso 2 — Las cinco preguntas
+
+Escribe el comando que responde cada pregunta. Guarda pregunta + comando + resultado en `~/respuestas.txt`.
+
+---
+
+### Pregunta 1 — ¿Cuántos errores hay en total?
+
+Hay más de una forma de contarlos. Encuentra al menos dos.
+
+---
+
+### Pregunta 2 — ¿Qué servicios generaron algún ERROR?
+
+Lista solo los nombres de servicio, sin repeticiones.
+
+---
+
+### Pregunta 3 — ¿Qué IP aparece más veces en líneas de ERROR?
+
+Muestra la IP y cuántas veces aparece. Solo la que más veces sale.
+
+---
+
+### Pregunta 4 — ¿Cuántos logins SSH exitosos hubo?
+
+Un login exitoso es cualquier línea que contenga `Accepted`.
+
+---
+
+### Pregunta 5 — ¿Qué intentó hacer el atacante y cuándo?
+
+Muestra solo las líneas relacionadas con `10.0.0.99`, ordenadas por hora.
+
+<Aside type="caution" title="Antes de escribir el comando de la pregunta 5">
+Mira los timestamps del fichero. ¿Necesitas realmente ordenar? Razona antes de ejecutar.
+</Aside>
+
+---
+
+## Reglas
+
+- Tienes el fichero `~/servidor.log`, solo puedes leerlo, no editarlo
+- Cada respuesta debe ser el resultado de un comando, no una lectura manual
+- Guarda todo en `~/respuestas.txt` (pregunta + comando usado + resultado)
+
+---
+
+## Pista de verificación
+
+Cuando termines:
+
+```bash
+wc -l ~/respuestas.txt && echo "---" && cat ~/respuestas.txt
+```

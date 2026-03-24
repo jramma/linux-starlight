@@ -1,0 +1,63 @@
+---
+title: "Extra 2 — El Gran Informe de Diagnóstico"
+description: "Ejercicio integrador: genera un informe completo del estado del servidor combinando procesos, servicios, logs y usuarios en un único fichero."
+sidebar:
+  order: 10
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="tip" title="Antes de empezar">
+Este ejercicio usa herramientas de los módulos 2, 3 y 4. Conéctate a tu VM por SSH. Tiempo estimado: 15 minutos.
+</Aside>
+
+---
+
+## Escenario
+
+Son las 9:00 AM. Tu jefe llega a la oficina y te dice:
+
+> _"Necesito saber cómo está el servidor. Tengo una reunión en 15 minutos. Dame un fichero con el diagnóstico."_
+
+Tu objetivo es generar el fichero `~/diagnostico.txt` con exactamente la siguiente información, en este orden:
+
+---
+
+## Lo que debe contener el fichero
+
+### Sección 1 — Fecha y hora actual del sistema
+
+### Sección 2 — Los 3 procesos que más memoria RAM consumen
+
+Incluye: usuario, PID, porcentaje de memoria y nombre del comando.
+
+### Sección 3 — Servicios del sistema con fallos
+
+Si no hay ninguno, que quede registrado también.
+
+### Sección 4 — Número de errores registrados desde el último arranque
+
+### Sección 5 — Usuarios que tienen shell de login en el sistema
+
+---
+
+## Reglas
+
+- Todo debe acabar en un único fichero: `~/diagnostico.txt`
+- El fichero tiene que poder leerse de un vistazo (añade encabezados o separadores)
+- Puedes usar cualquier herramienta de los módulos 1 al 4
+- No está permitido instalar software nuevo
+
+<Aside type="note" title="Reto adicional">
+¿Puedes generar el fichero completo con un único comando, sin usar `>>` ni redirigir cada sección por separado?
+</Aside>
+
+---
+
+## Pista de verificación
+
+Cuando termines, ejecuta esto para comprobar que el fichero tiene contenido en todas las secciones:
+
+```bash
+wc -l ~/diagnostico.txt && cat ~/diagnostico.txt
+```
