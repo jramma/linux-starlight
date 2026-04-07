@@ -1,0 +1,144 @@
+---
+title: 1.4 Post-Installation and Basic Initial Configuration
+description: First contact with the system after a successful installation. Initial user management, privilege escalation, and preparation for remote access.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+import CompletionConfetti from "@/components/tutorial/CompletionConfetti.astro";
+
+<PreCheck>
+  - You will understand the power difference between `root` and a user elevated with
+  `sudo`. - You will know how to uniquely identify the server on the network
+  via its `hostname`. - You will learn the vital importance of SSH (`sshd`) for
+  remote infrastructure maintenance.
+</PreCheck>
+
+Congratulations! You have your own Debian distribution running in console mode. Whether they are virtual machines, containers, or an old machine ("bare-metal"), from now on, all your interaction will be through text lines.
+
+<CompletionConfetti />
+
+---
+
+## 1. The First Login and Users
+
+When Debian boots for the first time, you will be greeted by the login prompt:
+
+```bash
+debian-server login:
+```
+
+### The Root User (Administrator)
+
+During Debian installation, it asked you for the `root` password.
+
+- `root` is the absolute superuser. It has no restrictions. It can delete the operating system kernel in a millisecond if you order it to.
+- **Golden Rule in Production:** NEVER allow direct remote logins (via SSH) using `root`, and it is preferable not to log in locally as root either, unless the system is broken.
+
+### Regular Users and Sudo
+
+For security, we access with the regular user created during installation (e.g. `john`). For tasks that require touching `/etc` or managing the network, we "elevate" our privileges temporarily using `sudo` (Super User DO).
+
+```bash
+# You are 'john'. You want to update the package index:
+sudo apt update
+```
+
+If by accident Debian did not install `sudo` or did not add you to its group (`sudo` in Debian, `wheel` in RHEL), the classic Unix way to escalate privileges is:
+
+```bash
+# Changes your environment to root's (will ask for root's password, not yours)
+su -
+```
+
+---
+
+## 2. Network Identity: Hostname
+
+In a server farm, it is critical to know exactly which one you are working on. The _hostname_ is the machine's name.
+
+```bash
+# View operating system info, kernel version and hostname
+hostnamectl status
+
+# Permanently rename the machine (requires sudo)
+sudo hostnamectl set-hostname db-server-01
+```
+
+This change is saved in `/etc/hostname`. Some network services (and local databases) require being able to resolve this name locally, so it is also good practice to add or edit the corresponding line in `/etc/hosts`:
+
+```
+127.0.1.1       db-server-01
+```
+
+---
+
+## 3. Preparing for Remote Access (SSH)
+
+You will never administer a server sitting in a chair in a cold server room connected directly to its monitor. All global maintenance is done via **SSH (Secure Shell)**.
+
+### The SSH _Daemon_
+
+Debian installs `openssh-server` if you selected it during package installation. At the process level, it is called the SSHD Daemon.
+
+```bash
+# Check if the SSH service is running
+systemctl status ssh
+```
+
+<Aside type="caution" title="`systemctl` Commands and Systemd">
+  We won't go deep today, but remember from the previous module that `systemd`
+  manages whether a program starts with the machine or not. We will learn this
+  in depth in **Class 3**. Remember the command above!
+</Aside>
+
+### Connecting Remotely
+
+From your own laptop (whether MacOS, Windows with PowerShell, or your daily Linux Desktop), open a terminal and connect to your server by IP:
+
+```bash
+ssh john@192.168.1.50
+```
+
+You will be asked whether you trust the server's "fingerprint". This prevents _Man-in-the-Middle_ attacks. Once accepted and your password provided, you will find yourself in front of the remote console. From this moment on, you can physically unplug the keyboard and monitor from your brand new Debian server.
+
+---
+
+## Check Your Knowledge
+
+1. As a golden rule in the production server environment, what is the best practice regarding remote access?
+
+   <MultipleChoice>
+     <Option>
+       Allow `root` SSH logins if we set a password longer than
+       20 characters.
+     </Option>
+     <Option isCorrect>
+       Never allow direct remote logins as `root`. We enter with an
+       unprivileged user and escalate when necessary using commands
+       like `sudo`.
+     </Option>
+     <Option>
+       Completely disable SSH and always use the keyboard physically connected
+       to the machine in the rack.
+     </Option>
+   </MultipleChoice>
+
+2. You have finished installing a new server, but you don't know if the service to control it over the network is running. What command will confirm it?
+
+   <MultipleChoice>
+     <Option>`hostnamectl status ssh`</Option>
+     <Option isCorrect>`systemctl status ssh`</Option>
+     <Option>`ssh john@192.168.1.50`</Option>
+   </MultipleChoice>
+
+3. If at any point you need to know whether you are connected to your database or web server, regardless of the IP, you can use the command:
+   <MultipleChoice>
+     <Option isCorrect>`hostnamectl status`</Option>
+     <Option>`ip a`</Option>
+     <Option>`su -`</Option>
+   </MultipleChoice>

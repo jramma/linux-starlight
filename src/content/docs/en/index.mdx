@@ -1,0 +1,53 @@
+---
+title: Welcome to Linux Starlight
+description: A comprehensive course for Junior System Administrators.
+template: splash
+hero:
+  tagline: Navigate the Linux universe with confidence.
+  image:
+    file: ../../../assets/houston.webp
+  actions:
+    - text: Get Started
+      link: /en/modules/module-1/
+      icon: right-arrow
+      variant: primary
+---
+
+import { Card, CardGrid, Aside } from "@astrojs/starlight/components";
+
+### Course overview
+
+<CardGrid stagger>
+    <Card title="1. Introduction & Deployment" icon="rocket">
+        **Introduction to Linux and Initial Deployment**
+        First steps, installation, and core concepts of the kernel and shell.
+    </Card>
+    <Card title="2. Commands & Shell" icon="seti:html">
+        **Shell Usage and Fundamental Commands**
+        Master the command line, pipes, redirections, and essential tools.
+    </Card>
+    <Card title="3. Administration" icon="setting">
+        **System Administration: Users, Packages & Services**
+        Permission management, process control, and software maintenance.
+    </Card>
+    <Card title="4. System & Services" icon="document">
+        **Storage and File Systems**
+        Partitioning, disk mounting, LVM, and quota management.
+    </Card>
+    <Card title="5. Storage & LVM" icon="rss">
+        **Hard disk and logical volume management.**
+        MBR vs GPT, `lsblk`, partitioning with `fdisk` and `parted`.
+    </Card>
+    <Card title="6. Software & Scheduled Tasks" icon="seti:javascript">
+        **Software and Automated Tasks**
+        Package management, source compilation, and task scheduling.
+    </Card>
+    <Card title="7. Networking & Security" icon="seti:javascript">
+        **Networking and Security**
+        Network configuration, firewalls, SSH, and system hardening.
+    </Card>
+    <Card title="8. Scripting & Automation" icon="seti:javascript">
+        **Scripting and Automation**
+        Advanced Bash scripting and preparation for certification scenarios.
+    </Card>
+</CardGrid>

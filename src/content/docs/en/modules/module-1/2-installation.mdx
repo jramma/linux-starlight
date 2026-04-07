@@ -1,0 +1,213 @@
+---
+title: 1.2 Installation
+description: Deep guide to understanding manual partitioning, the directory tree, and network configuration via commands during a Headless installation.
+sidebar:
+  order: 3
+---
+
+import { Aside, Steps, FileTree, LinkCard } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - You will understand the need to separate the root boot manager (`/boot/efi`) from the main path (`/`).
+  - You will distinguish the purpose of vital FHS directories like `/etc` and `/var`.
+  - You will learn to configure a Wi-Fi network from a pure terminal using `nmcli` or `wpa_supplicant`.
+</PreCheck>
+
+Even though distributions like Ubuntu offer very simple graphical or semi-graphical (TUI) installers, a true SysAdmin must know what happens under the hood. Understanding a manual installation (similar to how Arch Linux is installed, but applied to Debian concepts) cements your knowledge of how the operating system breathes.
+
+When you install a Linux system without a graphical interface, you must manually handle three fundamental pillars: **the disk**, **the base files**, and **the network**.
+
+---
+
+## 1. The Partitioning Scheme
+
+Before you can save a single file, you need to prepare the physical hard disk. In Linux, there are no "C: or D: drives". There is a single hierarchical tree that begins at the root (`/`), and physical disks are "mounted" (hooked) onto branches of this tree.
+
+To boot a modern system (UEFI), you must create the following minimum professional partition scheme:
+
+<Steps>
+
+1. **Create the EFI partition (`/boot/efi`)**: Set up a small space (approx. 500MB) formatted in `FAT32`. This is where the motherboard firmware looks for the boot manager (GRUB) to start the computer.
+
+2. **Create the Swap partition**: Allocate swap space used as "emergency RAM". If the machine runs out of physical memory, it uses this disk space. In database servers it is sometimes omitted or managed as a file, but traditionally it is given its own partition (e.g. 2GB or the size of RAM).
+
+3. **Create the Root partition (`/`)**: Create this partition and format it classically in `ext4` or `xfs`. It will contain the entire operating system.
+
+</Steps>
+
+In enterprise-grade installations, it is common to separate `/home` (user data) or `/var` (databases and logs) into independent partitions or disks to prevent an uncontrolled log from filling the disk and preventing the system from booting.
+
+<Aside type="tip">
+  **CLI Tools for Disks:** During a manual installation, you will use
+  commands like `fdisk /dev/sda` or `parted` to create these partitions, and
+  `mkfs.ext4 /dev/sda3` to format them.
+</Aside>
+
+---
+
+## 2. The Directory Tree (FHS)
+
+Once the disk is formatted and mounted at `/`, the base operating system is copied (or unpacked) onto it. Linux follows a standard called _Filesystem Hierarchy Standard_ (FHS). Here is how your disk is organized:
+
+<Steps>
+
+4. **Familiarize yourself with system directories**:
+   - `/bin` and `/sbin`: Contain binaries (essential commands like `ls`, `cp`, `ip`).
+   - `/boot`: The Kernel (`vmlinuz`) and initial boot files.
+   - `/dev`: "Device". Special files that represent your hardware. `/dev/sda` is your hard disk, `/dev/null` is the system's black hole.
+   - `/etc`: The heart of configuration. **If you need to change how a program behaves globally, the text file is here.** (e.g. `/etc/ssh/sshd_config`, `/etc/passwd`).
+   - `/home`: The personal folders of each regular user (e.g. `/home/john`).
+   - `/root`: The personal folder of the superuser (supreme administrator). Separated from `/home` for security.
+   - `/tmp`: Temporary files. **Automatically deleted** on each reboot. Don't save anything important here.
+   - `/usr`: Programs, libraries, and non-essential utilities for booting installed by the user/system (`/usr/bin`).
+   - `/var`: "Variable". Data that grows and changes frequently. System logs (`/var/log`), databases, and web files (`/var/www`) live here.
+
+</Steps>
+
+<FileTree>
+- / *System root directory*
+  - bin/ Essential binaries (`ls`, `cp`, `ip`…)
+  - sbin/ System binaries for administration
+  - boot/ Kernel (`vmlinuz`) and boot files
+    - efi/ EFI partition — GRUB lives here
+  - dev/ Special files representing hardware (`sda`, `null`…)
+  - etc/ **Heart of the global system configuration**
+    - ssh/
+      - sshd_config
+    - passwd
+  - home/ Personal folders of regular users
+    - john/
+  - root/ Superuser personal folder (separated for security)
+  - tmp/ Temporaries — **deleted on each reboot**
+  - usr/ Programs and non-essential utilities for booting
+    - bin/
+    - lib/
+  - var/ Variable data that grows over time
+    - log/ System logs
+    - www/ Web files and databases
+</FileTree>
+
+<LinkCard
+  title="Common partitioning schemes"
+  description="Minimum, Desktop (/home separate) and Server: how disks are mounted in each case."
+  href="/en/modules/module-1/3-partitioning-boot/#3-common-partitioning-schemes"
+/>
+
+---
+
+## 3. Network Configuration from Console (Wi-Fi and Ethernet)
+
+During a TUI (Text User Interface) or pure console installation, the easiest option is to plug in an Ethernet cable. The system usually requests an IP automatically via DHCP (`dhclient eth0`).
+
+But what if you're on a home remote server or a laptop without an Ethernet port? **You need to configure Wi-Fi from the command terminal.**
+
+### Using NetworkManager (`nmcli`)
+
+In the modern Debian family, and especially if community tools are present, the most standard way for the LFCS to manage networks is via `nmcli` (Network Manager Command Line Interface).
+
+<Steps>
+
+5. **Check if the Wi-Fi card is detected**:
+
+   Shows all network devices. You should see something like `wlan0` or `wlp3s0` with type `wifi`.
+
+   ```bash
+   nmcli device status
+   ```
+
+6. **Scan available networks**:
+
+   Shows nearby Wi-Fi networks and their signal strength.
+
+   ```bash
+   nmcli device wifi list
+   ```
+
+7. **Connect to a network**:
+
+   Connects and saves the password for future reboots.
+
+   ```bash
+   nmcli device wifi connect "YourNetworkName" password "YourSecretPassword"
+   ```
+
+8. **Verify the assigned IP**:
+
+   ```bash
+   ip a
+   ```
+
+</Steps>
+
+### Low-level alternative: `wpa_supplicant`
+
+If the installation medium is extremely minimal (like the classic Debian or Arch installer), `NetworkManager` might not be installed yet. Instead, raw tools are used. For this, a configuration file is generated by injecting your encrypted password and then the daemon is called:
+
+<Steps>
+
+5. **Generate the network configuration**:
+
+   ```bash
+   wpa_passphrase "YourNetworkName" "Password" > /etc/wpa_supplicant/wpa_supplicant.conf
+   ```
+
+6. **Start the connection in the background**:
+
+   Assuming your interface is `wlan0`.
+
+   ```bash
+   wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf
+   ```
+
+7. **Request an IP address**:
+
+   ```bash
+   dhclient wlan0
+   ```
+
+</Steps>
+
+With internet working, the system can now download the rest of the packages (`apt install ...`) to complete the installation and reboot into your new Linux.
+
+---
+
+## Check Your Knowledge
+
+1. According to FHS, if you want to modify the global configuration of the SSH service to change its port, in which parent directory would you look for its configuration file?
+
+   <MultipleChoice>
+     <Option>
+       In `/var`, since it is a network configuration that changes frequently.
+     </Option>
+     <Option isCorrect>
+       In `/etc`, since that is where global system configuration files reside.
+     </Option>
+     <Option>
+       In `/boot`, because the network must be configured before the Kernel.
+     </Option>
+   </MultipleChoice>
+
+2. If you are installing Debian on a modern UEFI server, what filesystem and purpose does the partition mounted at `/boot/efi` typically have?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       It is formatted in `FAT32` and serves for the motherboard firmware
+       to find the `Bootloader` (e.g. GRUB).
+     </Option>
+     <Option>
+       It is formatted in `ext4` and is used as swap space.
+     </Option>
+     <Option>
+       It is the encrypted partition where maximum security databases reside.
+     </Option>
+   </MultipleChoice>
+
+3. Which of these `NetworkManager` commands lets you scan nearby Wi-Fi networks from the terminal?
+   <MultipleChoice>
+     <Option>`ip a`</Option>
+     <Option>`dhclient wifi`</Option>
+     <Option isCorrect>`nmcli device wifi list`</Option>
+   </MultipleChoice>

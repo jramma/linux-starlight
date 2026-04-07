@@ -39,5 +39,10 @@
   "pagefind.one_result": "[COUNT] resultat per a [SEARCH_TERM]",
   "pagefind.alt_search": "No hi ha resultats per a [SEARCH_TERM]. ",
   "pagefind.search_suggestion": "No hi ha resultats per a [SEARCH_TERM]. ",
-  "pagefind.searching": "S'està cercant [SEARCH_TERM]..."
+  "pagefind.searching": "S'està cercant [SEARCH_TERM]...",
+  "checklist.or": "o",
+  "multipleChoice.defaultCorrect": "Correcte!",
+  "multipleChoice.defaultIncorrect": "Intenta-ho de nou.",
+  "multipleChoice.submitLabel": "Envia la resposta",
+  "tutorial.getReady": "Prepara't!"
 }

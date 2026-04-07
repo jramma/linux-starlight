@@ -1,0 +1,216 @@
+---
+title: 1.2 Instal·lació
+description: Guia profunda per entendre el particionament manual, l'arbre de directoris i la configuració de xarxa per comandes durant una instal·lació Headless.
+sidebar:
+  order: 3
+---
+
+import { Aside, Steps, FileTree, LinkCard } from "@astrojs/starlight/components";
+import PreCheck from "@/components/tutorial/PreCheck.astro";
+import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
+import Option from "@/components/tutorial/Option.astro";
+
+<PreCheck>
+  - Comprendràs la necessitat de separar el gestor d'arrencada arrel (`/boot/efi`) de la ruta principal (`/`).
+  - Distingiràs la utilitat dels directoris vitals del FHS com `/etc` i `/var`.
+  - Aprendràs a configurar una xarxa Wi-Fi des del terminal pur mitjançant `nmcli` o `wpa_supplicant`.
+</PreCheck>
+
+Tot i que distribucions com Ubuntu ofereixen instal·ladors gràfics o semi-gràfics (TUI) molt senzills, un veritable SysAdmin ha de saber què passa sota el capó. Entendre una instal·lació manual (similar a com s'instal·la Arch Linux, però aplicada a conceptes de Debian) fonamenta el teu coneixement sobre com respira el sistema operatiu.
+
+Quan instal·les un sistema Linux sense interfície gràfica, has d'ocupar-te de tres pilars fonamentals manualment: **el disc**, **els fitxers base** i **la xarxa**.
+
+---
+
+## 1. L'Esquema de Particionament
+
+Abans de poder desar un sol fitxer, necessites preparar el disc dur físic. A Linux, no existeixen les «unitats C: o D:». Existeix un únic arbre jeràrquic que comença a l'arrel (`/`), i els discos físics es «munten» (enganxen) en branques d'aquest arbre.
+
+Per poder arrencar un sistema modern (UEFI), has de realitzar el següent esquema de particions mínim i professional:
+
+<Steps>
+
+1. **Crear la partició EFI (`/boot/efi`)**: Configura un espai petit (aprox. 500MB) formatat en `FAT32`. És on el firmware de la placa base busca el gestor d'arrencada (GRUB) per encendre l'equip.
+
+2. **Crear la partició Swap**: Assigna espai d'intercanvi usat com a «RAM d'emergència». Si la màquina es queda sense memòria física, usa aquest espai en disc. En servidors de bases de dades de vegades s'omet o es gestiona com un fitxer, però tradicionalment se li assigna la seva pròpia partició (ex. 2GB o la mida de la RAM).
+
+3. **Crear la partició Arrel (`/`)**: Crea aquesta partició i formata-la clàssicament en `ext4` o `xfs`. Contindrà tot el sistema operatiu.
+
+</Steps>
+
+En instal·lacions de grau empresarial, és comú separar `/home` (dades d'usuaris) o `/var` (bases de dades i registres) en particions o discos independents per evitar que un registre descontrolat ompli el disc i impedeixi arrencar el sistema.
+
+<Aside type="tip">
+  **Eines CLI per a Discos:** Durant una instal·lació manual, utilitzaràs
+  comandes com `fdisk /dev/sda` o `parted` per crear aquestes particions, i
+  `mkfs.ext4 /dev/sda3` per donar-los format.
+</Aside>
+
+---
+
+## 2. L'Arbre de Directoris (FHS)
+
+Una vegada el disc està formatat i muntat a `/`, es bolca (o descarrega) el sistema operatiu base. Linux segueix un estàndard anomenat _Filesystem Hierarchy Standard_ (FHS). Així és com s'organitza el teu disc:
+
+<Steps>
+
+4. **Familiaritza't amb els directoris del sistema**:
+   - `/bin` i `/sbin`: Contenen els binaris (comandes essencials com `ls`, `cp`, `ip`).
+   - `/boot`: El Nucli (`vmlinuz`) i els fitxers d'arrencada inicial.
+   - `/dev`: «Device». Fitxers especials que representen el teu maquinari. `/dev/sda` és el teu disc dur, `/dev/null` és el forat negre del sistema.
+   - `/etc`: El cor de la configuració. **Si necessites canviar com es comporta un programa globalment, el fitxer de text és aquí.** (ex. `/etc/ssh/sshd_config`, `/etc/passwd`).
+   - `/home`: Les carpetes personals de cada usuari regular (ex. `/home/joan`).
+   - `/root`: La carpeta personal del superusuari (administrador suprem). Separada de `/home` per seguretat.
+   - `/tmp`: Fitxers temporals. **S'esborra automàticament** en cada reinici. No deseu res important aquí.
+   - `/usr`: Programes, biblioteques i utilitats no essencials per a l'arrencada instal·lades per l'usuari/sistema (`/usr/bin`).
+   - `/var`: «Variable». Dades que creixen i canvien freqüentment. Aquí viuen els registres del sistema (`/var/log`), bases de dades i webs (`/var/www`).
+
+</Steps>
+
+<FileTree>
+- / *Directori arrel del sistema*
+  - bin/ Binaris essencials (`ls`, `cp`, `ip`…)
+  - sbin/ Binaris del sistema per a administració
+  - boot/ Nucli (`vmlinuz`) i fitxers d'arrencada
+    - efi/ Partició EFI — aquí viu el GRUB
+  - dev/ Fitxers especials que representen maquinari (`sda`, `null`…)
+  - etc/ **Cor de la configuració global del sistema**
+    - ssh/
+      - sshd_config
+    - passwd
+  - home/ Carpetes personals dels usuaris regulars
+    - joan/
+  - root/ Carpeta personal del superusuari (separada per seguretat)
+  - tmp/ Temporals — **s'esborra en cada reinici**
+  - usr/ Programes i utilitats no essencials per a l'arrencada
+    - bin/
+    - lib/
+  - var/ Dades variables que creixen amb el temps
+    - log/ Registres del sistema
+    - www/ Webs i bases de dades
+</FileTree>
+
+<LinkCard
+  title="Esquemes de particionament habituals"
+  description="Mínim, Escriptori (/home separat) i Servidor: com queden els discos muntats en cada cas."
+  href="/ca/modules/module-1/3-partitioning-boot/#3-esquemes-de-particionament-habituals"
+/>
+
+---
+
+## 3. Configuració de Xarxa per Consola (Wi-Fi i Ethernet)
+
+Durant una instal·lació TUI (Text User Interface) o consola pura, el més fàcil és connectar un cable Ethernet. El sistema usualment sol·licita una IP automàticament mitjançant DHCP (`dhclient eth0`).
+
+Però, i si estàs en un servidor remot casolà o un portàtil sense port Ethernet? **Necessites configurar el Wi-Fi des del terminal de comandes.**
+
+### Usant NetworkManager (`nmcli`)
+
+A la família Debian moderna, i especialment si hi ha eines comunitàries presents, la forma més estàndard per al LFCS de gestionar xarxes és mitjançant `nmcli` (Network Manager Command Line Interface).
+
+<Steps>
+
+5. **Revisar si la targeta Wi-Fi és detectada**:
+
+   Mostra tots els dispositius de xarxa. Hauries de veure alguna cosa com `wlan0` o `wlp3s0` amb el tipus `wifi`.
+
+   ```bash
+   nmcli device status
+   ```
+
+6. **Escanejar xarxes disponibles**:
+
+   Mostra les xarxes Wi-Fi a l'abast i la seva força de senyal.
+
+   ```bash
+   nmcli device wifi list
+   ```
+
+7. **Connectar-se a una xarxa**:
+
+   Connecta i desa la contrasenya per a futurs reinicis.
+
+   ```bash
+   nmcli device wifi connect "NomDeLaTevaxarxa" password "LaTevaContrasenya"
+   ```
+
+8. **Verificar la IP assignada**:
+
+   ```bash
+   ip a
+   ```
+
+</Steps>
+
+### Alternativa de baix nivell: `wpa_supplicant`
+
+Si el medi d'instal·lació és extremadament mínim (com l'instal·lador clàssic de Debian o Arch), `NetworkManager` podria no estar instal·lat encara. En el seu lloc, s'utilitzen eines crues. Per a això, es genera un fitxer de configuració injectant la teva contrasenya xifrada i després es crida el dimoni:
+
+<Steps>
+
+5. **Generar la configuració de la xarxa**:
+
+   ```bash
+   wpa_passphrase "NomDeLaTevaxarxa" "Contrasenya" > /etc/wpa_supplicant/wpa_supplicant.conf
+   ```
+
+6. **Iniciar la connexió en segon pla**:
+
+   Assumint que la teva interfície és `wlan0`.
+
+   ```bash
+   wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf
+   ```
+
+7. **Sol·licitar una adreça IP**:
+
+   ```bash
+   dhclient wlan0
+   ```
+
+</Steps>
+
+Amb internet funcionant, el sistema ja pot descarregar la resta de paquets (`apt install ...`) per finalitzar la instal·lació i reiniciar al teu nou Linux.
+
+---
+
+## Comprova els teus coneixements
+
+1. D'acord amb el FHS, si vols modificar la configuració global del servei SSH per canviar el seu port, en quin directori pare buscaries el seu fitxer de configuració?
+
+   <MultipleChoice>
+     <Option>
+       A `/var`, ja que és una configuració de xarxa que canvia freqüentment.
+     </Option>
+     <Option isCorrect>
+       A `/etc`, ja que allà resideixen els fitxers de configuració globals del
+       sistema.
+     </Option>
+     <Option>
+       A `/boot`, perquè la xarxa s'ha de configurar abans que el Nucli.
+     </Option>
+   </MultipleChoice>
+
+2. Si estàs instal·lant Debian en un servidor modern amb UEFI, quin sistema de fitxers i propòsit té típicament la partició muntada a `/boot/efi`?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Està formatada en `FAT32` i serveix perquè el firmware de la placa base
+       trobi el `Bootloader` (ex. GRUB).
+     </Option>
+     <Option>
+       Està formatada en `ext4` i s'utilitza com a espai d'intercanvi
+       (Swap).
+     </Option>
+     <Option>
+       És la partició xifrada on resideixen les bases de dades de màxima
+       seguretat.
+     </Option>
+   </MultipleChoice>
+
+3. Quina d'aquestes comandes de `NetworkManager` et permet escanejar les xarxes Wi-Fi properes des del terminal?
+   <MultipleChoice>
+     <Option>`ip a`</Option>
+     <Option>`dhclient wifi`</Option>
+     <Option isCorrect>`nmcli device wifi list`</Option>
+   </MultipleChoice>

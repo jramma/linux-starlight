@@ -26,6 +26,12 @@ export default defineConfig({
         es: {
           label: "Español",
         },
+        en: {
+          label: "English",
+        },
+        ca: {
+          label: "Català",
+        },
       },
       customCss: ["./src/styles/global.css"],
       sidebar,
