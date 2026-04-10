@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 import PreCheck from "@/components/tutorial/PreCheck.astro";
 import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
 import Option from "@/components/tutorial/Option.astro";
@@ -25,17 +25,45 @@ Históricamente, el rey de internet era "Apache". Apache funcionaba contratando 
 
 ### Despliegue del Demonio
 
-```bash
-# Sincronizamos orígenes e instalamos
-sudo apt update
-sudo apt install nginx
+<Tabs>
+  <TabItem label="Debian / Ubuntu">
+    ```bash
+    # Sincronizamos orígenes e instalamos
+    sudo apt update
+    sudo apt install nginx
 
-# Nos aseguramos de que arranque si el PC sufre un apagón
-sudo systemctl enable --now nginx
+    # Nos aseguramos de que arranque si el PC sufre un apagón
+    sudo systemctl enable --now nginx
 
-# Comprobamos su estado vivo y leemos sus últimos 10 logs
-sudo systemctl status nginx
-```
+    # Comprobamos su estado vivo y leemos sus últimos 10 logs
+    sudo systemctl status nginx
+    ```
+  </TabItem>
+  <TabItem label="Fedora / RHEL">
+    ```bash
+    # Instalamos
+    sudo dnf install nginx
+
+    # Habilitamos e iniciamos
+    sudo systemctl enable --now nginx
+
+    # Comprobamos estado
+    sudo systemctl status nginx
+    ```
+  </TabItem>
+  <TabItem label="Arch">
+    ```bash
+    # Instalamos
+    sudo pacman -S nginx
+
+    # Habilitamos e iniciamos
+    sudo systemctl enable --now nginx
+
+    # Comprobamos estado
+    sudo systemctl status nginx
+    ```
+  </TabItem>
+</Tabs>
 
 ---
 

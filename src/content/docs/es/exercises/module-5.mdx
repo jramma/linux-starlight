@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
 <Aside type="tip" title="Antes de empezar">
 Esta práctica requiere un segundo disco virtual en la VM. Los ejercicios 5.1, 5.2 y 5.3 trabajan directamente sobre él. Los ejercicios 5.4 y 5.5 (swap y cuotas) no lo necesitan. Sigue el Paso 0 si todavía no tienes el disco añadido. Léelos todos antes de empezar.
@@ -35,10 +35,26 @@ Deberías ver `/dev/sda` (disco del sistema) y `/dev/sdb` (disco nuevo, vacío, 
 
 ## Setup — ejecutar una sola vez
 
-```bash
-mkdir -p ~/practica5/{work,entrega}
-sudo apt update && sudo apt install -y lvm2 quota
-```
+<Tabs>
+  <TabItem label="Debian / Ubuntu">
+    ```bash
+    mkdir -p ~/practica5/{work,entrega}
+    sudo apt update && sudo apt install -y lvm2 quota
+    ```
+  </TabItem>
+  <TabItem label="Fedora / RHEL">
+    ```bash
+    mkdir -p ~/practica5/{work,entrega}
+    sudo dnf install -y lvm2 quota
+    ```
+  </TabItem>
+  <TabItem label="Arch">
+    ```bash
+    mkdir -p ~/practica5/{work,entrega}
+    sudo pacman -S lvm2 quota-tools
+    ```
+  </TabItem>
+</Tabs>
 
 Todo lo que se pida "guardar" debe ir dentro de `~/practica5/entrega/`.
 
