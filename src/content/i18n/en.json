@@ -13,7 +13,7 @@
   "sidebarNav.accessibleLabel": "Main",
   "tableOfContents.onThisPage": "On this page",
   "tableOfContents.overview": "Overview",
-  "i18n.untranslatedContent": "This content is not yet available in your language.",
+  "i18n.untranslatedContent": "This content is not yet available in your language. You can create it at https://github.com/jramma/linux-starlight",
   "page.editLink": "Edit page",
   "page.lastUpdated": "Last updated:",
   "page.previousLink": "Previous",

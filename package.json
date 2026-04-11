@@ -11,8 +11,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.37.7",
-    "astro": "^5.5.0",
+    "@astrojs/starlight": "^0.38.3",
+    "astro": "^6.1.5",
     "astro-icon": "^1.1.5",
     "canvas-confetti": "^1.9.4",
     "mermaid": "^11.12.3",
