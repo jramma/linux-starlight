@@ -5,6 +5,8 @@ sidebar:
   order: 5
 ---
 
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
 Instalar Linux en un servidor es diferente a hacerlo en un ordenador de escritorio. Los servidores suelen ejecutarse **sin interfaz gráfica** (modo headless), estar optimizados para estabilidad y seguridad, y gestionarse remotamente a través de **SSH**.
 
 ## ¿Qué tipo de servidor tienes?
@@ -140,13 +142,23 @@ GRUB_TERMINAL=console             # Solo consola, sin gráficos
 
 ### Actualizar GRUB tras cambios
 
-```bash
-# Debian/Ubuntu
-sudo update-grub
-
-# Rocky Linux / AlmaLinux / Fedora
-sudo grub2-mkconfig -o /boot/grub2/grub.cfg
-```
+<Tabs>
+  <TabItem label="Debian / Ubuntu">
+    ```bash
+    sudo update-grub
+    ```
+  </TabItem>
+  <TabItem label="Fedora / RHEL">
+    ```bash
+    sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+    ```
+  </TabItem>
+  <TabItem label="Arch">
+    ```bash
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
+    ```
+  </TabItem>
+</Tabs>
 
 ### GRUB en sistemas UEFI con servidor
 
@@ -167,30 +179,55 @@ sudo update-grub
 
 ### Actualizar el sistema
 
-```bash
-# Ubuntu/Debian
-sudo apt update && sudo apt upgrade -y
-
-# Rocky Linux / AlmaLinux
-sudo dnf update -y
-```
+<Tabs>
+  <TabItem label="Debian / Ubuntu">
+    ```bash
+    sudo apt update && sudo apt upgrade -y
+    ```
+  </TabItem>
+  <TabItem label="Fedora / RHEL">
+    ```bash
+    sudo dnf update -y
+    ```
+  </TabItem>
+  <TabItem label="Arch">
+    ```bash
+    sudo pacman -Syu
+    ```
+  </TabItem>
+</Tabs>
 
 ### Configurar el firewall
 
-```bash
-# UFW (Ubuntu/Debian)
-sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw enable
-sudo ufw status
-
-# Firewalld (Rocky/AlmaLinux/Fedora)
-sudo firewall-cmd --permanent --add-service=ssh
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --permanent --add-service=https
-sudo firewall-cmd --reload
-```
+<Tabs>
+  <TabItem label="Debian / Ubuntu (UFW)">
+    ```bash
+    sudo ufw allow OpenSSH
+    sudo ufw allow 80/tcp    # HTTP
+    sudo ufw allow 443/tcp   # HTTPS
+    sudo ufw enable
+    sudo ufw status
+    ```
+  </TabItem>
+  <TabItem label="Fedora / RHEL (firewalld)">
+    ```bash
+    sudo firewall-cmd --permanent --add-service=ssh
+    sudo firewall-cmd --permanent --add-service=http
+    sudo firewall-cmd --permanent --add-service=https
+    sudo firewall-cmd --reload
+    ```
+  </TabItem>
+  <TabItem label="Arch (UFW vía pacman)">
+    ```bash
+    sudo pacman -S ufw
+    sudo ufw allow OpenSSH
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    sudo ufw enable
+    sudo ufw status
+    ```
+  </TabItem>
+</Tabs>
 
 ### Desactivar acceso SSH con contraseña (una vez configuradas las claves)
 

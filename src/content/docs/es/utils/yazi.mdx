@@ -16,9 +16,32 @@ sidebar:
 
 ## Instalación (idea general)
 
-En Debian/Ubuntu, a menudo se instala mediante binario oficial o compilándolo, y se puede complementar con herramientas como `fd`, `ripgrep`, `fzf`, etc.
+Yazi está disponible en los repositorios oficiales de las distribuciones principales. Se puede complementar con herramientas como `fd`, `ripgrep`, `fzf`, etc.
 
-La guía correcta (y actualizada) es la oficial:
+La guía correcta (y actualizada) según tu distro es la oficial:
 
 - [Documentación oficial de instalación de Yazi](https://yazi-rs.github.io/docs/installation/)
+
+A modo de referencia rápida, los comandos de instalación básica por distro son:
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Tabs>
+  <TabItem label="Debian / Ubuntu">
+    ```bash
+    # Yazi no está en los repos estables; instala desde el binario oficial o compila.
+    # Consulta la guía oficial para la versión más reciente.
+    ```
+  </TabItem>
+  <TabItem label="Fedora / RHEL">
+    ```bash
+    sudo dnf install yazi
+    ```
+  </TabItem>
+  <TabItem label="Arch">
+    ```bash
+    sudo pacman -S yazi
+    ```
+  </TabItem>
+</Tabs>
 
