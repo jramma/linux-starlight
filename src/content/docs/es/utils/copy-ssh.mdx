@@ -89,13 +89,36 @@ scp -P 2222 -r ~/datos/ alumno@servidor.com:~/backups/
 rsync -avz carpeta/origen usuario@servidor:/ruta/destino
 ```
 
-| Opción | Significado |
-|--------|-------------|
-| `-a` | Modo archivo (preserva permisos, fechas, enlaces simbólicos) |
-| `-v` | Verboso (muere lo que copia) |
-| `-z` | Comprime durante la transferencia |
-| `-P` | Muestra progreso y permite reanudar |
-| `--delete` | Borra en destino lo que no existe en origen |
+<table>
+  <thead>
+    <tr>
+      <th>Opción</th>
+      <th>Significado</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>-a</code></td>
+      <td>Modo archivo (preserva permisos, fechas, enlaces simbólicos)</td>
+    </tr>
+    <tr>
+      <td><code>-v</code></td>
+      <td>Verboso (muestra lo que copia)</td>
+    </tr>
+    <tr>
+      <td><code>-z</code></td>
+      <td>Comprime durante la transferencia</td>
+    </tr>
+    <tr>
+      <td><code>-P</code></td>
+      <td>Muestra progreso y permite reanudar</td>
+    </tr>
+    <tr>
+      <td><code>--delete</code></td>
+      <td>Borra en destino lo que no existe en origen</td>
+    </tr>
+  </tbody>
+</table>
 
 ### Ejemplo 1: Subir carpeta con progreso
 
@@ -233,13 +256,36 @@ scp -i ~/.ssh/mi-clave-privada -r carpeta/ usuario@servidor:/destino/
 
 ## 6. Solución de problemas comunes
 
-| Problema | Solución |
-|----------|----------|
-| `Permission denied (publickey)` | Configura autenticación por clave SSH (práctica 1 paso 4) |
-| `Connection refused` | El servidor no tiene SSH corriendo o el puerto está bloqueado |
-| `No such file or directory` | Revisa las rutas: las rutas remotas son **del servidor**, no locales |
-| La carpeta remota está vacía | Comprueba la barra final `/` en el origen |
-| Transferencia muy lenta | Usa `rsync -z` para comprimir o reduce archivos grandes |
+<table>
+  <thead>
+    <tr>
+      <th>Problema</th>
+      <th>Solución</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Permission denied (publickey)</code></td>
+      <td>Configura autenticación por clave SSH (práctica 1 paso 4)</td>
+    </tr>
+    <tr>
+      <td><code>Connection refused</code></td>
+      <td>El servidor no tiene SSH corriendo o el puerto está bloqueado</td>
+    </tr>
+    <tr>
+      <td><code>No such file or directory</code></td>
+      <td>Revisa las rutas: las rutas remotas son <strong>del servidor</strong>, no locales</td>
+    </tr>
+    <tr>
+      <td>La carpeta remota está vacía</td>
+      <td>Comprueba la barra final <code>/</code> en el origen</td>
+    </tr>
+    <tr>
+      <td>Transferencia muy lenta</td>
+      <td>Usa <code>rsync -z</code> para comprimir o reduce archivos grandes</td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
