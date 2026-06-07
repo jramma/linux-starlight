@@ -1,0 +1,282 @@
+---
+title: Copiar carpetas por SSH (scp y rsync)
+description: Guía para transferir directorios completos entre tu máquina local y un servidor remoto usando scp y rsync.
+sidebar:
+  order: 5
+---
+import { Tabs, TabItem, Aside } from "@astrojs/starlight/components";
+
+## ¿Por qué copiar carpetas por SSH?
+
+Cuando trabajas con servidores remotos (especialmente en la nube o VPS), es habitual necesitar:
+
+- Subir el código de una aplicación al servidor
+- Descargar logs o backups a tu máquina local
+- Sincronizar configuraciones entre entornos
+
+**SSH** no solo sirve para conectarse; también incluye herramientas para transferir archivos de forma segura.
+
+---
+
+## Herramientas principales
+
+<table>
+  <thead>
+    <tr>
+      <th>Herramienta</th>
+      <th>Ventaja</th>
+      <th>Cuándo usarla</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>scp</code></td>
+      <td>Simple, viene por defecto en todos los sistemas</td>
+      <td>Copias puntuales, archivos pequeños</td>
+    </tr>
+    <tr>
+      <td><code>rsync</code></td>
+      <td>Reanuda transferencias, sincroniza solo cambios</td>
+      <td>Copias grandes, backups, sincronización periódica</td>
+    </tr>
+  </tbody>
+</table>
+---
+
+## 1. Usando `scp` (Secure Copy)
+
+### Sintaxis básica
+
+```bash
+scp -r carpeta/origen usuario@servidor:/ruta/destino
+```
+
+- `-r` : recursivo (necesario para carpetas)
+- `-P` : puerto SSH personalizado (si no es el 22)
+
+### Ejemplo 1: Subir carpeta local al servidor
+
+```bash
+# Desde tu máquina local
+scp -r ~/mi-proyecto alumno@192.168.1.100:/home/alumno/
+```
+
+### Ejemplo 2: Descargar carpeta del servidor a local
+
+```bash
+# Desde tu máquina local
+scp -r alumno@192.168.1.100:/var/log/nginx ~/backups/
+```
+
+### Ejemplo 3: Puerto SSH no estándar (ej: 2222)
+
+```bash
+scp -P 2222 -r ~/datos/ alumno@servidor.com:~/backups/
+```
+
+<Aside type="caution" title="Ojo con la sintaxis">
+- `scp` usa `-P` (mayúscula) para el puerto
+- `ssh` usa `-p` (minúscula) para el puerto
+</Aside>
+
+---
+
+## 2. Usando `rsync` (más potente)
+
+### Sintaxis básica
+
+```bash
+rsync -avz carpeta/origen usuario@servidor:/ruta/destino
+```
+
+| Opción | Significado |
+|--------|-------------|
+| `-a` | Modo archivo (preserva permisos, fechas, enlaces simbólicos) |
+| `-v` | Verboso (muere lo que copia) |
+| `-z` | Comprime durante la transferencia |
+| `-P` | Muestra progreso y permite reanudar |
+| `--delete` | Borra en destino lo que no existe en origen |
+
+### Ejemplo 1: Subir carpeta con progreso
+
+```bash
+rsync -avzP ~/mi-proyecto/ alumno@servidor:~/mi-proyecto/
+```
+
+<Aside type="note" title="Barra final importante">
+`~/mi-proyecto/` con barra copia el **contenido** de la carpeta.  
+`~/mi-proyecto` sin barra copia la **carpeta entera**.
+</Aside>
+
+### Ejemplo 2: Sincronizar bidireccionalmente (solo cambios)
+
+La segunda vez que ejecutes el mismo comando, `rsync` solo copiará los archivos modificados.
+
+```bash
+rsync -avz ~/proyecto/ usuario@servidor:~/proyecto/
+```
+
+### Ejemplo 3: Descargar carpeta completa
+
+```bash
+rsync -avzP alumno@servidor:/var/log/ ~/logs-servidor/
+```
+
+### Ejemplo 4: Sincronizar eliminando archivos huérfanos
+
+```bash
+rsync -avz --delete ~/local/ usuario@servidor:/remoto/
+```
+
+---
+
+## 3. Comparativa rápida
+
+<table>
+  <thead>
+    <tr>
+      <th>Característica</th>
+      <th>scp</th>
+      <th>rsync</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Velocidad 1ª vez</td>
+      <td>Buena</td>
+      <td>Buena</td>
+    </tr>
+    <tr>
+      <td>Velocidad 2ª vez</td>
+      <td>Igual (copia todo)</td>
+      <td>Muy rápida (solo cambios)</td>
+    </tr>
+    <tr>
+      <td>Reanudar transferencia</td>
+      <td>❌ No</td>
+      <td>✅ Sí (con -P)</td>
+    </tr>
+    <tr>
+      <td>Mostrar progreso</td>
+      <td>❌ Solo con -v</td>
+      <td>✅ Con -P</td>
+    </tr>
+    <tr>
+      <td>Comprobar integridad</td>
+      <td>❌ No</td>
+      <td>✅ Sí</td>
+    </tr>
+    <tr>
+      <td>Disponibilidad por defecto</td>
+      <td>✅ Siempre</td>
+      <td>⚠️ A veces hay que instalarlo</td>
+    </tr>
+  </tbody>
+</table>
+---
+
+## 4. Instalar `rsync` si no lo tienes
+
+<Tabs>
+  <TabItem label="Debian / Ubuntu">
+    ```bash
+    sudo apt install rsync
+    ```
+  </TabItem>
+  <TabItem label="Arch Linux">
+    ```bash
+    sudo pacman -S rsync
+    ```
+  </TabItem>
+  <TabItem label="macOS">
+    ```bash
+    brew install rsync
+    ```
+  </TabItem>
+  <TabItem label="Windows (WSL)">
+    ```bash
+    sudo apt install rsync
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## 5. Ejemplos prácticos para el LFCS
+
+### Subir una web completa al servidor
+
+```bash
+rsync -avz --delete ~/mi-web/ alumno@servidor:/var/www/html/
+```
+
+### Descargar logs de acceso para analizar localmente
+
+```bash
+scp -r alumno@servidor:/var/log/nginx/ ~/analisis-logs/
+```
+
+### Hacer backup semanal de configuración
+
+```bash
+rsync -avz /etc/ alumno@backup-server:/backups/etc-fecha/
+```
+
+### Copiar desde un servidor con autenticación por clave
+
+```bash
+# Primero configurar clave SSH (ver práctica 1, paso 4)
+scp -i ~/.ssh/mi-clave-privada -r carpeta/ usuario@servidor:/destino/
+```
+
+---
+
+## 6. Solución de problemas comunes
+
+| Problema | Solución |
+|----------|----------|
+| `Permission denied (publickey)` | Configura autenticación por clave SSH (práctica 1 paso 4) |
+| `Connection refused` | El servidor no tiene SSH corriendo o el puerto está bloqueado |
+| `No such file or directory` | Revisa las rutas: las rutas remotas son **del servidor**, no locales |
+| La carpeta remota está vacía | Comprueba la barra final `/` en el origen |
+| Transferencia muy lenta | Usa `rsync -z` para comprimir o reduce archivos grandes |
+
+---
+
+## 7. Bonus: copiar una carpeta manteniendo permisos
+
+```bash
+# Con rsync (recomendado)
+rsync -avz --chown=usuario:grupo carpeta/ usuario@servidor:/destino/
+
+# Con scp (no preserva permisos igual que rsync)
+scp -rp carpeta/ usuario@servidor:/destino/
+```
+
+<Aside type="tip" title="Alias útiles">
+Añade estos alias a tu `~/.bashrc` para transferencias rápidas:
+
+```bash
+alias subir='rsync -avzP'
+alias bajar='rsync -avzP'
+alias copia-segura='rsync -avz --delete'
+```
+</Aside>
+
+---
+
+## Resumen de comandos
+
+```bash
+# Subir carpeta con scp
+scp -r local/carpeta usuario@servidor:/remota/
+
+# Subir carpeta con rsync (recomendado)
+rsync -avzP local/carpeta/ usuario@servidor:/remota/
+
+# Descargar carpeta del servidor
+rsync -avzP usuario@servidor:/remota/carpeta/ local/
+
+# Sincronización bidireccional (sube solo cambios)
+rsync -avzP local/ usuario@servidor:/remota/
+```
