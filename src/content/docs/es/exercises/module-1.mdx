@@ -21,12 +21,42 @@ Al terminar esta práctica tendrás un servidor Ubuntu Server 24.04 corriendo y 
 
 ## ¿Qué método usar?
 
-| Método | Sistema | Requisitos | Complejidad |
-|--------|---------|------------|-------------|
-| **Multipass** | Windows y Linux | Hyper-V (Win) o KVM (Linux) | Baja |
-| **WSL2** | Solo Windows | Windows 10/11 64-bit | Muy baja |
-| **VirtualBox** | Windows, Mac y Linux | Cualquier sistema | Media |
-| **KVM/virt-install** | Linux | KVM habilitado + ISO Ubuntu | Media-Alta |
+<table>
+  <thead>
+    <tr>
+      <th>Método</th>
+      <th>Sistema</th>
+      <th>Requisitos</th>
+      <th>Complejidad</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Multipass</strong></td>
+      <td>Windows y Linux</td>
+      <td>Hyper-V (Win) o KVM (Linux)</td>
+      <td>Baja</td>
+    </tr>
+    <tr>
+      <td><strong>WSL2</strong></td>
+      <td>Solo Windows</td>
+      <td>Windows 10/11 64-bit</td>
+      <td>Muy baja</td>
+    </tr>
+    <tr>
+      <td><strong>VirtualBox</strong></td>
+      <td>Windows, Mac y Linux</td>
+      <td>Cualquier sistema</td>
+      <td>Media</td>
+    </tr>
+    <tr>
+      <td><strong>KVM/virt-install</strong></td>
+      <td>Linux</td>
+      <td>KVM habilitado + ISO Ubuntu</td>
+      <td>Media-Alta</td>
+    </tr>
+  </tbody>
+</table>
 
 <Aside type="note" title="Recomendación">
 Si tienes Windows 10/11 o Linux moderno, empieza por **Multipass** — es la opción más rápida y no requiere descargar ISOs.
@@ -38,248 +68,40 @@ Usa **KVM/virt-install** si Multipass no funciona en tu distribución Linux o pr
 ## Paso 1 — Levantar el servidor
 
 <Tabs>
-<TabItem label="Multipass (Windows)">
+<TabItem label="Linux (Distrobox)">
 
-Multipass es la herramienta oficial de Canonical para lanzar VMs de Ubuntu con un solo comando desde PowerShell.
+**Un solo comando:**
 
-**Requisitos:** Windows 10/11 con Hyper-V habilitado (viene activado por defecto en ediciones Pro/Enterprise; en Home puede activarse desde "Características de Windows").
-
-### 1.1 Instalar Multipass
-
-Abre **PowerShell como administrador** y ejecuta:
-
-```powershell
-winget install Canonical.Multipass
+```bash
+distrobox create --name servidor-linux --image ubuntu:22.04 && distrobox enter servidor-linux
 ```
 
-Cierra y vuelve a abrir PowerShell tras la instalación.
-
-### 1.2 Lanzar el servidor
-
-```powershell
-multipass launch 24.04 --name servidor-linux --memory 2G --disk 20G
-```
-
-La primera vez descarga la imagen (~600 MB). Espera a que aparezca:
-
-```
-Launched: servidor-linux
-```
-
-### 1.3 Verificar que está corriendo
-
-```powershell
-multipass list
-```
-
-Deberías ver `servidor-linux` con estado `Running` y una IP local (por ejemplo `172.26.x.x`). Anota esa IP.
+<Aside type="note" title="¿Ya lo tienes instalado?">
+Si no tienes Distrobox: `sudo pacman -S distrobox podman` (Arch) o `sudo apt install distrobox podman` (Debian/Ubuntu)
+</Aside>
 
 </TabItem>
-<TabItem label="Multipass (Linux)">
+<TabItem label="Windows (WSL2)">
 
-Multipass también funciona en Linux usando KVM como backend.
-
-**Requisitos:** KVM instalado y habilitado (la mayoría de distribuciones modernas lo incluyen).
-
-### 1.1 Instalar Multipass
-
-Abre una **terminal** y ejecuta:
-
-```bash
-sudo snap install multipass
-```
-
-Si no tienes snap:
-
-```bash
-# Debian/Ubuntu
-sudo apt install snapd && sudo snap install multipass
-```
-
-### 1.2 Lanzar el servidor
-
-```bash
-multipass launch 24.04 --name servidor-linux --memory 2G --disk 20G
-```
-
-Espera a que aparezca:
-
-```
-Launched: servidor-linux
-```
-
-### 1.3 Verificar que está corriendo
-
-```bash
-multipass list
-```
-
-Anota la IP que aparece junto a `servidor-linux`.
-
-</TabItem>
-<TabItem label="WSL2 (solo Windows)">
-
-WSL2 (Windows Subsystem for Linux) permite correr Ubuntu directamente en Windows sin VM ni hipervisor externo.
-
-**Requisitos:** Windows 10 versión 2004 o posterior / Windows 11.
-
-### 1.1 Instalar Ubuntu en WSL2
-
-Abre **PowerShell como administrador**:
+**Un solo comando (PowerShell como admin):**
 
 ```powershell
 wsl --install -d Ubuntu-24.04
 ```
 
-Reinicia el ordenador si se te pide.
-
-### 1.2 Configurar el usuario
-
-Al arrancar Ubuntu por primera vez se te pedirá un nombre de usuario y contraseña. Usa:
-
-- **Usuario:** `alumno`
-- **Contraseña:** la que recuerdes (mínimo 8 caracteres)
-
-### 1.3 Acceder al servidor
-
-Desde PowerShell:
-
-```powershell
-wsl -d Ubuntu-24.04
-```
-
-O abre **Ubuntu 24.04** desde el menú Inicio.
-
-<Aside type="note" title="Diferencia con los otros métodos">
-Con WSL2 ya estás dentro del servidor directamente — no necesitas conectarte por SSH desde fuera. Los pasos de red del Paso 5 no aplican a WSL2.
+<Aside type="note" title="Después de instalar">
+Reinicia el PC. Al abrir "Ubuntu 24.04" desde el menú, crea usuario `alumno` y contraseña.
 </Aside>
 
 </TabItem>
-<TabItem label="VirtualBox">
+<TabItem label="Mac (Lima)">
 
-Opción clásica, compatible con Windows, Mac y Linux.
-
-**Requisitos:**
-- [VirtualBox](https://www.virtualbox.org/wiki/Downloads) instalado
-- ISO de Ubuntu Server 24.04 LTS ([descargar aquí](https://ubuntu.com/download/server)) — opción **Get Ubuntu Server**
-
-### 1.1 Crear la máquina virtual
-
-1. Abre VirtualBox y haz clic en **Nueva**
-2. Rellena la configuración:
-   - **Nombre:** `servidor-linux`
-   - **Tipo:** Linux
-   - **Versión:** Ubuntu (64-bit)
-3. Haz clic en **Siguiente** en cada pantalla con estos valores:
-   - **Memoria RAM:** 2048 MB (2 GB)
-   - **Disco duro:** Crear uno nuevo → VDI → Reservado dinámicamente → **20 GB**
-4. Haz clic en **Crear**
-
-### 1.2 Configurar la red (dos adaptadores)
-
-Con la VM seleccionada, ve a **Configuración → Red**:
-
-- **Adaptador 1** → Conectado a: **NAT** (acceso a internet)
-- **Adaptador 2** → ✅ Habilitar → Conectado a: **Adaptador solo-anfitrión** → `vboxnet0`
-
-Si `vboxnet0` no existe, créalo en VirtualBox → Herramientas → Red → Crear.
-
-### 1.3 Instalar Ubuntu Server
-
-1. Selecciona la VM y haz clic en **Iniciar**; elige la ISO cuando la pida
-2. En el instalador:
-   - **Language:** English
-   - **Keyboard:** Spanish → Spanish
-   - **Type of install:** Ubuntu Server *(no la versión minimized)*
-   - **Network:** deja DHCP automático
-   - **Storage:** Use an entire disk → valores por defecto
-   - **Profile setup:** nombre `Alumno Linux`, servidor `servidor-linux`, usuario `alumno`
-   - **SSH:** ✅ Install OpenSSH server — **MUY IMPORTANTE**
-   - **Featured snaps:** nada, clic en Done
-3. Espera ~10-15 minutos y haz clic en **Reboot Now**
-
-</TabItem>
-<TabItem label="KVM/virt-install (Linux)">
-
-Método nativo en Linux usando KVM + libvirt. No requiere VirtualBox ni snap. Necesitas tener la **ISO de Ubuntu Server 24.04** descargada ([descargar aquí](https://ubuntu.com/download/server)).
-
-**Requisitos:** CPU con virtualización habilitada (Intel VT-x / AMD-V) y KVM disponible en el kernel.
-
-### 1.1 Instalar dependencias
+**Dos comandos:**
 
 ```bash
-sudo apt install -y libvirt-clients libvirt-daemon-system virtinst
-sudo systemctl enable --now libvirtd
-sudo usermod -aG libvirt,kvm $USER
+brew install lima
+limactl create --name=servidor-linux template://ubuntu && limactl shell servidor-linux
 ```
-
-<Aside type="caution" title="Cierra sesión y vuelve a entrar">
-El comando `usermod` no surte efecto hasta que cierres sesión completamente y vuelvas a entrar. Sin este paso los siguientes comandos darán error de permisos.
-</Aside>
-
-### 1.2 Preparar red y almacenamiento
-
-libvirt gestiona sus propios ficheros en `/var/lib/libvirt/images/` — el usuario del hipervisor no puede acceder a tu carpeta personal.
-
-```bash
-# Iniciar la red virtual por defecto
-sudo virsh net-start default
-sudo virsh net-autostart default
-
-# Copiar la ISO al almacenamiento de libvirt
-sudo cp ~/Descargas/ubuntu-24.04.4-live-server-amd64.iso /var/lib/libvirt/images/
-
-# Crear carpeta para el disco de la VM
-sudo mkdir -p /var/lib/libvirt/images/servidor-linux
-```
-
-### 1.3 Lanzar el instalador
-
-```bash
-virt-install \
-  --connect qemu:///system \
-  --name servidor-linux \
-  --memory 2048 \
-  --vcpus 2 \
-  --disk path=/var/lib/libvirt/images/servidor-linux/disk.qcow2,size=8,format=qcow2 \
-  --location /var/lib/libvirt/images/ubuntu-24.04.4-live-server-amd64.iso,kernel=casper/vmlinuz,initrd=casper/initrd \
-  --os-variant ubuntu24.04 \
-  --network network=default \
-  --graphics none \
-  --console pty,target_type=serial \
-  --extra-args "console=ttyS0,115200n8"
-```
-
-<Aside type="note" title="Por qué --location y no --cdrom">
-Con `--cdrom` no es posible pasar argumentos al kernel (necesarios para redirigir la consola al puerto serie). Con `--location` apuntando al kernel y al initrd dentro de la ISO sí funciona.
-</Aside>
-
-### 1.4 Instalación interactiva
-
-El instalador arrancará en tu terminal. Si aparece el menú:
-
-```
-Continue in rich mode
-Continue in basic mode
-View SSH instructions
-```
-
-Elige **"Continue in basic mode"** y sigue el asistente:
-
-| Campo | Valor |
-|-------|-------|
-| Language | English |
-| Keyboard | Spanish |
-| Network | DHCP (Enter para confirmar) |
-| Storage | Use an entire disk → Done |
-| Your name | `Alumno Linux` |
-| Server name | `servidor-linux` |
-| Username | `alumno` |
-| Password | la que recuerdes |
-| Install OpenSSH | **Yes** — imprescindible |
-| Featured snaps | ninguno, Done |
-
-Espera ~10-15 minutos. Cuando aparezca **Reboot Now**, pulsa Enter.
 
 </TabItem>
 </Tabs>
@@ -289,247 +111,173 @@ Espera ~10-15 minutos. Cuando aparezca **Reboot Now**, pulsa Enter.
 ## Paso 2 — Primera sesión en el servidor
 
 <Tabs>
-<TabItem label="Multipass (Windows y Linux)">
+<TabItem label="Linux (Distrobox)">
 
-Entra en el servidor con:
+Ya estás dentro (ejecutaste `distrobox enter` en el paso anterior). Si saliste, vuelve a entrar:
 
 ```bash
-multipass shell servidor-linux
+distrobox enter servidor-linux
 ```
 
 </TabItem>
-<TabItem label="WSL2">
+<TabItem label="Windows (WSL2)">
 
-Ya estás dentro si seguiste el paso anterior. Si cerraste la ventana, vuelve a abrir con:
+Ya estás dentro. Si cerraste la ventana, vuelve a abrir Ubuntu desde el menú Inicio o ejecuta:
 
 ```powershell
 wsl -d Ubuntu-24.04
 ```
 
 </TabItem>
-<TabItem label="VirtualBox">
+<TabItem label="Mac (Lima)">
 
-Cuando la VM arranque verás un prompt de login. Inicia sesión con `alumno` y tu contraseña.
+Ya estás dentro. Si saliste, vuelve a entrar:
 
-</TabItem>
-<TabItem label="KVM/virt-install (Linux)">
-
-Tras el reinicio la VM arranca sola. Conéctate directamente por SSH (Paso 3) — no hay consola gráfica.
+```bash
+limactl shell servidor-linux
+```
 
 </TabItem>
 </Tabs>
 
-Ejecuta estos comandos para comprobar que todo funciona:
+**Una vez dentro, ejecuta estos 4 comandos:**
 
 ```bash
-# Ver información del sistema
-uname -a
-
-# Ver las interfaces de red
-ip addr show
-
-# Actualizar la lista de paquetes
-sudo apt update
-
-# Instalar actualizaciones disponibles
-sudo apt upgrade -y
+uname -a                    # Ver información del sistema
+ip addr show                # Ver redes
+sudo apt update             # Actualizar lista de paquetes
+sudo apt upgrade -y         # Instalar actualizaciones
 ```
 
-<Aside type="caution" title="Si sudo pide contraseña">
-Es normal la primera vez. Escribe tu contraseña (no se verán los caracteres mientras escribes).
+<Aside type="tip" title="¿Te pide contraseña?">
+Escribe la que pusiste al crear el usuario (no se ve mientras escribes). Es normal.
 </Aside>
 
 ---
 
-## Paso 3 — Conectarte por SSH desde tu terminal
-
-El objetivo es trabajar por SSH igual que con un servidor remoto real.
+## Paso 3 — Conectarte por SSH
 
 <Tabs>
-<TabItem label="Multipass (Windows y Linux)">
+<TabItem label="Linux (Distrobox)">
 
-### Obtener la IP del servidor
-
-```bash
-multipass info servidor-linux
-```
-
-Busca la línea `IPv4` — tendrás una IP del tipo `172.26.x.x` o `192.168.x.x`.
-
-### Conectarte por SSH
-
-Desde PowerShell (Windows) o terminal (Linux):
+**No necesitas SSH.** Distrobox ya te mete dentro de Ubuntu directamente. Si quieres practicar SSH igualmente:
 
 ```bash
-ssh ubuntu@<IP-del-servidor>
+# Dentro de Ubuntu, instalar SSH y obtener IP
+sudo apt install -y openssh-server
+ip addr show | grep inet
 ```
 
-El usuario por defecto en Multipass es `ubuntu`. La primera vez preguntará si confías en el servidor — escribe `yes`.
-
-<Aside type="tip" title="Sin contraseña">
-Multipass configura autenticación por clave SSH automáticamente, no necesitas contraseña.
-</Aside>
+Luego desde otra terminal de Arch: `ssh alumno@<IP>`
 
 </TabItem>
-<TabItem label="WSL2">
+<TabItem label="Windows (WSL2)">
 
-Con WSL2 no necesitas SSH — ya estás dentro del servidor. Si quieres practicar SSH de todas formas:
+**No necesitas SSH.** Ya estás dentro de Ubuntu. Si quieres practicar:
 
 ```powershell
-# Desde PowerShell, obtener la IP de WSL
+# Desde PowerShell, obtener IP y conectar
 wsl hostname -I
-```
-
-Luego:
-
-```powershell
 ssh alumno@<IP-WSL>
 ```
 
 </TabItem>
-<TabItem label="VirtualBox">
+<TabItem label="Mac (Lima)">
 
-### Encontrar la IP del adaptador Host-Only
-
-Dentro de la VM ejecuta:
+**No necesitas SSH.** Lima ya te mete dentro. Si quieres practicar:
 
 ```bash
-ip addr show
+# Dentro de Ubuntu, ver IP
+ip addr show | grep inet
+# Desde otra terminal: ssh alumno@<IP>
 ```
-
-Busca la interfaz `enp0s8` (o `eth1`). Su IP empezará por `192.168.56.X`. Anótala.
-
-Si no aparece, edita la configuración de red:
-
-```bash
-sudo nano /etc/netplan/00-installer-config.yaml
-```
-
-Asegúrate de que aparece `enp0s8`:
-
-```yaml
-network:
-  version: 2
-  ethernets:
-    enp0s3:
-      dhcp4: true
-    enp0s8:
-      dhcp4: true
-```
-
-Aplica los cambios:
-
-```bash
-sudo netplan apply
-ip addr show enp0s8
-```
-
-### Conectarte por SSH
-
-Desde PowerShell (Windows) o terminal (Mac/Linux):
-
-```bash
-ssh alumno@192.168.56.X
-```
-
-La primera vez escribe `yes` e introduce tu contraseña.
-
-</TabItem>
-<TabItem label="KVM/virt-install (Linux)">
-
-### Obtener la IP del servidor
-
-La VM recibe IP por DHCP en la red virtual de libvirt (`192.168.122.x`). Consulta las concesiones activas:
-
-```bash
-virsh --connect qemu:///system net-dhcp-leases default
-```
-
-Busca la línea con `servidor-linux` y anota su IP (será del tipo `192.168.122.X`).
-
-### Conectarte por SSH
-
-```bash
-ssh alumno@192.168.122.X
-```
-
-La primera vez escribe `yes` e introduce tu contraseña.
-
-<Aside type="tip" title="Si la VM no arranca tras el reinicio">
-El instalador a veces apaga la VM en lugar de reiniciarla. Arráncala manualmente:
-
-```bash
-virsh --connect qemu:///system start servidor-linux
-```
-</Aside>
 
 </TabItem>
 </Tabs>
 
-Si todo va bien, verás el prompt del servidor:
-
-```
-alumno@servidor-linux:~$
-```
-
-**Estás conectado por SSH a tu propio servidor Linux.**
+<Aside type="tip" title="¿Para qué sirve SSH?">
+En un servidor real trabajarías por SSH. Aquí, como el servidor está en tu mismo ordenador, puedes entrar directamente. El objetivo es que aprendas el comando `ssh`.
+</Aside>
 
 ---
 
-## Paso 4 — Autenticación por clave SSH *(ejercicio extra)*
+## Paso 4 — Autenticación por clave SSH *(opcional)*
 
-En lugar de escribir la contraseña cada vez que te conectas, puedes usar un par de claves SSH. Este método es el estándar en entornos profesionales.
+<Aside type="tip" title="¿Para qué sirve?">
+Para no escribir la contraseña cada vez que te conectas por SSH. Es el estándar en servidores reales.
+</Aside>
 
-### 4.1 Generar el par de claves en tu máquina
+<Tabs>
+<TabItem label="Linux (Distrobox)">
 
-Si aún no tienes claves SSH en tu ordenador, créalas. Ejecuta esto **en tu máquina host** (PowerShell en Windows o terminal en Linux/Mac):
+**Generar clave (en Arch, fuera del contenedor):**
 
 ```bash
 ssh-keygen -t ed25519 -C "alumno@clase"
+# Pulsa Enter 3 veces
 ```
 
-Pulsa Enter tres veces para aceptar la ruta por defecto y sin passphrase. Se crearán dos ficheros:
-
-- `~/.ssh/id_ed25519` — clave **privada** (nunca compartas este fichero)
-- `~/.ssh/id_ed25519.pub` — clave **pública** (la que copiarás al servidor)
-
-### 4.2 Copiar la clave pública al servidor
-
-Sustituye la IP por la de tu servidor:
-
-<Tabs>
-<TabItem label="Linux / Mac / WSL2">
+**Copiar clave al servidor:**
 
 ```bash
-ssh-copy-id alumno@<IP-del-servidor>
+ssh-copy-id alumno@<IP-del-contenedor>
 ```
 
-Introduce la contraseña de `alumno` una última vez. A partir de ahora no volverá a pedirla.
+**Verificar:**
+
+```bash
+ssh alumno@<IP>  # Ya no pide contraseña
+```
 
 </TabItem>
-<TabItem label="Windows (PowerShell)">
+<TabItem label="Windows (WSL2)">
 
-En Windows moderno (10/11) `ssh-copy-id` no está disponible, pero puedes hacerlo manualmente:
+**Generar clave (en PowerShell):**
 
 ```powershell
-type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh alumno@<IP-del-servidor> "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+ssh-keygen -t ed25519 -C "alumno@clase"
+# Pulsa Enter 3 veces
 ```
 
-Introduce la contraseña cuando la pida.
+**Copiar clave al servidor:**
+
+```powershell
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh alumno@<IP-WSL> "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
+
+**Verificar:**
+
+```powershell
+ssh alumno@<IP-WSL>  # Ya no pide contraseña
+```
+
+</TabItem>
+<TabItem label="Mac (Lima)">
+
+**Generar clave:**
+
+```bash
+ssh-keygen -t ed25519 -C "alumno@clase"
+# Pulsa Enter 3 veces
+```
+
+**Copiar clave al servidor:**
+
+```bash
+ssh-copy-id alumno@<IP-del-contenedor>
+```
+
+**Verificar:**
+
+```bash
+ssh alumno@<IP>  # Ya no pide contraseña
+```
 
 </TabItem>
 </Tabs>
 
-### 4.3 Verificar que funciona
-
-```bash
-ssh alumno@<IP-del-servidor>
-```
-
-Deberías entrar directamente **sin que te pida contraseña**.
-
-<Aside type="note" title="¿Por qué es más seguro?">
-Una clave privada de 256 bits es matemáticamente imposible de adivinar por fuerza bruta, al contrario que una contraseña corta. Además, si alguien roba tu contraseña no puede entrar; necesitaría también tu fichero de clave privada.
+<Aside type="note" title="¿No tienes IP?">
+Dentro de Ubuntu ejecuta `ip addr show` y busca una IP que empiece por `172.` o `192.168.`
 </Aside>
 
 ---
@@ -549,40 +297,302 @@ timedatectl
 
 ---
 
-## 📤 Bloque de entrega
+## 📤 Sistema de entregas — GitHub
 
-Antes de empaquetar, guarda la verificación del estado del sistema:
+A partir de ahora, **todas las prácticas se entregan en un único repositorio de GitHub**. Esto te sirve como portafolio y te familiariza con el flujo de trabajo profesional (`git`, `commits`, `pull requests`).
+
+---
+
+### 1. Crear el repositorio principal
+
+Ve a [GitHub](https://github.com/new) y crea un repositorio con:
+
+<table>
+  <tr>
+    <td><strong>Repository name</strong></td>
+    <td><code>lfcs-practicas</code></td>
+  </tr>
+  <tr>
+    <td><strong>Description</strong></td>
+    <td><code>Prácticas del curso LFCS</code></td>
+  </tr>
+  <tr>
+    <td><strong>Public / Private</strong></td>
+    <td>Elige público (para portafolio) o privado (si quieres solo para el profesor)</td>
+  </tr>
+  <tr>
+    <td><strong>Initialize</strong></td>
+    <td>❌ No marcar nada</td>
+  </tr>
+</table>
+
+<Aside type="tip" title="¿Por qué un solo repositorio?">
+Todas las prácticas juntas en un mismo repositorio, cada una en su carpeta. Así es más fácil de corregir y el alumno construye un portafolio ordenado.
+</Aside>
+
+---
+
+### 2. Estructura de carpetas
+
+Dentro del repositorio, cada práctica tiene su propia carpeta. La estructura es **siempre la misma**:
+
+```
+lfcs-practicas/
+├── practica1/
+│   ├── README.md
+│   └── entrega/
+│       └── verificacion.txt
+├── practica2/
+│   ├── README.md
+│   └── entrega/
+│       ├── verificacion.txt
+│       └── (otros ficheros si los hay)
+├── practica3/
+│   ├── README.md
+│   └── entrega/
+│       └── ...
+...
+└── practica6/
+    ├── README.md
+    └── entrega/
+        ├── verificacion.txt
+        └── (ficheros específicos del ejercicio)
+```
+
+<Aside type="note" title="Regla de oro">
+**Todo lo que se pide guardar** en cada ejercicio debe ir dentro de `practicaX/entrega/`.
+El `README.md` explica **qué hiciste, cómo y qué problemas tuviste**.
+</Aside>
+
+---
+
+### 3. Qué contiene cada `README.md`
+
+El `README.md` de cada práctica debe incluir:
+
+```markdown
+# Práctica X — [Título de la práctica]
+
+## Servidor / entorno utilizado
+- Método: Distrobox / WSL2 / Lima / VirtualBox
+- SO: Ubuntu 22.04 / 24.04
+- Hostname: servidor-linux
+
+## Comandos / herramientas nuevas aprendidas
+- `comando1` - para qué sirve
+- `comando2` - para qué sirve
+
+## Dificultades encontradas
+<!-- Describe al menos un problema real que tuviste y cómo lo solucionaste -->
+
+## Tiempo dedicado
+<!-- Ej: 2 horas -->
+
+## Evidencia
+Los ficheros generados están en la carpeta `entrega/`
+```
+
+---
+
+### 4. Flujo de trabajo para cada práctica
 
 ```bash
-mkdir -p ~/practica1/entrega
+# 1. Clonar el repositorio (solo la primera vez)
+git clone https://github.com/TU-USUARIO/lfcs-practicas.git
+cd lfcs-practicas
+
+# 2. Crear la carpeta de la práctica actual
+mkdir -p practicaX/entrega
+
+# 3. Hacer los ejercicios y guardar los ficheros en practicaX/entrega/
+
+# 4. Escribir el README.md
+nano practicaX/README.md
+
+# 5. Subir los cambios
+git add .
+git commit -m "Entrega práctica X: [breve descripción]"
+git push
+```
+
+<Aside type="caution" title="Mensajes de commit claros">
+No pongas `"cambios"` o `"cosas"`. Escribe algo como `"Práctica 1: servidor Ubuntu configurado con Distrobox"`.
+</Aside>
+
+---
+
+### 5. Entregar al profesor
+
+Comparte el **enlace a tu repositorio**:
+
+- Si es **público**: `https://github.com/TU-USUARIO/lfcs-practicas`
+- Si es **privado**: Añade al profesor como colaborador (Settings → Collaborators → Add people)
+
+El profesor revisará:
+- Estructura de carpetas correcta
+- `README.md` completo
+- Ficheros de entrega generados
+- Fechas de los commits (evitar entregas fuera de plazo)
+
+---
+
+### 6. Resumen por práctica
+
+<table>
+  <thead>
+    <tr>
+      <th>Práctica</th>
+      <th>Carpeta</th>
+      <th>Qué debe contener "entrega/"</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>practica1/</td>
+      <td>verificacion.txt</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>practica2/</td>
+      <td>verificacion.txt + ficheros que se pidan</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>practica3/</td>
+      <td>verificacion.txt + ficheros</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>practica4/</td>
+      <td>verificacion.txt + ficheros</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>practica5/</td>
+      <td>verificacion.txt + ficheros</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>practica6/</td>
+      <td>verificacion.txt + ficheros (incluye 61_*.txt, 62_*.txt, etc.)</td>
+    </tr>
+  </tbody>
+</table>
+
+<Aside type="tip" title="Para la Práctica 6">
+Los ficheros `61_estado_inicial.txt`, `61_ciclo_paquete.txt`, `62_compilacion.txt`, etc. van todos dentro de `practica6/entrega/`.
+</Aside>
+
+---
+
+### 7. Ejemplo completo para la Práctica 1
+
+**Dentro del servidor Ubuntu (Distrobox/WSL/Lima):**
+
+```bash
+# Crear estructura
+mkdir -p ~/lfcs-practicas/practica1/entrega
+
+# Generar verificacion.txt
 {
   echo "=== ENTREGA PRÁCTICA 1 ==="
   echo "Hostname: $(hostname)"
   echo "Usuario: $(whoami)"
   uname -a
-  echo "--- Red ---"
-  ip addr show | grep "inet "
-  echo "--- Zona horaria ---"
+  ip addr show | grep "inet " | grep -v "127.0.0.1"
   timedatectl | grep "Time zone"
-  echo "--- Paquetes pendientes ---"
   sudo apt list --upgradable 2>/dev/null | wc -l
-  echo "paquetes pendientes (0 = actualizado)"
-} > ~/practica1/entrega/verificacion.txt
+} > ~/lfcs-practicas/practica1/entrega/verificacion.txt
+
+# Crear README
+cat > ~/lfcs-practicas/practica1/README.md << 'EOF'
+# Práctica 1 — Instalación y Entorno
+
+## Servidor utilizado
+- Método: Distrobox
+- SO: Ubuntu 22.04 LTS
+- Hostname: servidor-linux
+
+## Comandos aprendidos
+- `distrobox create` - crear contenedor Ubuntu
+- `sudo apt update && sudo apt upgrade` - actualizar sistema
+- `hostnamectl` - cambiar nombre del servidor
+- `timedatectl` - cambiar zona horaria
+
+## Dificultades
+Al principio no distinguía si estaba dentro de Ubuntu o en Arch. Lo solucioné ejecutando `cat /etc/os-release`.
+
+## Tiempo
+45 minutos
+
+## Evidencia
+La carpeta `entrega/` contiene la verificación del sistema.
+EOF
+
+# Inicializar git y subir
+cd ~/lfcs-practicas
+git init
+git add .
+git commit -m "Entrega práctica 1: servidor Ubuntu con Distrobox"
+git branch -M main
+git remote add origin https://github.com/TU-USUARIO/lfcs-practicas.git
+git push -u origin main
 ```
 
-Para empaquetar y enviar la entrega, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 1`).
+---
 
-<Aside type="tip" title="Snapshot / backup antes de continuar">
-**Multipass:**
+### 8. Criterios de evaluación comunes para todas las prácticas
+
+<table>
+  <thead>
+    <tr>
+      <th>Elemento</th>
+      <th>Puntuación</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Carpeta practicaX/entrega/ existe</td>
+      <td>1 pto</td>
+    </tr>
+    <tr>
+      <td>Ficheros de entrega generados correctamente</td>
+      <td>3 ptos</td>
+    </tr>
+    <tr>
+      <td>README.md completo (mínimo 5 líneas)</td>
+      <td>2 ptos</td>
+    </tr>
+    <tr>
+      <td>Dificultades documentadas (mínimo 1)</td>
+      <td>1 pto</td>
+    </tr>
+    <tr>
+      <td>Commit con mensaje descriptivo</td>
+      <td>1 pto</td>
+    </tr>
+    <tr>
+      <td>Estructura general del repositorio</td>
+      <td>2 ptos</td>
+    </tr>
+    <tr style="font-weight: bold;">
+      <td>Total</td>
+      <td>10 ptos</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+### 9. Alternativa para alumnos sin GitHub
+
+Si algún alumno no puede o no quiere usar GitHub:
+
 ```bash
-multipass stop servidor-linux
-multipass snapshot servidor-linux --name base-limpia-m1
-multipass start servidor-linux
+# Empaquetar la práctica actual
+tar czf practicaX-$(whoami).tar.gz practicaX/
+# Enviar el fichero .tar.gz por correo o aula virtual
 ```
-**VirtualBox:** Máquina → Tomar instantánea → "Base limpia M1"
 
-**KVM/virt-install:**
-```bash
-virsh --connect qemu:///system snapshot-create-as servidor-linux base-limpia-m1
-```
-</Aside>
+Pero **se recomienda encarecidamente GitHub** para construir un portafolio aprovechable en el mundo laboral.

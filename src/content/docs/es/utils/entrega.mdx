@@ -1,58 +1,467 @@
 ---
 title: "Cómo entregar las prácticas"
-description: "Instrucciones comunes para exportar el historial, empaquetar los entregables, descargar el archivo y enviarlo por correo."
+description: "Guía completa para gestionar las entregas con GitHub, autenticación SSH, Visual Studio Code y estructura de carpetas."
 sidebar:
   order: 1
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
-Estas instrucciones son iguales para todas las prácticas del curso. Sustitiye `N` por el número de tu práctica en todos los comandos.
-
----
-
-## 1. Exporta tu historial de comandos
-
-```bash
-history > ~/practicaN/entrega/history.txt
-```
+Estas instrucciones son iguales para **todas las prácticas** del curso. Sustituye `N` por el número de tu práctica en los comandos (ej: `practica1`, `practica2`...).
 
 ---
 
-## 2. Crea el archivo comprimido final
+## 📦 Estructura de entregas (GitHub)
 
-```bash
-tar -czf ~/practicaN/entrega_practicaN.tar.gz -C ~/practicaN entrega/
+En lugar de enviar ficheros sueltos por correo, **todas las prácticas se entregan en un repositorio de GitHub**. Así construyes un portafolio profesional y aprendes el flujo de trabajo real con `git`.
+
+### Estructura del repositorio
+
+```
+lfcs-practicas/
+├── practica1/
+│   ├── README.md
+│   └── entrega/
+│       └── verificacion.txt
+├── practica2/
+│   ├── README.md
+│   └── entrega/
+│       └── verificacion.txt
+├── ...
+└── practica6/
+    ├── README.md
+    └── entrega/
+        ├── verificacion.txt
+        └── (ficheros específicos)
 ```
 
-Comprueba que el archivo se ha creado correctamente:
-
-```bash
-ls -lh ~/practicaN/entrega_practicaN.tar.gz
-tar -tzf ~/practicaN/entrega_practicaN.tar.gz | head -20
-```
-
----
-
-## 3. Descarga el archivo a tu equipo local
-
-Desde la terminal de **tu ordenador personal** (no desde la VM):
-
-```bash
-# Sustituye IP_DE_LA_VM por la IP de tu servidor y N por el número de práctica
-scp alumno@IP_DE_LA_VM:~/practicaN/entrega_practicaN.tar.gz ./
-```
-
-<Aside type="tip" title="Alternativas a scp">
-Si prefieres una interfaz gráfica, puedes usar **FileZilla** o **WinSCP** conectándote por SFTP con las mismas credenciales que usas para SSH.
+<Aside type="note" title="Regla de oro">
+**Todo lo que se pide guardar** en cada ejercicio debe ir dentro de `practicaN/entrega/`. El `README.md` explica qué hiciste, cómo y qué problemas tuviste.
 </Aside>
 
 ---
 
-## 4. Envía el archivo por correo
+## 1. Crear una cuenta de GitHub (si no la tienes)
 
-Adjunta el archivo `entrega_practicaN.tar.gz` y envíalo a [hola@casset.cat](mailto:hola@casset.cat) con el asunto:
+<Tabs>
+<TabItem label="Paso a paso">
+
+1. Ve a [https://github.com/join](https://github.com/join)
+2. Rellena:
+   - **Username**: elige un nombre (ej: `alumno-linux`)
+   - **Email**: tu correo real
+   - **Password**: usa una contraseña segura
+3. Resuelve el puzzle de verificación
+4. Haz clic en **Create account**
+5. Confirma tu correo electrónico con el enlace que recibirás
+
+</TabItem>
+</Tabs>
+
+<Aside type="tip" title="Email importante">
+Usa un correo que consultes a menudo. GitHub enviará notificaciones de entregas.
+</Aside>
+
+---
+
+## 2. Configurar autenticación SSH con GitHub
+
+Con SSH no tendrás que escribir tu usuario y contraseña cada vez que subas código.
+
+### 2.1 Generar clave SSH (en tu máquina local)
+
+<Tabs>
+<TabItem label="Linux / Mac">
+
+```bash
+ssh-keygen -t ed25519 -C "tu-email@ejemplo.com"
+```
+
+Pulsa `Enter` para aceptar la ruta por defecto (`~/.ssh/id_ed25519`).  
+Cuando pida **passphrase**, puedes pulsar `Enter` dos veces (sin contraseña, más cómodo para prácticas).
+
+</TabItem>
+<TabItem label="Windows (PowerShell)">
+
+```powershell
+ssh-keygen -t ed25519 -C "tu-email@ejemplo.com"
+```
+
+Pulsa `Enter` para aceptar la ruta por defecto (`C:\Users\TU_USUARIO\.ssh\id_ed25519`).
+
+</TabItem>
+</Tabs>
+
+### 2.2 Añadir la clave pública a GitHub
+
+1. Muestra tu **clave pública**:
+
+<Tabs>
+<TabItem label="Linux / Mac">
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+</TabItem>
+<TabItem label="Windows (PowerShell)">
+
+```powershell
+type $env:USERPROFILE\.ssh\id_ed25519.pub
+```
+
+</TabItem>
+</Tabs>
+
+2. **Copia toda la línea** (empieza por `ssh-ed25519` y termina con tu email)
+3. Ve a GitHub → **Settings** (icono de tu foto → Settings)
+4. En el menú izquierdo: **SSH and GPG keys**
+5. Haz clic en **New SSH key**
+6. Pega la clave y ponle un título (ej: `mi-ordenador-portatil`)
+7. Haz clic en **Add SSH key**
+
+### 2.3 Probar la conexión SSH
+
+```bash
+ssh -T git@github.com
+```
+
+Deberías ver algo como:
 
 ```
-Entrega Práctica N - [tu_nombre]
+Hi alumno-linux! You've successfully authenticated...
 ```
+
+<Aside type="caution" title="Si sale 'Permission denied'">
+Revisa que copiaste **toda** la clave pública, incluyendo el prefijo `ssh-ed25519` y tu email.
+</Aside>
+
+---
+
+## 3. Instalar y configurar git
+
+<Tabs>
+<TabItem label="Linux (Arch)">
+
+```bash
+sudo pacman -S git
+```
+
+</TabItem>
+<TabItem label="Linux (Debian/Ubuntu)">
+
+```bash
+sudo apt install git
+```
+
+</TabItem>
+<TabItem label="Windows">
+
+Git viene con WSL2. Desde PowerShell:
+
+```powershell
+winget install Git.Git
+```
+
+</TabItem>
+<TabItem label="Mac">
+
+```bash
+brew install git
+```
+
+</TabItem>
+</Tabs>
+
+**Configurar tu identidad (importante para los commits):**
+
+```bash
+git config --global user.name "Tu Nombre"
+git config --global user.email "tu-email@ejemplo.com"
+```
+
+<Aside type="note" title="Email correcto">
+Usa el **mismo email** que registraste en GitHub. Así aparecerán tus commits asociados a tu cuenta.
+</Aside>
+
+---
+
+## 4. Crear el repositorio principal
+
+1. Ve a [https://github.com/new](https://github.com/new)
+2. Rellena:
+   - **Repository name:** `lfcs-practicas`
+   - **Description:** `Prácticas del curso LFCS`
+   - **Public** (recomendado para portafolio) o **Private**
+   - ❌ **No marcar** "Add a README"
+3. Haz clic en **Create repository**
+
+---
+
+## 5. Clonar el repositorio y empezar a trabajar
+
+### 5.1 Clonar (solo una vez)
+
+```bash
+git clone git@github.com:TU-USUARIO/lfcs-practicas.git
+cd lfcs-practicas
+```
+
+### 5.2 Crear la estructura de la práctica actual
+
+```bash
+mkdir -p practicaN/entrega
+```
+
+### 5.3 Generar los ficheros de entrega (dentro del servidor)
+
+**Dentro de Ubuntu (Distrobox/WSL/Lima):**
+
+```bash
+cd ~/lfcs-practicas/practicaN
+
+# Generar verificacion.txt (u otros ficheros que pida el ejercicio)
+{
+  echo "=== ENTREGA PRÁCTICA N ==="
+  echo "Hostname: $(hostname)"
+  echo "Usuario: $(whoami)"
+  uname -a
+  ip addr show | grep "inet " | grep -v "127.0.0.1"
+  timedatectl | grep "Time zone"
+  sudo apt list --upgradable 2>/dev/null | wc -l
+} > entrega/verificacion.txt
+```
+
+### 5.4 Escribir el README.md
+
+```bash
+nano practicaN/README.md
+```
+
+Contenido mínimo:
+
+```markdown
+# Práctica N — [Título de la práctica]
+
+## Servidor utilizado
+- Método: Distrobox / WSL2 / Lima
+- SO: Ubuntu 22.04 / 24.04
+- Hostname: servidor-linux
+
+## Comandos aprendidos
+- `comando1` - para qué sirve
+- `comando2` - para qué sirve
+
+## Dificultades encontradas
+<!-- Describe al menos un problema real y cómo lo solucionaste -->
+
+## Tiempo dedicado
+<!-- Ej: 2 horas -->
+
+## Evidencia
+Los ficheros generados están en la carpeta `entrega/`
+```
+
+### 5.5 Guardar también el historial de comandos
+
+```bash
+history > ~/lfcs-practicas/practicaN/entrega/history.txt
+```
+
+---
+
+## 6. Subir la práctica a GitHub
+
+```bash
+cd ~/lfcs-practicas
+
+# Ver qué archivos has modificado/añadido
+git status
+
+# Añadir todos los cambios
+git add .
+
+# Crear un commit con un mensaje descriptivo
+git commit -m "Entrega práctica N: [breve descripción de lo que hiciste]"
+
+# Subir a GitHub
+git push
+```
+
+<Aside type="tip" title="Primera subida">
+Si es la primera vez que subes algo, es posible que necesites:
+
+```bash
+git branch -M main
+git push -u origin main
+```
+</Aside>
+
+---
+
+## 7. Abrir el repositorio con Visual Studio Code
+
+<Tabs>
+<TabItem label="Desde VS Code">
+
+1. Abre **Visual Studio Code**
+2. Pulsa `Ctrl+Shift+P` (o `Cmd+Shift+P` en Mac)
+3. Escribe `Git: Clone`
+4. Pega la URL del repositorio: `git@github.com:TU-USUARIO/lfcs-practicas.git`
+5. Elige la carpeta donde guardarlo (ej: `~/Documentos/`)
+6. Cuando termine, haz clic en **Open**
+
+</TabItem>
+<TabItem label="Desde terminal">
+
+```bash
+# Instalar code si no lo tienes (Linux/Mac)
+# En Arch: sudo pacman -S code
+# En Debian/Ubuntu: sudo apt install code
+
+# Abrir el repositorio
+code ~/lfcs-practicas
+```
+
+</TabItem>
+<TabItem label="Windows (WSL2 + VS Code)">
+
+Desde PowerShell o WSL:
+
+```bash
+code ~/lfcs-practicas
+```
+
+VS Code se abrirá automáticamente con el repositorio cargado.
+
+</TabItem>
+</Tabs>
+
+<Aside type="note" title="Extensiones útiles">
+- **Git Graph** → visualizar commits y ramas
+- **GitLens** → ver quién escribió cada línea
+- **Markdown All in One** → previsualizar README.md
+</Aside>
+
+---
+
+## 8. Entregar al profesor
+
+Comparte el **enlace de tu repositorio**:
+
+- Si es **público**: `https://github.com/TU-USUARIO/lfcs-practicas`
+- Si es **privado**: Añade al profesor como colaborador
+  - Repositorio → Settings → Collaborators → Add people → `hola@casset.cat`
+
+<Aside type="tip" title="También se acepta por correo">
+Si no puedes usar GitHub, empaqueta la carpeta `practicaN` y envíala a `hola@casset.cat` con asunto `Entrega Práctica N - [tu_nombre]`. Pero se recomienda **encarecidamente GitHub** para construir portafolio.
+</Aside>
+
+---
+
+## 9. Criterios de evaluación comunes
+
+<table>
+  <thead>
+    <tr>
+      <th>Elemento</th>
+      <th>Puntuación</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Carpeta <code>practicaN/entrega/</code> existe</td>
+      <td>1 pto</td>
+    </tr>
+    <tr>
+      <td>Ficheros de entrega generados correctamente</td>
+      <td>3 ptos</td>
+    </tr>
+    <tr>
+      <td><code>README.md</code> completo (mínimo 5 líneas)</td>
+      <td>2 ptos</td>
+    </tr>
+    <tr>
+      <td>Dificultades documentadas (mínimo 1)</td>
+      <td>1 pto</td>
+    </tr>
+    <tr>
+      <td>Commit con mensaje descriptivo</td>
+      <td>1 pto</td>
+    </tr>
+    <tr>
+      <td>Estructura general del repositorio</td>
+      <td>2 ptos</td>
+    </tr>
+    <tr style="font-weight: bold;">
+      <td>Total</td>
+      <td>10 ptos</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 10. Resumen rápido de comandos útiles
+
+```bash
+# Clonar repositorio
+git clone git@github.com:TU-USUARIO/lfcs-practicas.git
+
+# Ver estado
+git status
+
+# Añadir todo
+git add .
+
+# Hacer commit
+git commit -m "Mensaje descriptivo"
+
+# Subir cambios
+git push
+
+# Ver historial de commits
+git log --oneline
+
+# Abrir en VS Code
+code .
+```
+
+---
+
+## 11. Solución de problemas comunes
+
+<table>
+  <thead>
+    <tr>
+      <th>Problema</th>
+      <th>Solución</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Permission denied (publickey)</code></td>
+      <td>No añadiste la clave SSH a GitHub. Ve a Settings → SSH and GPG keys</td>
+    </tr>
+    <tr>
+      <td><code>fatal: not a git repository</code></td>
+      <td>No estás dentro de la carpeta del repositorio. Haz <code>cd lfcs-practicas</code></td>
+    </tr>
+    <tr>
+      <td><code>rejected: failed to push</code></td>
+      <td>Haz <code>git pull</code> primero para bajar cambios remotos</td>
+    </tr>
+    <tr>
+      <td>No recuerdo qué cambié</td>
+      <td><code>git diff</code> muestra las diferencias</td>
+    </tr>
+    <tr>
+      <td>Quiero deshacer un commit</td>
+      <td><code>git reset --soft HEAD~1</code> (mantiene los cambios)</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+**¡Buena suerte con las prácticas! 🚀**
