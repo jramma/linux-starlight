@@ -95,13 +95,42 @@ sudo systemctl enable --now nginx
 
 Los **targets** son el equivalente moderno de los runlevels de SysVinit. Definen el estado al que el sistema debe llegar al arrancar.
 
-| Target | Equivalente runlevel | Uso |
-|--------|---------------------|-----|
-| `poweroff.target` | 0 | Apagado |
-| `rescue.target` | 1 | Modo monousuario (rescate) |
-| `multi-user.target` | 3 | Servidor sin entorno gráfico |
-| `graphical.target` | 5 | Escritorio completo |
-| `reboot.target` | 6 | Reinicio |
+<table>
+    <thead>
+        <tr>
+            <th>Target</th>
+            <th>Equivalente runlevel</th>
+            <th>Uso</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>poweroff.target</code></td>
+            <td>0</td>
+            <td>Apagado</td>
+        </tr>
+        <tr>
+            <td><code>rescue.target</code></td>
+            <td>1</td>
+            <td>Modo monousuario (rescate)</td>
+        </tr>
+        <tr>
+            <td><code>multi-user.target</code></td>
+            <td>3</td>
+            <td>Servidor sin entorno gráfico</td>
+        </tr>
+        <tr>
+            <td><code>graphical.target</code></td>
+            <td>5</td>
+            <td>Escritorio completo</td>
+        </tr>
+        <tr>
+            <td><code>reboot.target</code></td>
+            <td>6</td>
+            <td>Reinicio</td>
+        </tr>
+    </tbody>
+</table>
 
 ```bash
 # Ver el target activo actualmente

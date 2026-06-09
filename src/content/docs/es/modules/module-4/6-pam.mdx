@@ -15,12 +15,32 @@ Cuando escribes tu contraseña para hacer `sudo`, SSH o iniciar sesión en conso
 
 PAM organiza la autenticación en cuatro tipos de gestión, cada uno con su propia pila de módulos:
 
-| Tipo | Qué gestiona |
-|------|-------------|
-| `auth` | Verifica la identidad (¿eres quien dices ser?) |
-| `account` | Verifica condiciones de cuenta (¿puede entrar ahora?, ¿está bloqueada?) |
-| `password` | Gestiona el cambio de contraseñas (complejidad, historial) |
-| `session` | Configura el entorno al abrir/cerrar sesión (montar home, límites) |
+<table>
+    <thead>
+        <tr>
+            <th>Tipo</th>
+            <th>Qué gestiona</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>auth</code></td>
+            <td>Verifica la identidad (¿eres quien dices ser?)</td>
+        </tr>
+        <tr>
+            <td><code>account</code></td>
+            <td>Verifica condiciones de cuenta (¿puede entrar ahora?, ¿está bloqueada?)</td>
+        </tr>
+        <tr>
+            <td><code>password</code></td>
+            <td>Gestiona el cambio de contraseñas (complejidad, historial)</td>
+        </tr>
+        <tr>
+            <td><code>session</code></td>
+            <td>Configura el entorno al abrir/cerrar sesión (montar home, límites)</td>
+        </tr>
+    </tbody>
+</table>
 
 Cada servicio (`sshd`, `sudo`, `login`, `su`) tiene su propio fichero de configuración en `/etc/pam.d/`:
 
@@ -158,16 +178,47 @@ Formato de `/etc/security/limits.conf`:
 <dominio>  <tipo>  <ítem>  <valor>
 ```
 
-| Dominio | Significa |
-|---------|-----------|
-| `usuario` | Usuario concreto |
-| `@grupo` | Todos los miembros del grupo |
-| `*` | Todos los usuarios |
+<table>
+    <thead>
+        <tr>
+            <th>Dominio</th>
+            <th>Significa</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>usuario</code></td>
+            <td>Usuario concreto</td>
+        </tr>
+        <tr>
+            <td><code>@grupo</code></td>
+            <td>Todos los miembros del grupo</td>
+        </tr>
+        <tr>
+            <td><code>*</code></td>
+            <td>Todos los usuarios</td>
+        </tr>
+    </tbody>
+</table>
 
-| Tipo | Efecto |
-|------|--------|
-| `soft` | Límite que el usuario puede aumentar hasta el `hard` |
-| `hard` | Techo absoluto que solo root puede superar |
+<table>
+    <thead>
+        <tr>
+            <th>Tipo</th>
+            <th>Efecto</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>soft</code></td>
+            <td>Límite que el usuario puede aumentar hasta el <code>hard</code></td>
+        </tr>
+        <tr>
+            <td><code>hard</code></td>
+            <td>Techo absoluto que solo root puede superar</td>
+        </tr>
+    </tbody>
+</table>
 
 Ítems más usados en LFCS:
 

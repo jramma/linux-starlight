@@ -15,12 +15,32 @@ El kernel de Linux no es una caja negra inmutable: expone cientos de parámetros
 
 Cada fichero dentro de `/proc/sys/` es un parámetro del kernel. Su ruta determina la categoría:
 
-| Ruta | Ámbito |
-|------|--------|
-| `/proc/sys/kernel/` | Comportamiento del kernel (hostname, coredumps, sysrq) |
-| `/proc/sys/net/` | Pila de red (IP forwarding, syn cookies, buffers) |
-| `/proc/sys/vm/` | Memoria virtual (swappiness, overcommit) |
-| `/proc/sys/fs/` | Límites del sistema de ficheros (file-max, inotify) |
+<table>
+    <thead>
+        <tr>
+            <th>Ruta</th>
+            <th>Ámbito</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/proc/sys/kernel/</code></td>
+            <td>Comportamiento del kernel (hostname, coredumps, sysrq)</td>
+        </tr>
+        <tr>
+            <td><code>/proc/sys/net/</code></td>
+            <td>Pila de red (IP forwarding, syn cookies, buffers)</td>
+        </tr>
+        <tr>
+            <td><code>/proc/sys/vm/</code></td>
+            <td>Memoria virtual (swappiness, overcommit)</td>
+        </tr>
+        <tr>
+            <td><code>/proc/sys/fs/</code></td>
+            <td>Límites del sistema de ficheros (file-max, inotify)</td>
+        </tr>
+    </tbody>
+</table>
 
 `sysctl` traduce la ruta del fichero sustituyendo `/` por `.`:
 

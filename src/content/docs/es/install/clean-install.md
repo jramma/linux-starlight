@@ -34,14 +34,42 @@ Antes de empezar, asegúrate de tener copias de:
 
 Descarga la imagen ISO de tu distribución desde la página oficial:
 
-| Distribución | URL Oficial                                                 | Tipo                           |
-| ------------ | ----------------------------------------------------------- | ------------------------------ |
-| Ubuntu       | [ubuntu.com](https://ubuntu.com/download)                   | Escritorio / Servidor          |
-| Debian       | [debian.org](https://www.debian.org/distrib/)               | Universal                      |
-| Fedora       | [fedoraproject.org](https://fedoraproject.org/workstation/) | Escritorio                     |
-| Linux Mint   | [linuxmint.com](https://linuxmint.com/download.php)         | Escritorio (fácil para nuevos) |
-| Rocky Linux  | [rockylinux.org](https://rockylinux.org/download)           | Servidor empresarial           |
-
+<table>
+    <thead>
+        <tr>
+            <th>Distribución</th>
+            <th>URL Oficial</th>
+            <th>Tipo</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Ubuntu</strong></td>
+            <td><a href="https://ubuntu.com/download" target="_blank">ubuntu.com</a></code></td>
+            <td>Escritorio / Servidor</td>
+        </tr>
+        <tr>
+            <td>Debian</strong></td>
+            <td><a href="https://www.debian.org/distrib/" target="_blank">debian.org</a></code></td>
+            <td>Universal</td>
+        </tr>
+        <tr>
+            <td>Fedora</strong></td>
+            <td><a href="https://fedoraproject.org/workstation/" target="_blank">fedoraproject.org</a></code></td>
+            <td>Escritorio</td>
+        </tr>
+        <tr>
+            <td>Linux Mint</strong></td>
+            <td><a href="https://linuxmint.com/download.php" target="_blank">linuxmint.com</a></code></td>
+            <td>Escritorio (fácil para nuevos)</td>
+        </tr>
+        <tr>
+            <td>Rocky Linux</strong></td>
+            <td><a href="https://rockylinux.org/download" target="_blank">rockylinux.org</a></code></td>
+            <td>Servidor empresarial</td>
+        </tr>
+    </tbody>
+</table>
 ### 3. Crea el USB booteable
 
 Sigue la guía de [Crear un USB Booteable](./bootable-usb) para preparar tu pendrive.
@@ -187,10 +215,40 @@ lspci
 
 ## Comparativa: Instalación Limpia vs Dual Boot
 
-| Aspecto          | Instalación Limpia       | Dual Boot              |
-| ---------------- | ------------------------ | ---------------------- |
-| Rendimiento      | ⭐⭐⭐ Óptimo            | ⭐⭐ Bueno             |
-| Conserva Windows | ❌ No                    | ✅ Sí                  |
-| Espacio en disco | ⭐⭐⭐ Máximo disponible | ⭐⭐ Compartido        |
-| Complejidad      | ⭐⭐ Media               | ⭐⭐⭐ Alta            |
-| Recomendado para | Usuarios comprometidos   | Usuarios de transición |
+<table>
+    <thead>
+        <tr>
+            <th>Aspecto</th>
+            <th>Instalación Limpia</th>
+            <th>Dual Boot</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Rendimiento</strong></td>
+            <td><span class="stars">⭐⭐⭐</span> Óptimo</td>
+            <td><span class="stars">⭐⭐</span> Bueno</td>
+        </tr>
+        <tr>
+            <td>Conserva Windows</strong></td>
+            <td><span class="no">❌ No</span></td>
+            <td><span class="yes">✅ Sí</span></td>
+        </tr>
+        <tr>
+            <td>Espacio en disco</strong></td>
+            <td><span class="stars">⭐⭐⭐</span> Máximo disponible</td>
+            <td><span class="stars">⭐⭐</span> Compartido</td>
+        </tr>
+        <tr>
+            <td>Complejidad</strong></td>
+            <td><span class="stars">⭐⭐</span> Media</td>
+            <td><span class="stars">⭐⭐⭐</span> Alta</td>
+        </tr>
+        <tr>
+            <td>Recomendado para</strong></td>
+            <td>Usuarios comprometidos</td>
+            <td>Usuarios de transición</td>
+        </tr>
+    </tbody>
+</table>
+

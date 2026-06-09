@@ -17,11 +17,32 @@ sidebar:
 
 La opción más sólida pedagógicamente: el alumno instala, rompe y repara sin miedo.
 
-| Herramienta                   | Coste                 | Por qué                                      |
-| ----------------------------- | --------------------- | -------------------------------------------- |
-| **VirtualBox**                | Gratis                | El más extendido, multiplataforma, snapshots |
-| **VMware Workstation Player** | Gratis (uso personal) | Mejor rendimiento, más fácil de configurar   |
-| **UTM** (macOS/iOS)           | Gratis                | Para alumnos con Mac con chip Apple Silicon  |
+<table>
+    <thead>
+        <tr>
+            <th>Herramienta</th>
+            <th>Coste</th>
+            <th>Por qué</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>VirtualBox</strong></td>
+            <td>Gratis</td>
+            <td>El más extendido, multiplataforma, snapshots</td>
+        </tr>
+        <tr>
+            <td>VMware Workstation Player</strong></td>
+            <td>Gratis (uso personal)</td>
+            <td>Mejor rendimiento, más fácil de configurar</td>
+        </tr>
+        <tr>
+            <td>UTM</strong> (macOS/iOS)</td>
+            <td>Gratis</td>
+            <td>Para alumnos con Mac con chip Apple Silicon</td>
+        </tr>
+    </tbody>
+</table>
 
 **Config mínima recomendada para la VM:**
 
@@ -38,12 +59,69 @@ La opción más sólida pedagógicamente: el alumno instala, rompe y repara sin 
 
 Para alumnos sin ordenador potente o que quieren experiencia real con infraestructura cloud:
 
-| Proveedor                                                        | Plan Gratuito          | Limitaciones                                        |
-| ---------------------------------------------------------------- | ---------------------- | --------------------------------------------------- |
-| **[Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/)** | ✅ Siempre gratis      | 2 VMs ARM (4 CPUs, 24 GB RAM) — **el más generoso** |
-| **[Google Cloud](https://cloud.google.com/free)**                | ✅ e2-micro permanente | 1 vCPU, 0.6 GB RAM, región limitada                 |
-| **[AWS Free Tier](https://aws.amazon.com/free/)**                | ⚠️ 12 meses            | t2.micro (1 vCPU, 1 GB RAM)                         |
-| **[Hetzner Cloud](https://www.hetzner.com/cloud)**               | ❌ No gratis           | ~4€/mes, excelente calidad/precio para grupos       |
+<table>
+            <thead>
+                <tr>
+                    <th>Proveedor</th>
+                    <th>Plan Gratuito</th>
+                    <th>Limitaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="proveedor">
+                        <a href="https://www.oracle.com/cloud/free/" target="_blank" rel="noopener noreferrer">
+                            Oracle Cloud Free Tier
+                        </a>
+                    </td>
+                    <td>
+                        <span class="gratis">✅ Siempre gratis</span>
+                    </td>
+                    <td class="limitaciones">
+                        2 VMs ARM (4 CPUs, 24 GB RAM) — <strong class="destacado">el más generoso</strong>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="proveedor">
+                        <a href="https://cloud.google.com/free" target="_blank" rel="noopener noreferrer">
+                            Google Cloud
+                        </a>
+                    </td>
+                    <td>
+                        <span class="gratis">✅ e2-micro permanente</span>
+                    </td>
+                    <td class="limitaciones">
+                        1 vCPU, 0.6 GB RAM, región limitada
+                    </td>
+                </tr>
+                <tr>
+                    <td class="proveedor">
+                        <a href="https://aws.amazon.com/free/" target="_blank" rel="noopener noreferrer">
+                            AWS Free Tier
+                        </a>
+                    </td>
+                    <td>
+                        <span class="alerta">⚠️ 12 meses</span>
+                    </td>
+                    <td class="limitaciones">
+                        t2.micro (1 vCPU, 1 GB RAM)
+                    </td>
+                </tr>
+                <tr>
+                    <td class="proveedor">
+                        <a href="https://www.hetzner.com/cloud" target="_blank" rel="noopener noreferrer">
+                            Hetzner Cloud
+                        </a>
+                    </td>
+                    <td>
+                        <span class="no-gratis">❌ No gratis</span>
+                    </td>
+                    <td class="limitaciones">
+                        ~4€/mes, excelente calidad/precio para grupos
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
 > **Recomendación para el curso:** Oracle Cloud Free Tier es la mejor opción cloud gratuita. Un VM ARM con Ubuntu Server 24.04 es más que suficiente para todas las prácticas.
 

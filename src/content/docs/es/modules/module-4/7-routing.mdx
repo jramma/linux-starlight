@@ -26,13 +26,36 @@ ip r
 
 Cómo leer la salida:
 
-| Campo | Significado |
-|-------|------------|
-| `default` | Ruta por defecto (gateway de último recurso) |
-| `via 192.168.1.1` | Siguiente salto (el router) |
-| `dev eth0` | Interfaz de salida |
-| `proto dhcp` | Cómo se aprendió la ruta (dhcp/static/kernel) |
-| `metric 100` | Coste (menor = preferida si hay varias rutas al mismo destino) |
+<table>
+    <thead>
+        <tr>
+            <th>Campo</th>
+            <th>Significado</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>default</code></td>
+            <td>Ruta por defecto (gateway de último recurso)</td>
+        </tr>
+        <tr>
+            <td><code>via 192.168.1.1</code></td>
+            <td>Siguiente salto (el router)</td>
+        </tr>
+        <tr>
+            <td><code>dev eth0</code></td>
+            <td>Interfaz de salida</td>
+        </tr>
+        <tr>
+            <td><code>proto dhcp</code></td>
+            <td>Cómo se aprendió la ruta (dhcp/static/kernel)</td>
+        </tr>
+        <tr>
+            <td><code>metric 100</code></td>
+            <td>Coste (menor = preferida si hay varias rutas al mismo destino)</td>
+        </tr>
+    </tbody>
+</table>
 
 ```bash
 # Ver qué interfaz y ruta se usaría para alcanzar una IP concreta
@@ -206,12 +229,32 @@ Con IP forwarding activado y UFW/iptables configurado para hacer NAT, el servido
 <Aside type="tip" title="Truco LFCS: ip vs ifconfig/route">
 El examen puede tener sistemas con el paquete `net-tools` instalado (`ifconfig`, `route`). Aprende las equivalencias:
 
-| Antiguo | Moderno |
-|---------|---------|
-| `ifconfig` | `ip addr` |
-| `route -n` | `ip route show` |
-| `netstat -rn` | `ip route show` |
-| `netstat -tulpn` | `ss -tulpn` |
+<table>
+    <thead>
+        <tr>
+            <th>Antiguo</th>
+            <th>Moderno</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>ifconfig</code></td>
+            <td><code>ip addr</code></td>
+        </tr>
+        <tr>
+            <td><code>route -n</code></td>
+            <td><code>ip route show</code></td>
+        </tr>
+        <tr>
+            <td><code>netstat -rn</code></td>
+            <td><code>ip route show</code></td>
+        </tr>
+        <tr>
+            <td><code>netstat -tulpn</code></td>
+            <td><code>ss -tulpn</code></td>
+        </tr>
+    </tbody>
+</table>
 
 Usa siempre el comando moderno en el examen: es el que garantiza la puntuación completa.
 </Aside>

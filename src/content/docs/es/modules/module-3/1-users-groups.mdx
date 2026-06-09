@@ -11,11 +11,32 @@ import { Aside } from "@astrojs/starlight/components";
 
 La autenticación en Linux gira en torno a tres archivos de texto plano en `/etc`.
 
-| Archivo       | Contiene                                                  | Permisos                         |
-| :------------ | :-------------------------------------------------------- | :------------------------------- |
-| `/etc/passwd` | Información de usuario (Shell, Directorio personal, UID). | Legible por todos (644).         |
-| `/etc/shadow` | Contraseñas **cifradas**.                                 | Legible solo por root (600/640). |
-| `/etc/group`  | Miembros de grupos.                                       | Legible por todos (644).         |
+<table>
+    <thead>
+        <tr>
+            <th>Archivo</th>
+            <th>Contiene</th>
+            <th>Permisos</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/etc/passwd</code></td>
+            <td>Información de usuario (Shell, Directorio personal, UID).</td>
+            <td>Legible por todos (644).</td>
+        </tr>
+        <tr>
+            <td><code>/etc/shadow</code></td>
+            <td>Contraseñas <strong>cifradas</strong>.</td>
+            <td>Legible solo por root (600/640).</td>
+        </tr>
+        <tr>
+            <td><code>/etc/group</code></td>
+            <td>Miembros de grupos.</td>
+            <td>Legible por todos (644).</td>
+        </tr>
+    </tbody>
+</table>
 
 (Ver [[/es/modules/module-2/4-permissions|Gestión de Permisos]] para detalles sobre los modos 644/600)
 

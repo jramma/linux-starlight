@@ -57,14 +57,47 @@ UUID=AB12-CD34                             /boot/efi  vfat  umask=0077         0
 
 ### Significado de cada columna
 
-| Columna | Nombre | Descripción |
-|---------|--------|-------------|
-| 1 | Dispositivo | `UUID=...`, `/dev/sdX`, `LABEL=nombre` o dirección de red |
-| 2 | Punto de montaje | Directorio donde aparecerá el dispositivo |
-| 3 | Tipo de FS | `ext4`, `xfs`, `btrfs`, `vfat`, `swap`, `nfs`, `tmpfs` |
-| 4 | Opciones | `defaults`, `ro`, `noexec`, `noatime`, `nofail`... |
-| 5 | dump | `0` = no backup con `dump` (casi siempre 0) |
-| 6 | pass | Orden de comprobación `fsck`: `0`=ninguna, `1`=raíz primero, `2`=resto |
+<table>
+    <thead>
+        <tr>
+            <th>Columna</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="text-align: center;">1</td>
+            <td>Dispositivo</td>
+            <td><code>UUID=...</code>, <code>/dev/sdX</code>, <code>LABEL=nombre</code> o dirección de red</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">2</td>
+            <td>Punto de montaje</td>
+            <td>Directorio donde aparecerá el dispositivo</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">3</td>
+            <td>Tipo de FS</td>
+            <td><code>ext4</code>, <code>xfs</code>, <code>btrfs</code>, <code>vfat</code>, <code>swap</code>, <code>nfs</code>, <code>tmpfs</code></td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">4</td>
+            <td>Opciones</td>
+            <td><code>defaults</code>, <code>ro</code>, <code>noexec</code>, <code>noatime</code>, <code>nofail</code>...</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">5</td>
+            <td>dump</td>
+            <td><code>0</code> = no backup con <code>dump</code> (casi siempre 0)</td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">6</td>
+            <td>pass</td>
+            <td>Orden de comprobación <code>fsck</code>: <code>0</code>=ninguna, <code>1</code>=raíz primero, <code>2</code>=resto</td>
+        </tr>
+    </tbody>
+</table>
 
 ---
 
@@ -104,17 +137,99 @@ lsblk -o NAME,UUID,FSTYPE,SIZE,MOUNTPOINT
 
 La columna de opciones controla cómo se comporta el dispositivo montado:
 
-| Opción | Descripción |
-|--------|-------------|
-| `defaults` | Equivale a `rw,suid,dev,exec,auto,nouser,async` |
-| `ro` | Solo lectura |
-| `rw` | Lectura y escritura (por defecto) |
-| `noexec` | Prohíbe ejecutar binarios (seguridad en `/tmp`, `/home`) |
-| `nosuid` | Ignora el bit SUID (evita escalada de privilegios) |
-| `noatime` | No actualiza el tiempo de acceso al leer (mejora rendimiento) |
-| `nofail` | El sistema arranca aunque el dispositivo no esté disponible |
-| `user` | Permite montaje a usuarios no root |
-| `_netdev` | Marca el dispositivo como de red (espera red antes de montar) |
+<table>
+    <thead>
+        <tr>
+            <th>Opción</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>defaults</code></td>
+            <td>Equivale a <code>rw,suid,dev,exec,auto,nouser,async</code></td>
+        </tr>
+        <tr>
+            <td><code>ro</code></td>
+            <td>Solo lectura</td>
+        </tr>
+        <tr>
+            <td><code>rw</code></td>
+            <td>Lectura y escritura (por defecto)</td>
+        </tr>
+        <tr>
+            <td><code>noexec</code></td>
+            <td>Prohíbe ejecutar binarios (seguridad en <code>/tmp</code>, <code>/home</code>)</td>
+        </tr>
+        <tr>
+            <td><code>nosuid</code></td>
+            <td>Ignora el bit SUID (evita escalada de privilegios)</td>
+        </tr>
+        <tr>
+            <td><code>noatime</code></td>
+            <td>No actualiza el tiempo de acceso al leer (mejora rendimiento)</td>
+        </tr>
+        <tr>
+            <td><code>nofail</code></td>
+            <td>El sistema arranca aunque el dispositivo no esté disponible</td>
+        </tr>
+        <tr>
+            <td><code>user</code></td>
+            <td>Permite montaje a usuarios no root</td>
+        </tr>
+        <tr>
+            <td><code>_netdev</code></td>
+            <td>Marca el dispositivo como de red (espera red antes de montar)</td>
+        </tr>
+    </tbody>
+</table>
+
+<table>
+    <thead>
+        <tr>
+            <th>Opción</th>
+            <th>Descripción</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>defaults</code></td>
+            <td>Equivale a <code>rw,suid,dev,exec,auto,nouser,async</code></td>
+        </tr>
+        <tr>
+            <td><code>ro</code></td>
+            <td>Solo lectura</td>
+        </tr>
+        <tr>
+            <td><code>rw</code></td>
+            <td>Lectura y escritura (por defecto)</td>
+        </tr>
+        <tr>
+            <td><code>noexec</code></td>
+            <td>Prohíbe ejecutar binarios (seguridad en <code>/tmp</code>, <code>/home</code>)</td>
+        </tr>
+        <tr>
+            <td><code>nosuid</code></td>
+            <td>Ignora el bit SUID (evita escalada de privilegios)</td>
+        </tr>
+        <tr>
+            <td><code>noatime</code></td>
+            <td>No actualiza el tiempo de acceso al leer (mejora rendimiento)</td>
+        </tr>
+        <tr>
+            <td><code>nofail</code></td>
+            <td>El sistema arranca aunque el dispositivo no esté disponible</td>
+        </tr>
+        <tr>
+            <td><code>user</code></td>
+            <td>Permite montaje a usuarios no root</td>
+        </tr>
+        <tr>
+            <td><code>_netdev</code></td>
+            <td>Marca el dispositivo como de red (espera red antes de montar)</td>
+        </tr>
+    </tbody>
+</table>
 
 <Aside type="tip" title="nofail: imprescindible para discos externos y de red">
 Si un disco registrado en fstab no está disponible al arrancar (USB desconectado, servidor NFS caído), el sistema se detendrá esperándolo durante **90 segundos** antes de lanzar una shell de emergencia. Añade `nofail` a cualquier dispositivo que no sea crítico para el arranque.

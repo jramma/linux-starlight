@@ -112,9 +112,28 @@ sudo nano /etc/fstab
 
 Al final de este archivo peliagudo, añade una línea con este formato estricto (separado por espacios o TABs):
 
-| 1. Qué disco (UUID) | 2. Dónde Montar (Punto) | 3. Formato | 4. Opciones Especiales | 5. Dump | 6. Chequeo pass |
-| ------------------- | ----------------------- | ---------- | ---------------------- | ------- | --------------- |
-| `UUID=bc92...11f`   | `/var/www/fotos`        | `ext4`     | `defaults`             | `0`     | `2`             |
+<table>
+    <thead>
+        <tr>
+            <th>1. Qué disco (UUID)</th>
+            <th>2. Dónde Montar (Punto)</th>
+            <th>3. Formato</th>
+            <th>4. Opciones Especiales</th>
+            <th>5. Dump</th>
+            <th>6. Chequeo pass</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>UUID=bc92...11f</code></td>
+            <td><code>/var/www/fotos</code></td>
+            <td><code>ext4</code></td>
+            <td><code>defaults</code></td>
+            <td><code>0</code></td>
+            <td><code>2</code></td>
+        </tr>
+    </tbody>
+</table>
 
 - **Opciones especiales (`defaults`)**: Le da permisos de lectura/escritura normales.
 - **Pass (`2`)**: Le dice al kernel "No soy el disco raíz (que sería un 1), pero chequéame matemáticamente en busca de errores la próxima vez que reinicies antes de encenderme".
