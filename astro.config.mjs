@@ -6,6 +6,7 @@ import { sidebar } from "./astro.sidebar";
 
 import icon from "astro-icon";
 import rehypeMermaid from "rehype-mermaid";
+import { localesConfig } from './config/locales';
 
 // https://astro.build/config
 export default defineConfig({
@@ -22,17 +23,7 @@ export default defineConfig({
         },
       ],
       defaultLocale: "es",
-      locales: {
-        es: {
-          label: "Español",
-        },
-        en: {
-          label: "English",
-        },
-        ca: {
-          label: "Català",
-        },
-      },
+      locales: localesConfig,
       customCss: ["./src/styles/global.css"],
       sidebar,
       components: {

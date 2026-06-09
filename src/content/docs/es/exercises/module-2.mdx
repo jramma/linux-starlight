@@ -223,13 +223,60 @@ ls -la /var/www/proyecto/
 
 ### Objetivo de permisos
 
-| Directorio | Propietario | Grupo | Permisos | ¿SGID? | ¿Por qué? |
-|-----------|-------------|-------|----------|--------|-----------|
-| `public/` | root | webdevs | `775` | ✅ Sí | El equipo puede leer y escribir; los archivos nuevos heredan el grupo |
-| `private/` | root | root | `700` | ❌ No | Solo root puede entrar |
-| `logs/` | root | webdevs | `754` | ❌ No | El equipo solo puede leer los logs, no escribirlos |
-| `shared/` | root | webdevs | `2775` | ✅ Sí | Directorio compartido: hereda grupo y permite colaboración |
-| `release/` | root | root | `755` | ❌ No | Publicable: cualquiera lee/ejecuta, nadie escribe salvo root |
+<table>
+    <thead>
+        <tr>
+            <th>Directorio</th>
+            <th>Propietario</th>
+            <th>Grupo</th>
+            <th>Permisos</th>
+            <th>¿SGID?</th>
+            <th>¿Por qué?</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>public/</code></td>
+            <td>root</td>
+            <td>webdevs</td>
+            <td><code>775</code></td>
+            <td class="yes">✅ Sí</td>
+            <td>El equipo puede leer y escribir; los archivos nuevos heredan el grupo</td>
+        </tr>
+        <tr>
+            <td><code>private/</code></td>
+            <td>root</td>
+            <td>root</td>
+            <td><code>700</code></td>
+            <td class="no">❌ No</td>
+            <td>Solo root puede entrar</td>
+        </tr>
+        <tr>
+            <td><code>logs/</code></td>
+            <td>root</td>
+            <td>webdevs</td>
+            <td><code>754</code></td>
+            <td class="no">❌ No</td>
+            <td>El equipo solo puede leer los logs, no escribirlos</td>
+        </tr>
+        <tr>
+            <td><code>shared/</code></td>
+            <td>root</td>
+            <td>webdevs</td>
+            <td><code>2775</code></td>
+            <td class="yes">✅ Sí</td>
+            <td>Directorio compartido: hereda grupo y permite colaboración</td>
+        </tr>
+        <tr>
+            <td><code>release/</code></td>
+            <td>root</td>
+            <td>root</td>
+            <td><code>755</code></td>
+            <td class="no">❌ No</td>
+            <td>Publicable: cualquiera lee/ejecuta, nadie escribe salvo root</td>
+        </tr>
+    </tbody>
+</table>
 
 ### Tareas
 
@@ -340,17 +387,8 @@ Guarda el comando de búsqueda que usaste y una evidencia (líneas relevantes) e
 
 `~/practica2/entrega/25_man_apropos.txt`
 
----
 
-## 📤 Bloque de entrega
-
-El tar de esta práctica incluye el log descargado además de la carpeta de entrega:
-
-```bash
-tar -czf ~/practica2/entrega_practica2.tar.gz -C ~/practica2 entrega/ data/access.log
-```
-
-Para los pasos de exportar historial, descargar y enviar por correo, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/) (usa `N = 2`).
+Para los pasos de exportar historial utiliza `history`, sigue las instrucciones comunes: [Cómo entregar las prácticas](/es/utils/entrega/).
 
 ---
 
