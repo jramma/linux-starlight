@@ -94,40 +94,60 @@ El meme más famoso de la informática es "no sé cómo salir de Vim". Aquí tie
 
 Estando en Modo Normal (Pulsa `Esc` varias veces por seguridad):
 
-<CardGrid>
-  <Card title="Movimiento y edición rápida (Modo Normal)">
+<div>
+  <div >
+    <h3>⌨️ Movimiento y edición rápida (Modo Normal)</h3>
+    <div >
+      <table>
+        <thead>
+          <tr>
+            <th>Tecla</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>h j k l</code></td><td>Mover cursor (izq/abajo/arriba/der)</td></tr>
+          <tr><td><code>w</code> / <code>b</code></td><td>Siguiente / anterior palabra</td></tr>
+          <tr><td><code>0</code> / <code>$</code></td><td>Inicio / fin de línea</td></tr>
+          <tr><td><code>gg</code> / <code>G</code></td><td>Inicio / final del archivo</td></tr>
+          <tr><td><code>i</code> / <code>a</code></td><td>Insertar (antes del cursor) / Añadir (después)</td></tr>
+          <tr><td><code>o</code></td><td>Nueva línea debajo y entrar a insertar</td></tr>
+          <tr><td><code>x</code></td><td>Borrar carácter bajo el cursor</td></tr>
+          <tr><td><code>dd</code></td><td>Borrar (cortar) línea</td></tr>
+          <tr><td><code>yy</code></td><td>Copiar (yank) línea</td></tr>
+          <tr><td><code>p</code></td><td>Pegar después del cursor</td></tr>
+          <tr><td><code>u</code></td><td>Deshacer</td></tr>
+          <tr><td><code>Ctrl + r</code></td><td>Rehacer</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div >
+    <h3 >💾 Guardar, salir, buscar (Modo Comando)</h3>
+    <div >
+      <table>
+        <thead>
+          <tr>
+            <th>Comando</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>:w</code></td><td>Guardar</td></tr>
+          <tr><td><code>:q</code></td><td>Salir (si no hay cambios)</td></tr>
+          <tr><td><code>:wq</code></td><td>Guardar y salir</td></tr>
+          <tr><td><code>:q!</code></td><td><strong>Salir sin guardar</strong> (emergencia)</td></tr>
+          <tr><td><code>/texto</code></td><td>Buscar "texto" hacia delante</td></tr>
+          <tr><td><code>n</code> / <code>N</code></td><td>Siguiente / anterior coincidencia</td></tr>
+          <tr><td><code>:%s/viejo/nuevo/g</code></td><td>Reemplazar en todo el archivo</td></tr>
+          <tr><td><code>:set nu</code> / <code>:set nonu</code></td><td>Mostrar / ocultar números de línea</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
-| Tecla | Acción |
-| --- | --- |
-| `h` `j` `k` `l` | Mover cursor (izq/abajo/arriba/der) |
-| `w` / `b` | Siguiente / anterior palabra |
-| `0` / `$` | Inicio / fin de línea |
-| `gg` / `G` | Inicio / final del archivo |
-| `i` / `a` | Insertar (antes del cursor) / Añadir (después) |
-| `o` | Nueva línea debajo y entrar a insertar |
-| `x` | Borrar carácter bajo el cursor |
-| `dd` | Borrar (cortar) línea |
-| `yy` | Copiar (yank) línea |
-| `p` | Pegar después del cursor |
-| `u` | Deshacer |
-| `Ctrl + r` | Rehacer |
 
-  </Card>
-  <Card title="Guardar, salir, buscar (Modo Comando)">
-
-| Comando | Acción |
-| --- | --- |
-| `:w` | Guardar |
-| `:q` | Salir (si no hay cambios) |
-| `:wq` | Guardar y salir |
-| `:q!` | **Salir sin guardar** (emergencia) |
-| `/texto` | Buscar “texto” hacia delante |
-| `n` / `N` | Siguiente / anterior coincidencia |
-| `:%s/viejo/nuevo/g` | Reemplazar en todo el archivo |
-| `:set nu` / `:set nonu` | Mostrar / ocultar números de línea |
-
-  </Card>
-</CardGrid>
 
 ---
 

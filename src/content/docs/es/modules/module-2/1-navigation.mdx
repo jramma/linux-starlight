@@ -51,14 +51,47 @@ flowchart LR;
 
 ## Comandos de navegación
 
-| Comando | Nombre                  | Función                                       |
-| :------ | :---------------------- | :-------------------------------------------- |
-| `pwd`   | Print Working Directory | Te dice dónde estás ahora mismo.              |
-| `cd`    | Change Directory        | Te mueve a una nueva carpeta.                 |
-| `cd ..` |                         | Sube un nivel.                                |
-| `cd ~`  |                         | Va a tu directorio personal (home).           |
-| `cd -`  |                         | Vuelve al directorio anterior.                |
-| `ls`    | List                    | Muestra los archivos en el directorio actual. |
+<table>
+  <thead>
+    <tr>
+      <th>Comando</th>
+      <th>Nombre</th>
+      <th>Función</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>pwd</td>
+      <td>Print Working Directory</td>
+      <td>Te dice dónde estás ahora mismo.</td>
+    </tr>
+    <tr>
+      <td>cd</td>
+      <td>Change Directory</td>
+      <td>Te mueve a una nueva carpeta.</td>
+    </tr>
+    <tr>
+      <td>cd ..</td>
+      <td></td>
+      <td>Sube un nivel.</td>
+     </tr>
+    <tr>
+      <td>cd ~</td>
+      <td></td>
+      <td>Va a tu directorio personal (home).</td>
+     </tr>
+    <tr>
+      <td>cd -</td>
+      <td></td>
+      <td>Vuelve al directorio anterior.</td>
+     </tr>
+    <tr>
+      <td>ls</td>
+      <td>List</td>
+      <td>Muestra los archivos en el directorio actual.</td>
+     </tr>
+  </tbody>
+</table>
 
 ### Opciones de `ls`
 
@@ -82,16 +115,59 @@ Los comodines ayudan a seleccionar múltiples archivos:
 
 ## Gestión de archivos
 
-| Comando | Función                             | Ejemplo                            |
-| :------ | :---------------------------------- | :--------------------------------- |
-| `mkdir` | Crear directorio                    | `mkdir projects`                   |
-| `touch` | Crear archivo vacío                 | `touch notes.txt`                  |
-| `cp`    | Copiar                              | `cp notes.txt backup.txt`          |
-| `cp -r` | Copiar de forma recursiva (carpeta) | `cp -r projects/ projects-backup/` |
-| `mv`    | Mover (o renombrar)                 | `mv notes.txt doc.txt`             |
-| `rm`    | Eliminar (borrar)                   | `rm file.txt`                      |
-| `rmdir` | Eliminar directorio **vacío**       | `rmdir old-empty-dir`              |
-| `rm -i` | Confirmación interactiva            | `rm -i file.txt`                   |
+<div >
+  <table>
+    <thead>
+      <tr>
+        <th>Comando</th>
+        <th>Función</th>
+        <th>Ejemplo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>mkdir</td>
+        <td>Crear directorio</td>
+        <td>mkdir projects</td>
+      </tr>
+      <tr>
+        <td>touch</td>
+        <td>Crear archivo vacío</td>
+        <td>touch notes.txt</td>
+      </tr>
+      <tr>
+        <td>cp</td>
+        <td>Copiar</td>
+        <td>cp notes.txt backup.txt</td>
+      </tr>
+      <tr>
+        <td>cp -r</td>
+        <td>Copiar de forma recursiva (carpeta)</td>
+        <td>cp -r projects/ projects-backup/</td>
+      </tr>
+      <tr>
+        <td>mv</td>
+        <td>Mover (o renombrar)</td>
+        <td>mv notes.txt doc.txt</td>
+      </tr>
+      <tr>
+        <td>rm</td>
+        <td>Eliminar (borrar)</td>
+        <td>rm file.txt</td>
+      </tr>
+      <tr>
+        <td>rmdir</td>
+        <td>Eliminar directorio <strong>vacío</strong></td>
+        <td>rmdir old-empty-dir</td>
+      </tr>
+      <tr>
+        <td>rm -i</td>
+        <td>Confirmación interactiva</td>
+        <td>rm -i file.txt</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 <Aside type="tip">
   Si una ruta contiene espacios, **envuélvela con comillas**: `mv "Informe
@@ -114,64 +190,91 @@ Busca archivos en una jerarquía de directorios.
 
 #### Find Cheatsheet (referencia rápida)
 
-<CardGrid>
-  <Card title="Búsqueda, tipo, tamaño y tiempo">
 
-| Patrón | Qué hace |
-| --- | --- |
-| `find . -name "file.txt"` | Buscar un nombre exacto |
-| `find . -iname "readme.md"` | Buscar sin distinguir mayúsculas/minúsculas |
-| `find /etc -name "*.conf"` | Buscar por extensión/patrón |
-| `find . -type f` | Solo archivos regulares |
-| `find . -type d` | Solo directorios |
-| `find . -type l` | Solo enlaces simbólicos |
-| `find . -maxdepth 1 -type f` | Solo el directorio actual (sin recursión) |
-| `find . -type f -empty` | Archivos vacíos |
-| `find . -type d -empty` | Directorios vacíos |
-| `find . -type f -size +100M` | Archivos mayores de 100 MB |
-| `find . -type f -size -10M` | Archivos menores de 10 MB |
-| `find . -type f -mtime -7` | Modificados en los últimos 7 días |
-| `find . -type f -mtime +30` | Modificados hace más de 30 días |
-| `find . -type f -mmin -60` | Modificados en los últimos 60 minutos |
-| `find . -type f -atime -1` | Accedidos en las últimas 24 horas |
-| `find . -type f -ctime -3` | Metadatos cambiados en los últimos 3 días |
+<div >
+  
+  <div >
+    <h3 >🔍 Búsqueda, tipo, tamaño y tiempo</h3>
+    <div >
+      <table >
+        <thead>
+          <tr >
+            <th >Patrón</th>
+            <th >Qué hace</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td ><code>find . -name "file.txt"</code></td><td >Buscar un nombre exacto</td></tr>
+          <tr><td ><code>find . -iname "readme.md"</code></td><td >Buscar sin distinguir mayúsculas/minúsculas</td></tr>
+          <tr><td ><code>find /etc -name "&#42;.conf"</code></td><td >Buscar por extensión/patrón</td></tr>
+          <tr><td ><code>find . -type f</code></td><td >Solo archivos regulares</td></tr>
+          <tr><td ><code>find . -type d</code></td><td >Solo directorios</td></tr>
+          <tr><td ><code>find . -type l</code></td><td >Solo enlaces simbólicos</td></tr>
+          <tr><td ><code>find . -maxdepth 1 -type f</code></td><td >Solo el directorio actual (sin recursión)</td></tr>
+          <tr><td ><code>find . -type f -empty</code></td><td >Archivos vacíos</td></tr>
+          <tr><td ><code>find . -type d -empty</code></td><td >Directorios vacíos</td></tr>
+          <tr><td ><code>find . -type f -size +100M</code></td><td >Archivos mayores de 100 MB</td></tr>
+          <tr><td ><code>find . -type f -size -10M</code></td><td >Archivos menores de 10 MB</td></tr>
+          <tr><td ><code>find . -type f -mtime -7</code></td><td >Modificados en los últimos 7 días</td></tr>
+          <tr><td ><code>find . -type f -mtime +30</code></td><td >Modificados hace más de 30 días</td></tr>
+          <tr><td ><code>find . -type f -mmin -60</code></td><td >Modificados en los últimos 60 minutos</td></tr>
+          <tr><td ><code>find . -type f -atime -1</code></td><td >Accedidos en las últimas 24 horas</td></tr>
+          <tr><td ><code>find . -type f -ctime -3</code></td><td >Metadatos cambiados en los últimos 3 días</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-  </Card>
-  <Card title="Permisos, exclusiones y acciones">
+  <div >
+    <h3 >🔧 Permisos, exclusiones y acciones</h3>
+    <div >
+      <table >
+        <thead>
+          <tr >
+            <th >Patrón</th>
+            <th >Qué hace</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td ><code>find . -type f -perm 644</code></td><td >Permiso exacto (modo octal)</td></tr>
+          <tr><td ><code>find . -type f -perm -u+w</code></td><td >Archivos escribibles por el usuario</td></tr>
+          <tr><td ><code>find / -type f -user root</code></td><td >Archivos cuyo dueño es root</td></tr>
+          <tr><td ><code>find /srv -type f -group www-data</code></td><td >Archivos cuyo grupo es www-data</td></tr>
+          <tr><td ><code>find . -path ./node_modules -prune -o -type f -print</code></td><td >Excluir un directorio</td></tr>
+          <tr><td ><code>find . ( -path ./node_modules -o -path ./.git ) -prune -o -type f -print</code></td><td >Excluir varios directorios</td></tr>
+          <tr><td ><code>find . -type f ! -name "&#42;.log"</code></td><td >Excluir por patrón de nombre</td></tr>
+          <tr><td ><code>find . -type f ! -path "&#42;/cache/&#42;"</code></td><td >Excluir por patrón de ruta</td></tr>
+          <tr><td ><code>find . -type f -name "&#42;.tmp" -delete</code></td><td >Borrar coincidencias</td></tr>
+          <tr><td ><code>find . -type f -name "&#42;.log" -exec gzip {} \;</code></td><td >Ejecutar un comando por archivo</td></tr>
+          <tr><td ><code>find . -type f -name "&#42;.jpg" -exec mv {} /tmp/images/ \;</code></td><td >Mover coincidencias</td></tr>
+          <tr><td ><code>find . -type f -name "&#42;.conf" -exec grep -H "listen" {} \;</code></td><td >Buscar texto dentro de coincidencias</td></tr>
+          <tr><td ><code>find . -type f -name "&#42;.log" -exec rm {} +</code></td><td >Borrado en lote (más rápido que ;)</td></tr>
+          <tr><td ><code>find . -type f -name "&#42;.txt" -print0 | xargs -0 rm -f</code></td><td >Operaciones seguras con espacios (NUL)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
-| Patrón | Qué hace |
-| --- | --- |
-| `find . -type f -perm 644` | Permiso exacto (modo octal) |
-| `find . -type f -perm -u+w` | Archivos escribibles por el usuario |
-| `find / -type f -user root` | Archivos cuyo dueño es `root` |
-| `find /srv -type f -group www-data` | Archivos cuyo grupo es `www-data` |
-| `find . -path ./node_modules -prune -o -type f -print` | Excluir un directorio |
-| `find . \\( -path ./node_modules -o -path ./.git \\) -prune -o -type f -print` | Excluir varios directorios |
-| `find . -type f ! -name "*.log"` | Excluir por patrón de nombre |
-| `find . -type f ! -path "*/cache/*"` | Excluir por patrón de ruta |
-| `find . -type f -name "*.tmp" -delete` | Borrar coincidencias |
-| `find . -type f -name "*.log" -exec gzip {} \\;` | Ejecutar un comando por archivo |
-| `find . -type f -name "*.jpg" -exec mv {} /tmp/images/ \\;` | Mover coincidencias |
-| `find . -type f -name "*.conf" -exec grep -H "listen" {} \\;` | Buscar texto dentro de coincidencias |
-| `find . -type f -name "*.log" -exec rm {} +` | Borrado en lote (más rápido que `\\;`) |
-| `find . -type f -name "*.txt" -print0 \\| xargs -0 rm -f` | Operaciones seguras con espacios (NUL) |
+<div >
+  <h3 >📖 Sintaxis y ejemplos</h3>
+  <p><strong>Sintaxis</strong>: <code>find [ruta] [expresión]</code></p>
+  <p><strong>Ejemplos</strong>:</p>
+  <ul >
+    <li><code>find /etc -name "&#42;.conf"</code>: Busca todos los archivos en /etc que terminen en .conf.</li>
+    <li><code>find . -type f</code>: Busca solo archivos en el directorio actual.</li>
+    <li><code>find . -type d</code>: Busca solo directorios.</li>
+    <li><code>find /var/log -size +10M</code>: Busca archivos mayores de 10 MB.</li>
+    <li><code>find . -perm 777</code>: Busca archivos con permisos 777.</li>
+    <li><code>find . -mtime -1</code>: Busca archivos modificados en las últimas 24 horas.</li>
+    <li><code>find . -user alice</code>: Busca archivos cuyo propietario sea el usuario alice.</li>
+    <li><code>find . -iname "&#42;.jpg"</code>: Búsqueda sin distinguir mayúsculas/minúsculas.</li>
+    <li><code>find . -maxdepth 2 -name "&#42;.md"</code>: Limita la profundidad de búsqueda.</li>
+    <li><code>find . -not -path "&#42;/node_modules/&#42;"</code>: Excluye directorios no deseados.</li>
+    <li><code>find . -type f -name "&#42;.log" -exec ls -l {} \;</code>: Ejecuta una acción por cada resultado.</li>
+  </ul>
+</div>
 
-  </Card>
-</CardGrid>
-
-- **Sintaxis**: `find [ruta] [expresión]`
-- **Ejemplos**:
-  - `find /etc -name "*.conf"`: Busca todos los archivos en `/etc` que terminen en `.conf`.
-  - `find . -type f`: Busca solo archivos en el directorio actual.
-  - `find . -type d`: Busca solo directorios.
-  - `find /var/log -size +10M`: Busca archivos mayores de 10 MB.
-  - `find . -perm 777`: Busca archivos con permisos 777.
-  - `find . -mtime -1`: Busca archivos modificados en las últimas 24 horas.
-  - `find . -user alice`: Busca archivos cuyo propietario sea el usuario `alice`.
-  - `find . -iname "*.jpg"`: Búsqueda sin distinguir mayúsculas/minúsculas.
-  - `find . -maxdepth 2 -name "*.md"`: Limita la profundidad de búsqueda.
-  - `find . -not -path "*/node_modules/*"`: Excluye directorios no deseados.
-  - `find . -type f -name "*.log" -exec ls -l {} \;`: Ejecuta una acción por cada resultado.
 
 ### `locate`
 
