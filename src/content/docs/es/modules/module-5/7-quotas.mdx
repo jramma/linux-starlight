@@ -80,14 +80,40 @@ Disk quotas for user alice (uid 1001):
   /dev/sda3   45200   500000  600000  312     0     0
 ```
 
-| Campo | Significado |
-|-------|------------|
-| `blocks` | Uso actual (en bloques de 1 KB) |
-| `soft` (bloques) | Límite blando de espacio (puede superarse temporalmente) |
-| `hard` (bloques) | Límite duro absoluto (nunca puede superarse) |
-| `inodes` | Número de ficheros/directorios |
-| `soft` (inodes) | Límite blando de inodos |
-| `hard` (inodes) | Límite duro de inodos |
+<table>
+    <thead>
+        <tr>
+            <th>Campo</th>
+            <th>Significado</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>blocks</code></td>
+            <td>Uso actual (en bloques de 1 KB)</td>
+        </tr>
+        <tr>
+            <td><code>soft</code> (bloques)</td>
+            <td>Límite blando de espacio (puede superarse temporalmente)</td>
+        </tr>
+        <tr>
+            <td><code>hard</code> (bloques)</td>
+            <td>Límite duro absoluto (nunca puede superarse)</td>
+        </tr>
+        <tr>
+            <td><code>inodes</code></td>
+            <td>Número de ficheros/directorios</td>
+        </tr>
+        <tr>
+            <td><code>soft</code> (inodes)</td>
+            <td>Límite blando de inodos</td>
+        </tr>
+        <tr>
+            <td><code>hard</code> (inodes)</td>
+            <td>Límite duro de inodos</td>
+        </tr>
+    </tbody>
+</table>
 
 Ejemplo de cuota de 500 MB soft, 600 MB hard:
 - 1 MB = 1024 KB = 1024 bloques

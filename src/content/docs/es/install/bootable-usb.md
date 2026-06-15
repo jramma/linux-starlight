@@ -103,11 +103,40 @@ Una vez creado el USB:
 
 ## Comparativa de herramientas
 
-| Herramienta | Sistema | Interfaz | Velocidad | Verificación |
-|-------------|---------|----------|-----------|--------------|
-| Rufus | Windows | Gráfica | ⚡ Rápida | Opcional |
-| Balena Etcher | Win/Mac/Linux | Gráfica | 🐢 Media | Automática |
-| `dd` | Linux/macOS | Terminal | ⚡ Rápida | Manual |
+<table>
+    <thead>
+        <tr>
+            <th>Herramienta</th>
+            <th>Sistema</th>
+            <th>Interfaz</th>
+            <th>Velocidad</th>
+            <th>Verificación</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Rufus</td>
+            <td>Windows</td>
+            <td>Gráfica</td>
+            <td>⚡ Rápida</td>
+            <td>Opcional</td>
+        </tr>
+        <tr>
+            <td>Balena Etcher</td>
+            <td>Win/Mac/Linux</td>
+            <td>Gráfica</td>
+            <td>🐢 Media</td>
+            <td>Automática</td>
+        </tr>
+        <tr>
+            <td><code>dd</code></td>
+            <td>Linux/macOS</td>
+            <td>Terminal</td>
+            <td>⚡ Rápida</td>
+            <td>Manual</td>
+        </tr>
+    </tbody>
+</table>
 
 ---
 

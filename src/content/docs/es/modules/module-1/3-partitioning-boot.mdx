@@ -69,11 +69,36 @@ El instalador de distribuciones como Ubuntu o Debian suele preguntarte si quiere
   <TabItem label="🖥️ Mínimo (todo junto)">
     La opción más sencilla: todo en una sola partición raíz. Válida para VMs, entornos de prueba o equipos con poco espacio.
 
-    | Partición | Punto de montaje | Sistema de archivos | Tamaño orientativo |
-    |-----------|-----------------|---------------------|--------------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
-    | `/dev/sda3` | `/` | ext4 | Todo el resto |
+   <table>
+    <thead>
+        <tr>
+            <th>Partición</th>
+            <th>Punto de montaje</th>
+            <th>Sistema de archivos</th>
+            <th>Tamaño orientativo</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1-2</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4</td>
+            <td>Todo el resto</td>
+        </tr>
+    </tbody>
+</table>
 
     <FileTree>
     - / *Todo el sistema en una sola partición*
@@ -95,12 +120,42 @@ El instalador de distribuciones como Ubuntu o Debian suele preguntarte si quiere
   <TabItem label="🏠 Desktop (/home separado)">
     La opción que típicamente te ofrece el instalador gráfico de Ubuntu. Separar `/home` permite reinstalar el sistema sin perder los datos del usuario.
 
-    | Partición | Punto de montaje | Sistema de archivos | Tamaño orientativo |
-    |-----------|-----------------|---------------------|--------------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
-    | `/dev/sda3` | `/` | ext4 | 30–50 GB |
-    | `/dev/sda4` | `/home` | ext4 | Todo el resto |
+<table>
+    <thead>
+        <tr>
+            <th>Partición</th>
+            <th>Punto de montaje</th>
+            <th>Sistema de archivos</th>
+            <th>Tamaño orientativo</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1-2</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4</td>
+            <td>30–50 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda4</code></td>
+            <td><code>/home</code></td>
+            <td>ext4</td>
+            <td>Todo el resto</td>
+        </tr>
+    </tbody>
+</table>
 
     <FileTree>
     - / `sda3` — ext4, 30-50 GB
@@ -124,14 +179,48 @@ El instalador de distribuciones como Ubuntu o Debian suele preguntarte si quiere
   <TabItem label="🖧 Servidor (producción)">
     En entornos de servidor se aíslan `/var` y opcionalmente `/tmp` para evitar que logs o bases de datos descontrolados colapsen el sistema. Es el esquema recomendado para el LFCS.
 
-    | Partición | Punto de montaje | Sistema de archivos | Tamaño orientativo |
-    |-----------|-----------------|---------------------|--------------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1 |
-    | `/dev/sda3` | `/` | ext4 / xfs | 20–30 GB |
-    | `/dev/sda4` | `/var` | ext4 / xfs | 20–100 GB |
-    | `/dev/sda5` | `/home` | ext4 | Lo que quede |
-
+ <table>
+    <thead>
+        <tr>
+            <th>Partición</th>
+            <th>Punto de montaje</th>
+            <th>Sistema de archivos</th>
+            <th>Tamaño orientativo</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4 / xfs</td>
+            <td>20–30 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda4</code></td>
+            <td><code>/var</code></td>
+            <td>ext4 / xfs</td>
+            <td>20–100 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda5</code></td>
+            <td><code>/home</code></td>
+            <td>ext4</td>
+            <td>Lo que quede</td>
+        </tr>
+    </tbody>
+</table>
     <FileTree>
     - / `sda3` — ext4/xfs, 20-30 GB
       - boot/

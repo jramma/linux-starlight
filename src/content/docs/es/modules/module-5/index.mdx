@@ -41,3 +41,27 @@ Manejar discos de producción en terminal requiere tener los nervios de acero de
 - Entender el concepto de LVM: Virtualización del almacenamiento separando la física del espacio visual del usuario final.
 - **La Tríada Estricta**: Entender la conversión paso a paso de Physical Volumes (`pvcreate`) a Volume Groups (`vgcreate`) y finalmente Logical Volumes (`lvcreate`).
 - Operativa avanzada de rescate: Redimensionar en caliente el tamaño de un disco mientras Nginx o la Base de datos siguen escribiendo en él (`lvextend`, `resize2fs`).
+
+### [5.4 Gestión de Swap](/es/modules/module-5/4-swap/)
+
+- Ver el estado actual del swap
+- Crear un fichero de swap es más flexible que una partición: puedes crearlo en cualquier momento sin reparticionar.
+- vm.swappiness controla cuánto prefiere el kernel usar swap frente a liberar caché de página
+
+### [5.5 RAID por Software (mdadm)](/es/modules/module-5/5-raid/)
+
+- RAID (Redundant Array of Independent Disks) agrupa varios discos físicos para comportarse como uno solo, combinando redundancia y/o rendimiento
+- Este es uno de los escenarios más frecuentes en el examen LFCS. 7. Simular fallo y recuperación (LFCS escenario clave)
+
+### [5.6 Almacenamiento Cifrado (LUKS)](/es/modules/module-5/6-luks/)
+
+- LUKS (Linux Unified Key Setup) es el estándar de cifrado de discos en Linux. Cifra el contenido completo de una partición o disco: aunque alguien extraiga el disco físicamente, sin la clave solo verá datos aleatorios. Es el objetivo de almacenamiento más demandado en el examen LFCS.
+
+### [5.7 Cuotas de Disco](/es/modules/module-5/7-quotas/)
+
+- Las cuotas de disco limitan cuánto espacio en disco (y cuántos inodos) puede usar cada usuario o grupo en un sistema de ficheros. 
+
+## [5.8 NFS — Almacenamiento en Red](/es/modules/module-5/8-nfs/)
+
+- NFS (Network File System) permite que un servidor exporte directorios a través de la red para que otros sistemas Linux los monten como si fueran discos locales.
+- Es el protocolo de almacenamiento compartido más extendido en entornos Linux

@@ -8,6 +8,10 @@ import icon from "astro-icon";
 import rehypeMermaid from "rehype-mermaid";
 import { localesConfig } from './config/locales';
 
+
+
+
+
 // https://astro.build/config
 export default defineConfig({
   site: "https://linux.casset.cat/",
@@ -33,6 +37,7 @@ export default defineConfig({
     }),
     icon(),
   ],
+  
   markdown: {
     rehypePlugins: [
       rehypeTasklistEnhancer(),

@@ -29,13 +29,48 @@ Igual que un servidor físico pero accesible remotamente. Muchos proveedores ofr
 
 Para un entorno de servidor lo habitual es elegir distribuciones **LTS** orientadas a estabilidad:
 
-| Distribución | Empresa | Ciclo LTS | Uso típico |
-|-------------|---------|-----------|------------|
-| Ubuntu Server | Canonical | 5 años | Web, desarrollo, cloud |
-| Debian | Comunidad | ~5 años | Estable, minimalista |
-| Rocky Linux | RESF | 10 años | Empresarial (sustituto de RHEL) |
-| AlmaLinux | AlmaLinux OS | 10 años | Empresarial (sustituto de RHEL) |
-| Fedora Server | Red Hat | ~1 año | Vanguardia tecnológica |
+<table>
+    <thead>
+        <tr>
+            <th>Distribución</th>
+            <th>Empresa</th>
+            <th>Ciclo LTS</th>
+            <th>Uso típico</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Ubuntu Server</td>
+            <td>Canonical</td>
+            <td>5 años</td>
+            <td>Web, desarrollo, cloud</td>
+        </tr>
+        <tr>
+            <td>Debian</td>
+            <td>Comunidad</td>
+            <td>~5 años</td>
+            <td>Estable, minimalista</td>
+        </tr>
+        <tr>
+            <td>Rocky Linux</td>
+            <td>RESF</td>
+            <td>10 años</td>
+            <td>Empresarial (sustituto de RHEL)</td>
+        </tr>
+        <tr>
+            <td>AlmaLinux</td>
+            <td>AlmaLinux OS</td>
+            <td>10 años</td>
+            <td>Empresarial (sustituto de RHEL)</td>
+        </tr>
+        <tr>
+            <td>Fedora Server</td>
+            <td>Red Hat</td>
+            <td>~1 año</td>
+            <td>Vanguardia tecnológica</td>
+        </tr>
+    </tbody>
+</table>
 
 > Para la mayoría de casos, **Ubuntu Server LTS** o **Debian** son las opciones más documentadas y con mayor comunidad.
 
@@ -258,14 +293,42 @@ timedatectl status
 
 ## Gestión del servidor desde Windows
 
-| Herramienta | Uso | Enlace |
-|-------------|-----|--------|
-| PuTTY | Cliente SSH con GUI | [putty.org](https://putty.org) |
-| Windows Terminal | SSH integrado en Win10/11 | Preinstalado |
-| WinSCP | Transferir archivos SFTP | [winscp.net](https://winscp.net) |
-| MobaXterm | SSH + SFTP + X11 todo en uno | [mobaxterm.mobatek.net](https://mobaxterm.mobatek.net) |
-| VSCode Remote SSH | Editar archivos remotos | Extensión de VSCode |
-
+<table>
+    <thead>
+        <tr>
+            <th>Herramienta</th>
+            <th>Uso</th>
+            <th>Enlace</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>PuTTY</td>
+            <td>Cliente SSH con GUI</td>
+            <td><a href="https://putty.org">putty.org</a></td>
+        </tr>
+        <tr>
+            <td>Windows Terminal</td>
+            <td>SSH integrado en Win10/11</td>
+            <td>Preinstalado</td>
+        </tr>
+        <tr>
+            <td>WinSCP</td>
+            <td>Transferir archivos SFTP</td>
+            <td><a href="https://winscp.net">winscp.net</a></td>
+        </tr>
+        <tr>
+            <td>MobaXterm</td>
+            <td>SSH + SFTP + X11 todo en uno</td>
+            <td><a href="https://mobaxterm.mobatek.net">mobaxterm.mobatek.net</a></td>
+        </tr>
+        <tr>
+            <td>VSCode Remote SSH</td>
+            <td>Editar archivos remotos</td>
+            <td>Extensión de VSCode</td>
+        </tr>
+    </tbody>
+</table>
 ---
 
 ## Verificar el servidor

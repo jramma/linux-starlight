@@ -127,15 +127,52 @@ VMware instala automáticamente **VMware Tools** (equivalente a Guest Additions)
 
 ## Comparativa VirtualBox vs VMware Player
 
-| Característica | VirtualBox | VMware Player |
-|---------------|------------|---------------|
-| Precio | Gratuito | Gratuito (personal) |
-| Código abierto | ✅ Sí | ❌ No |
-| Rendimiento | ⭐⭐ Bueno | ⭐⭐⭐ Excelente |
-| Facilidad de uso | ⭐⭐ Media | ⭐⭐⭐ Alta |
-| Snapshots | ✅ Sí | ❌ Solo en versión Pro |
-| USB 3.0 | Solo con Extension Pack | ✅ Sí |
-| Plataformas | Win/Mac/Linux | Win/Linux |
+<table>
+    <thead>
+        <tr>
+            <th>Característica</th>
+            <th>VirtualBox</th>
+            <th>VMware Player</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Precio</td>
+            <td>Gratuito</td>
+            <td>Gratuito (personal)</td>
+        </tr>
+        <tr>
+            <td>Código abierto</td>
+            <td>✅ Sí</td>
+            <td>❌ No</td>
+        </tr>
+        <tr>
+            <td>Rendimiento</td>
+            <td>⭐⭐ Bueno</td>
+            <td>⭐⭐⭐ Excelente</td>
+        </tr>
+        <tr>
+            <td>Facilidad de uso</td>
+            <td>⭐⭐ Media</td>
+            <td>⭐⭐⭐ Alta</td>
+        </tr>
+        <tr>
+            <td>Snapshots</td>
+            <td>✅ Sí</td>
+            <td>❌ Solo en versión Pro</td>
+        </tr>
+        <tr>
+            <td>USB 3.0</td>
+            <td>Solo con Extension Pack</td>
+            <td>✅ Sí</td>
+        </tr>
+        <tr>
+            <td>Plataformas</td>
+            <td>Win/Mac/Linux</td>
+            <td>Win/Linux</td>
+        </tr>
+    </tbody>
+</table>
 
 ---
 

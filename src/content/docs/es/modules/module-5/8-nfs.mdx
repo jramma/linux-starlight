@@ -13,10 +13,27 @@ import { Aside } from "@astrojs/starlight/components";
 
 ## 1. Roles: servidor y cliente
 
-| Rol | Paquete | Qué hace |
-|-----|---------|---------|
-| Servidor | `nfs-kernel-server` | Exporta directorios a la red |
-| Cliente | `nfs-common` | Monta los directorios del servidor |
+<table>
+    <thead>
+        <tr>
+            <th>Rol</th>
+            <th>Paquete</th>
+            <th>Qué hace</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Servidor</td>
+            <td><code>nfs-kernel-server</code></td>
+            <td>Exporta directorios a la red</td>
+        </tr>
+        <tr>
+            <td>Cliente</td>
+            <td><code>nfs-common</code></td>
+            <td>Monta los directorios del servidor</td>
+        </tr>
+    </tbody>
+</table>
 
 Un mismo equipo puede ser servidor y cliente simultáneamente.
 
@@ -62,16 +79,48 @@ sudo nano /etc/exports
 
 ### Opciones de exportación más importantes
 
-| Opción | Significado |
-|--------|------------|
-| `rw` | Lectura y escritura |
-| `ro` | Solo lectura |
-| `sync` | Escribe en disco antes de responder al cliente (más seguro) |
-| `async` | Responde antes de escribir (más rápido, riesgo de pérdida) |
-| `no_subtree_check` | Desactiva verificación de subárbol (mejora rendimiento, recomendado) |
-| `root_squash` | Mapea root del cliente a nobody (seguridad — **por defecto**) |
-| `no_root_squash` | El root del cliente tiene root en el servidor (peligroso) |
-| `all_squash` | Mapea todos los usuarios a nobody |
+<table>
+    <thead>
+        <tr>
+            <th>Opción</th>
+            <th>Significado</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>rw</code></td>
+            <td>Lectura y escritura</td>
+        </tr>
+        <tr>
+            <td><code>ro</code></td>
+            <td>Solo lectura</td>
+        </tr>
+        <tr>
+            <td><code>sync</code></td>
+            <td>Escribe en disco antes de responder al cliente (más seguro)</td>
+        </tr>
+        <tr>
+            <td><code>async</code></td>
+            <td>Responde antes de escribir (más rápido, riesgo de pérdida)</td>
+        </tr>
+        <tr>
+            <td><code>no_subtree_check</code></td>
+            <td>Desactiva verificación de subárbol (mejora rendimiento, recomendado)</td>
+        </tr>
+        <tr>
+            <td><code>root_squash</code></td>
+            <td>Mapea root del cliente a nobody (seguridad — <strong>por defecto</strong>)</td>
+        </tr>
+        <tr>
+            <td><code>no_root_squash</code></td>
+            <td>El root del cliente tiene root en el servidor (peligroso)</td>
+        </tr>
+        <tr>
+            <td><code>all_squash</code></td>
+            <td>Mapea todos los usuarios a nobody</td>
+        </tr>
+    </tbody>
+</table>
 
 Aplicar los cambios sin reiniciar el servicio:
 
@@ -147,13 +196,36 @@ sudo mount -t nfs \
   192.168.1.10:/srv/compartido /mnt/nfs/compartido
 ```
 
-| Opción | Significado |
-|--------|------------|
-| `hard` | Reintenta indefinidamente si el servidor cae (para datos críticos) |
-| `soft` | Devuelve error al proceso si el servidor no responde (para datos no críticos) |
-| `intr` | Permite interrumpir operaciones bloqueadas con Ctrl+C |
-| `rsize/wsize` | Tamaño de los bloques de lectura/escritura (en bytes) |
-| `timeo` | Timeout en décimas de segundo antes de reintentar |
+<table>
+    <thead>
+        <tr>
+            <th>Opción</th>
+            <th>Significado</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>hard</code></td>
+            <td>Reintenta indefinidamente si el servidor cae (para datos críticos)</td>
+        </tr>
+        <tr>
+            <td><code>soft</code></td>
+            <td>Devuelve error al proceso si el servidor no responde (para datos no críticos)</td>
+        </tr>
+        <tr>
+            <td><code>intr</code></td>
+            <td>Permite interrumpir operaciones bloqueadas con Ctrl+C)</td>
+        </tr>
+        <tr>
+            <td><code>rsize/wsize</code></td>
+            <td>Tamaño de los bloques de lectura/escritura (en bytes)</td>
+        </tr>
+        <tr>
+            <td><code>timeo</code></td>
+            <td>Timeout en décimas de segundo antes de reintentar)</td>
+        </tr>
+    </tbody>
+</table>
 
 ---
 

@@ -65,13 +65,36 @@ echo "Directorio actual: $PWD"
 
 Cuando ejecutas `./script.sh arg1 arg2 arg3`:
 
-| Variable | Valor |
-|----------|-------|
-| `$0` | Nombre del script |
-| `$1`, `$2`... | Argumentos posicionales |
-| `$#` | Número de argumentos |
-| `$@` | Todos los argumentos (como lista) |
-| `$*` | Todos los argumentos (como cadena) |
+<table>
+    <thead>
+        <tr>
+            <th>Variable</th>
+            <th>Valor</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>$0</code></td>
+            <td>Nombre del script</td>
+        </tr>
+        <tr>
+            <td><code>$1</code>, <code>$2</code>...</td>
+            <td>Argumentos posicionales</td>
+        </tr>
+        <tr>
+            <td><code>$#</code></td>
+            <td>Número de argumentos</td>
+        </tr>
+        <tr>
+            <td><code>$@</code></td>
+            <td>Todos los argumentos (como lista)</td>
+        </tr>
+        <tr>
+            <td><code>$*</code></td>
+            <td>Todos los argumentos (como cadena)</td>
+        </tr>
+    </tbody>
+</table>
 
 ```bash
 #!/usr/bin/env bash
@@ -140,14 +163,47 @@ fi
 
 ### Operadores de comparación
 
-| Números | Cadenas | Ficheros |
-|---------|---------|---------|
-| `-eq` (igual) | `=` o `==` | `-f` (es fichero regular) |
-| `-ne` (distinto) | `!=` | `-d` (es directorio) |
-| `-lt` (menor) | `-z` (cadena vacía) | `-e` (existe) |
-| `-gt` (mayor) | `-n` (no vacía) | `-r` (tiene permiso lectura) |
-| `-le` (menor o igual) | | `-w` (tiene permiso escritura) |
-| `-ge` (mayor o igual) | | `-x` (es ejecutable) |
+<table>
+    <thead>
+        <tr>
+            <th>Números</th>
+            <th>Cadenas</th>
+            <th>Ficheros</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>-eq</code> (igual)</td>
+            <td><code>=</code> o <code>==</code></td>
+            <td><code>-f</code> (es fichero regular)</td>
+        </tr>
+        <tr>
+            <td><code>-ne</code> (distinto)</td>
+            <td><code>!=</code></td>
+            <td><code>-d</code> (es directorio)</td>
+        </tr>
+        <tr>
+            <td><code>-lt</code> (menor)</td>
+            <td><code>-z</code> (cadena vacía)</td>
+            <td><code>-e</code> (existe)</td>
+        </tr>
+        <tr>
+            <td><code>-gt</code> (mayor)</td>
+            <td><code>-n</code> (no vacía)</td>
+            <td><code>-r</code> (tiene permiso lectura)</td>
+        </tr>
+        <tr>
+            <td><code>-le</code> (menor o igual)</td>
+            <td></td>
+            <td><code>-w</code> (tiene permiso escritura)</td>
+        </tr>
+        <tr>
+            <td><code>-ge</code> (mayor o igual)</td>
+            <td></td>
+            <td><code>-x</code> (es ejecutable)</td>
+        </tr>
+    </tbody>
+</table>
 
 ```bash
 # Comprobar si un fichero existe

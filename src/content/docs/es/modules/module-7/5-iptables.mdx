@@ -15,11 +15,32 @@ UFW (módulo 4.4) es una capa de abstracción sobre **iptables**, que a su vez e
 
 iptables organiza las reglas en **tablas**, y cada tabla contiene **cadenas**:
 
-| Tabla | Propósito | Cadenas principales |
-|-------|-----------|-------------------|
-| `filter` | Filtrado de paquetes (la más usada) | INPUT, FORWARD, OUTPUT |
-| `nat` | Traducción de direcciones | PREROUTING, POSTROUTING, OUTPUT |
-| `mangle` | Modificación de paquetes | PREROUTING, INPUT, FORWARD, OUTPUT, POSTROUTING |
+<table>
+    <thead>
+        <tr>
+            <th>Tabla</th>
+            <th>Propósito</th>
+            <th>Cadenas principales</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>filter</code></td>
+            <td>Filtrado de paquetes (la más usada)</td>
+            <td>INPUT, FORWARD, OUTPUT</td>
+        </tr>
+        <tr>
+            <td><code>nat</code></td>
+            <td>Traducción de direcciones</td>
+            <td>PREROUTING, POSTROUTING, OUTPUT</td>
+        </tr>
+        <tr>
+            <td><code>mangle</code></td>
+            <td>Modificación de paquetes</td>
+            <td>PREROUTING, INPUT, FORWARD, OUTPUT, POSTROUTING</td>
+        </tr>
+    </tbody>
+</table>
 
 El flujo de un paquete entrante:
 
@@ -209,11 +230,28 @@ sudo systemctl start nftables
 
 ## 8. UFW vs iptables vs nftables — Cuándo usar cada uno
 
-| Herramienta | Cuándo usarla |
-|-------------|--------------|
-| **UFW** | Servidor estándar, reglas simples, gestión rápida |
-| **iptables** | Compatibilidad con scripts antiguos, entornos legacy, examen LFCS |
-| **nftables** | Sistemas nuevos, alta carga de paquetes, reglas complejas |
+<table>
+    <thead>
+        <tr>
+            <th>Herramienta</th>
+            <th>Cuándo usarla</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>UFW</strong></td>
+            <td>Servidor estándar, reglas simples, gestión rápida</td>
+        </tr>
+        <tr>
+            <td><strong>iptables</strong></td>
+            <td>Compatibilidad con scripts antiguos, entornos legacy, examen LFCS</td>
+        </tr>
+        <tr>
+            <td><strong>nftables</strong></td>
+            <td>Sistemas nuevos, alta carga de paquetes, reglas complejas</td>
+        </tr>
+    </tbody>
+</table>
 
 <Aside type="tip" title="No mezcles UFW e iptables directamente">
 UFW gestiona sus propias reglas de iptables. Si añades reglas de iptables manualmente mientras UFW está activo, pueden interferir. Para el examen LFCS, usa una sola herramienta a la vez para el firewall.

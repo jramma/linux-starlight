@@ -125,12 +125,37 @@ sudo rm /swapfile
 
 `vm.swappiness` controla cuánto prefiere el kernel usar swap frente a liberar caché de página. Va de `0` a `200`:
 
-| Valor | Comportamiento | Cuándo usarlo |
-|-------|---------------|---------------|
-| `0` | Evita el swap hasta que sea absolutamente necesario | Servidores con mucha RAM |
-| `10` | Muy conservador | Servidores de base de datos (PostgreSQL, MySQL) |
-| `60` | Por defecto en Debian/Ubuntu | Uso general |
-| `100+` | Agresivo, prefiere mover a swap | Sistemas con mucha actividad de I/O |
+<table>
+    <thead>
+        <tr>
+            <th>Valor</th>
+            <th>Comportamiento</th>
+            <th>Cuándo usarlo</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>0</code></td>
+            <td>Evita el swap hasta que sea absolutamente necesario</td>
+            <td>Servidores con mucha RAM</td>
+        </tr>
+        <tr>
+            <td><code>10</code></td>
+            <td>Muy conservador</td>
+            <td>Servidores de base de datos (PostgreSQL, MySQL)</td>
+        </tr>
+        <tr>
+            <td><code>60</code></td>
+            <td>Por defecto en Debian/Ubuntu</td>
+            <td>Uso general</td>
+        </tr>
+        <tr>
+            <td><code>100+</code></td>
+            <td>Agresivo, prefiere mover a swap</td>
+            <td>Sistemas con mucha actividad de I/O</td>
+        </tr>
+    </tbody>
+</table>
 
 ```bash
 # Ver valor actual

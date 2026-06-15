@@ -194,14 +194,42 @@ Ubuntu monta las particiones Windows automáticamente. Aparecen en el explorador
 
 ## Resolución de problemas frecuentes
 
-| Problema | Causa probable | Solución |
-|---------|---------------|---------|
-| GRUB no aparece, arranca Windows directo | UEFI ignora GRUB | Entra en BIOS, cambia el orden de arranque: poner "ubuntu" primero |
-| Ubuntu no detecta Windows en la instalación | Fast Startup activo | Vuelve al Paso 1 desde Windows y desactívalo |
-| El wifi no funciona en Ubuntu | Drivers propietarios | Conecta por cable y ejecuta `sudo ubuntu-drivers autoinstall` |
-| Error "no se puede acceder a la partición de Windows" | Fast Startup activo | Desactiva Fast Startup en Windows y reinicia en Windows antes de acceder desde Ubuntu |
-| GRUB desaparece después de una actualización de Windows | Windows sobreescribió el bootloader | Arranca desde el USB Ubuntu → selecciona "Try Ubuntu" → usa Boot-Repair |
-
+<table>
+    <thead>
+        <tr>
+            <th>Problema</th>
+            <th>Causa probable</th>
+            <th>Solución</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>GRUB no aparece, arranca Windows directo</td>
+            <td>UEFI ignora GRUB</td>
+            <td>Entra en BIOS, cambia el orden de arranque: poner "ubuntu" primero</td>
+        </tr>
+        <tr>
+            <td>Ubuntu no detecta Windows en la instalación</td>
+            <td>Fast Startup activo</td>
+            <td>Vuelve al Paso 1 desde Windows y desactívalo</td>
+        </tr>
+        <tr>
+            <td>El wifi no funciona en Ubuntu</td>
+            <td>Drivers propietarios</td>
+            <td>Conecta por cable y ejecuta <code>sudo ubuntu-drivers autoinstall</code></td>
+        </tr>
+        <tr>
+            <td>Error "no se puede acceder a la partición de Windows"</td>
+            <td>Fast Startup activo</td>
+            <td>Desactiva Fast Startup en Windows y reinicia en Windows antes de acceder desde Ubuntu</td>
+        </tr>
+        <tr>
+            <td>GRUB desaparece después de una actualización de Windows</td>
+            <td>Windows sobreescribió el bootloader</td>
+            <td>Arranca desde el USB Ubuntu → selecciona "Try Ubuntu" → usa Boot-Repair</td>
+        </tr>
+    </tbody>
+</table>
 ---
 
 ## ¿Quieres desinstalar Linux y volver solo a Windows?

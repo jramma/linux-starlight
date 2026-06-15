@@ -64,12 +64,32 @@ Cada línea de un fichero PAM sigue este formato:
 
 ### Flags de control
 
-| Flag | Comportamiento |
-|------|---------------|
-| `required` | Debe pasar. El fallo se notifica **al final** (continúa evaluando) |
-| `requisite` | Debe pasar. El fallo detiene la evaluación **inmediatamente** |
-| `sufficient` | Si pasa (y ningún `required` anterior falló), **concede acceso** |
-| `optional` | El resultado no afecta al resultado final |
+<table>
+    <thead>
+        <tr>
+            <th>Flag</th>
+            <th>Comportamiento</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>required</code></td>
+            <td>Debe pasar. El fallo se notifica <strong>al final</strong> (continúa evaluando)</td>
+        </tr>
+        <tr>
+            <td><code>requisite</code></td>
+            <td>Debe pasar. El fallo detiene la evaluación <strong>inmediatamente</strong></td>
+        </tr>
+        <tr>
+            <td><code>sufficient</code></td>
+            <td>Si pasa (y ningún <code>required</code> anterior falló), <strong>concede acceso</strong></td>
+        </tr>
+        <tr>
+            <td><code>optional</code></td>
+            <td>El resultado no afecta al resultado final</td>
+        </tr>
+    </tbody>
+</table>
 
 ```bash
 # Ejemplo de /etc/pam.d/common-auth
@@ -285,13 +305,36 @@ JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 Además de PAM, hay varios ficheros que configuran el entorno de shell para todos los usuarios:
 
-| Fichero | Cuándo se carga |
-|---------|----------------|
-| `/etc/environment` | Variables globales (no es un script, solo `CLAVE=valor`) |
-| `/etc/profile` | Script para todos los usuarios en shells de login |
-| `/etc/profile.d/*.sh` | Scripts modulares cargados por `/etc/profile` |
-| `/etc/bash.bashrc` | Para shells interactivos (no de login) |
-| `/etc/skel/` | Plantilla de ficheros que se copian al crear un usuario nuevo |
+<table>
+    <thead>
+        <tr>
+            <th>Fichero</th>
+            <th>Cuándo se carga</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/etc/environment</code></td>
+            <td>Variables globales (no es un script, solo <code>CLAVE=valor</code>)</td>
+        </tr>
+        <tr>
+            <td><code>/etc/profile</code></td>
+            <td>Script para todos los usuarios en shells de login</td>
+        </tr>
+        <tr>
+            <td><code>/etc/profile.d/*.sh</code></td>
+            <td>Scripts modulares cargados por <code>/etc/profile</code></td>
+        </tr>
+        <tr>
+            <td><code>/etc/bash.bashrc</code></td>
+            <td>Para shells interactivos (no de login)</td>
+        </tr>
+        <tr>
+            <td><code>/etc/skel/</code></td>
+            <td>Plantilla de ficheros que se copian al crear un usuario nuevo</td>
+        </tr>
+    </tbody>
+</table>
 
 ```bash
 # Añadir un alias global para todos los usuarios

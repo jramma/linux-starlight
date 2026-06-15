@@ -69,11 +69,36 @@ L'instal·lador de distribucions com Ubuntu o Debian sol preguntar-te si vols **
   <TabItem label="🖥️ Mínim (tot junt)">
     L'opció més senzilla: tot en una sola partició arrel. Vàlida per a VMs, entorns de prova o equips amb poc espai.
 
-    | Partició | Punt de muntatge | Sistema de fitxers | Mida orientativa |
-    |----------|-----------------|---------------------|-----------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
-    | `/dev/sda3` | `/` | ext4 | Tot la resta |
+    <table>
+        <thead>
+            <tr>
+                <th>Partició</th>
+                <th>Punt de muntatge</th>
+                <th>Sistema de fitxers</th>
+                <th>Mida orientativa</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>/dev/sda1</code></td>
+                <td><code>/boot/efi</code></td>
+                <td>FAT32</td>
+                <td>512 MB</td>
+            </tr>
+            <tr>
+                <td><code>/dev/sda2</code></td>
+                <td><code>[SWAP]</code></td>
+                <td>swap</td>
+                <td>RAM × 1-2</td>
+            </tr>
+            <tr>
+                <td><code>/dev/sda3</code></td>
+                <td><code>/</code></td>
+                <td>ext4</td>
+                <td>Tot la resta</td>
+            </tr>
+        </tbody>
+    </table>
 
     <FileTree>
     - / *Tot el sistema en una sola partició*
@@ -95,13 +120,42 @@ L'instal·lador de distribucions com Ubuntu o Debian sol preguntar-te si vols **
   <TabItem label="🏠 Escriptori (/home separat)">
     L'opció que típicament t'ofereix l'instal·lador gràfic d'Ubuntu. Separar `/home` permet reinstal·lar el sistema sense perdre les dades de l'usuari.
 
-    | Partició | Punt de muntatge | Sistema de fitxers | Mida orientativa |
-    |----------|-----------------|---------------------|-----------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
-    | `/dev/sda3` | `/` | ext4 | 30–50 GB |
-    | `/dev/sda4` | `/home` | ext4 | Tot la resta |
-
+   <table>
+    <thead>
+        <tr>
+            <th>Partició</th>
+            <th>Punt de muntatge</th>
+            <th>Sistema de fitxers</th>
+            <th>Mida orientativa</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1-2</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4</td>
+            <td>30–50 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda4</code></td>
+            <td><code>/home</code></td>
+            <td>ext4</td>
+            <td>Tot la resta</td>
+        </tr>
+    </tbody>
+</table>
     <FileTree>
     - / `sda3` — ext4, 30-50 GB
       - boot/
@@ -124,13 +178,48 @@ L'instal·lador de distribucions com Ubuntu o Debian sol preguntar-te si vols **
   <TabItem label="🖧 Servidor (producció)">
     En entorns de servidor s'aïllen `/var` i opcionalment `/tmp` per evitar que registres o bases de dades descontrolades col·lapsin el sistema. És l'esquema recomanat per al LFCS.
 
-    | Partició | Punt de muntatge | Sistema de fitxers | Mida orientativa |
-    |----------|-----------------|---------------------|-----------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1 |
-    | `/dev/sda3` | `/` | ext4 / xfs | 20–30 GB |
-    | `/dev/sda4` | `/var` | ext4 / xfs | 20–100 GB |
-    | `/dev/sda5` | `/home` | ext4 | El que quedi |
+  <table>
+    <thead>
+        <tr>
+            <th>Partició</th>
+            <th>Punt de muntatge</th>
+            <th>Sistema de fitxers</th>
+            <th>Mida orientativa</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4 / xfs</td>
+            <td>20–30 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda4</code></td>
+            <td><code>/var</code></td>
+            <td>ext4 / xfs</td>
+            <td>20–100 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda5</code></td>
+            <td><code>/home</code></td>
+            <td>ext4</td>
+            <td>El que quedi</td>
+        </tr>
+    </tbody>
+</table>
 
     <FileTree>
     - / `sda3` — ext4/xfs, 20-30 GB

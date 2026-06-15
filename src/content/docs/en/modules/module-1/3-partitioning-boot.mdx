@@ -69,11 +69,36 @@ The installer for distributions like Ubuntu or Debian usually asks you whether y
   <TabItem label="🖥️ Minimum (all together)">
     The simplest option: everything in a single root partition. Valid for VMs, test environments, or machines with limited space.
 
-    | Partition | Mount point | Filesystem | Suggested size |
-    |-----------|-------------|------------|----------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
-    | `/dev/sda3` | `/` | ext4 | All the rest |
+   <table>
+    <thead>
+        <tr>
+            <th>Partition</th>
+            <th>Mount point</th>
+            <th>Filesystem</th>
+            <th>Suggested size</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1-2</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4</td>
+            <td>All the rest</td>
+        </tr>
+    </tbody>
+    </table>
 
     <FileTree>
     - / *Entire system in a single partition*
@@ -95,12 +120,42 @@ The installer for distributions like Ubuntu or Debian usually asks you whether y
   <TabItem label="🏠 Desktop (/home separate)">
     The option typically offered by Ubuntu's graphical installer. Separating `/home` allows reinstalling the system without losing user data.
 
-    | Partition | Mount point | Filesystem | Suggested size |
-    |-----------|-------------|------------|----------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1-2 |
-    | `/dev/sda3` | `/` | ext4 | 30–50 GB |
-    | `/dev/sda4` | `/home` | ext4 | All the rest |
+    <table>
+    <thead>
+        <tr>
+            <th>Partition</th>
+            <th>Mount point</th>
+            <th>Filesystem</th>
+            <th>Suggested size</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1-2</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4</td>
+            <td>30–50 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda4</code></td>
+            <td><code>/home</code></td>
+            <td>ext4</td>
+            <td>All the rest</td>
+        </tr>
+    </tbody>
+    </table>
 
     <FileTree>
     - / `sda3` — ext4, 30-50 GB
@@ -124,13 +179,48 @@ The installer for distributions like Ubuntu or Debian usually asks you whether y
   <TabItem label="🖧 Server (production)">
     In server environments, `/var` and optionally `/tmp` are isolated to prevent uncontrolled logs or databases from collapsing the system. This is the recommended scheme for the LFCS.
 
-    | Partition | Mount point | Filesystem | Suggested size |
-    |-----------|-------------|------------|----------------|
-    | `/dev/sda1` | `/boot/efi` | FAT32 | 512 MB |
-    | `/dev/sda2` | `[SWAP]` | swap | RAM × 1 |
-    | `/dev/sda3` | `/` | ext4 / xfs | 20–30 GB |
-    | `/dev/sda4` | `/var` | ext4 / xfs | 20–100 GB |
-    | `/dev/sda5` | `/home` | ext4 | Remaining space |
+   <table>
+    <thead>
+        <tr>
+            <th>Partition</th>
+            <th>Mount point</th>
+            <th>Filesystem</th>
+            <th>Suggested size</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>/dev/sda1</code></td>
+            <td><code>/boot/efi</code></td>
+            <td>FAT32</td>
+            <td>512 MB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda2</code></td>
+            <td><code>[SWAP]</code></td>
+            <td>swap</td>
+            <td>RAM × 1</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda3</code></td>
+            <td><code>/</code></td>
+            <td>ext4 / xfs</td>
+            <td>20–30 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda4</code></td>
+            <td><code>/var</code></td>
+            <td>ext4 / xfs</td>
+            <td>20–100 GB</td>
+        </tr>
+        <tr>
+            <td><code>/dev/sda5</code></td>
+            <td><code>/home</code></td>
+            <td>ext4</td>
+            <td>Remaining space</td>
+        </tr>
+    </tbody>
+</table>
 
     <FileTree>
     - / `sda3` — ext4/xfs, 20-30 GB
