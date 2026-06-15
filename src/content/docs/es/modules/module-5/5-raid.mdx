@@ -13,13 +13,60 @@ import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
 ## 1. Niveles RAID relevantes para LFCS
 
-| Nivel | Mínimo discos | Redundancia | Rendimiento | Espacio útil | Uso típico |
-|-------|:---:|:---:|:---:|:---:|---|
-| **RAID 0** | 2 | ❌ Ninguna | ⚡ Doble lectura/escritura | 100% | Scratch/tmp (si el disco muere, pierdes todo) |
-| **RAID 1** | 2 | ✅ 1 disco | ✅ Lectura paralela | 50% | Boot, sistema operativo, BD pequeñas |
-| **RAID 5** | 3 | ✅ 1 disco | ✅ Buena lectura | ~67-93% | Almacenamiento de datos, NAS |
-| **RAID 6** | 4 | ✅ 2 discos | Buena lectura | ~50-88% | Archivos críticos (aguanta 2 fallos) |
-| **RAID 10** | 4 | ✅ 50% | ⚡ Excelente | 50% | Bases de datos de alto rendimiento |
+<table>
+    <thead>
+        <tr>
+            <th>Nivel</th>
+            <th>Mínimo discos</th>
+            <th>Redundancia</th>
+            <th>Rendimiento</th>
+            <th>Espacio útil</th>
+            <th>Uso típico</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>RAID 0</strong></td>
+            <td>2</td>
+            <td>❌ Ninguna</td>
+            <td>⚡ Doble lectura/escritura</td>
+            <td>100%</td>
+            <td>Scratch/tmp (si el disco muere, pierdes todo)</td>
+        </tr>
+        <tr>
+            <td><strong>RAID 1</strong></td>
+            <td>2</td>
+            <td>✅ 1 disco</td>
+            <td>✅ Lectura paralela</td>
+            <td>50%</td>
+            <td>Boot, sistema operativo, BD pequeñas</td>
+        </tr>
+        <tr>
+            <td><strong>RAID 5</strong></td>
+            <td>3</td>
+            <td>✅ 1 disco</td>
+            <td>✅ Buena lectura</td>
+            <td>~67-93%</td>
+            <td>Almacenamiento de datos, NAS</td>
+        </tr>
+        <tr>
+            <td><strong>RAID 6</strong></td>
+            <td>4</td>
+            <td>✅ 2 discos</td>
+            <td>Buena lectura</td>
+            <td>~50-88%</td>
+            <td>Archivos críticos (aguanta 2 fallos)</td>
+        </tr>
+        <tr>
+            <td><strong>RAID 10</strong></td>
+            <td>4</td>
+            <td>✅ 50%</td>
+            <td>⚡ Excelente</td>
+            <td>50%</td>
+            <td>Bases de datos de alto rendimiento</td>
+        </tr>
+    </tbody>
+</table>
 
 <Aside type="note" title="RAID no es un backup">
 RAID protege contra el fallo de un disco físico (hardware), pero no contra borrados accidentales, ransomware ni errores de ficheros. **RAID + backup** son estrategias complementarias, no alternativas.
