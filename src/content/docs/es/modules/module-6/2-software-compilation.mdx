@@ -10,97 +10,442 @@ import PreCheck from "@/components/tutorial/PreCheck.astro";
 import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
 import Option from "@/components/tutorial/Option.astro";
 
+# 6.2 Compilación de Software
+## Cómo sobrevivir cuando APT te abandona
+
 <PreCheck>
-  - Entenderás por qué compilar a pelo es la última (y peligrosa) frontera del
-  Sysadmin. - Sabrás cómo extraer los infames "Tarball" fuente (`.tar.gz` o
-  `.tar.bz2`). - Seguirás la Santísima Trinidad de GNU: `./configure`, `make`,
-  `make install`. - Sabrás utilizar `ldd` para hacer autopsias a ejecutables
-  descubriendo qué `.dll`s / `.so` les faltan.
+  - Entenderás por qué compilar a pelo es la última (y peligrosa) frontera del Sysadmin.
+  - Sabrás cómo extraer los infames "Tarball" fuente (`.tar.gz` o `.tar.bz2`).
+  - Seguirás la Santísima Trinidad de GNU: `./configure`, `make`, `make install`.
+  - Sabrás utilizar `ldd` para hacer autopsias a ejecutables descubriendo qué `.dll`s / `.so` les faltan.
+  - Conocerás las mejores prácticas y peligros de la compilación manual.
+  - Aprenderás a resolver problemas comunes durante el proceso de compilación.
 </PreCheck>
 
-Te contratan en una empresa que utiliza un software matemático propietario diseñado en 1999. Es la espina dorsal del negocio, pero el software es tan antiguo u oscuro que **nunca ha existido en un repositorio de Debian**.
-Si ejecutas `apt search mi-software-raro`, te devolverá cero resultados. Estás solo.
+## Introducción: El Arte de la Compilación Manual
 
-El creador solo te proporciona un archivo comprimido que contiene texto puro: el código fuente (generalmente escrito en lenguaje `C`).  
-Para que el procesador lo entienda y Linux gane un `comando` nuevo, serás tú el responsable absoluto de **construir y ensamblar los engranajes** transformando textos legibles en binarios mecánicos. Eso es compilar.
+Te contratan en una empresa que utiliza un software matemático propietario diseñado en 1999. Es la espina dorsal del negocio, pero el software es tan antiguo u oscuro que **nunca ha existido en un repositorio de Debian**. Si ejecutas `apt search mi-software-raro`, te devolverá cero resultados. Estás solo.
+
+El creador solo te proporciona un archivo comprimido que contiene texto puro: el código fuente (generalmente escrito en lenguaje `C`). Para que el procesador lo entienda y Linux gane un `comando` nuevo, serás tú el responsable absoluto de **construir y ensamblar los engranajes** transformando textos legibles en binarios mecánicos. Eso es compilar.
+
+### ¿Por qué compilar manualmente?
+
+Existen varias razones por las que podrías necesitar compilar software desde el código fuente:
+
+1. **Software no disponible en repositorios**: Como en el caso de nuestro software matemático de 1999.
+2. **Necesidad de optimizaciones específicas**: Compilar para tu arquitectura exacta puede mejorar el rendimiento.
+3. **Funcionalidades experimentales**: Versiones de desarrollo que aún no están empaquetadas.
+4. **Control total de dependencias**: Evitar conflictos con versiones específicas de bibliotecas.
+5. **Auditoría de seguridad**: Revisar el código fuente antes de compilarlo.
+
+### Los riesgos de compilar manualmente
+
+**Advertencia importante**: Compilar software manualmente no es un proceso trivial y conlleva riesgos significativos:
+
+- **Problemas de seguridad**: El software compilado manualmente no recibirá actualizaciones automáticas de seguridad.
+- **Conflictos con el sistema**: Puedes sobrescribir archivos del sistema o crear dependencias rotas.
+- **Dificultad de mantenimiento**: No podrás usar `apt update/upgrade` para actualizar este software.
+- **Falta de integración**: El software no aparecerá en las herramientas de gestión de paquetes.
+- **Posibles incompatibilidades**: Las bibliotecas compiladas pueden no ser compatibles con futuras actualizaciones del sistema.
+
+**Siempre que sea posible, prioriza el uso de repositorios oficiales o alternativas como Flatpak, Snap o AppImage antes de compilar manualmente.**
 
 ---
 
 ## 1. Desempaquetar el Tarball
 
-El código fuente suele venir empaquetado y ultra-comprimido en lo que los informáticos más maduros denominan "Tarball" (pelota de alquitrán, usualmente `.tar.gz`).
-Debemos descomprimir la carpeta fuente a nuestro disco duro de trabajo (suele ser `/usr/local/src` o `/opt`).
+El código fuente suele venir empaquetado y ultra-comprimido en lo que los informáticos más maduros denominan "Tarball" (pelota de alquitrán, usualmente `.tar.gz`). Debemos descomprimir la carpeta fuente a nuestro disco duro de trabajo (suele ser `/usr/local/src` o `/opt`).
+
+### Tipos de compresión comunes
+
+ <table>
+        <thead>
+            <tr>
+                <th>Extensión</th>
+                <th>Comando de descompresión</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>.tar.gz</code> o <code>.tgz</code></td>
+                <td><code>tar -xzf archivo.tar.gz</code></td>
+                <td>Compresión gzip (más común)</td>
+            </tr>
+            <tr>
+                <td><code>.tar.bz2</code></td>
+                <td><code>tar -xjf archivo.tar.bz2</code></td>
+                <td>Compresión bzip2 (mejor compresión)</td>
+            </tr>
+            <tr>
+                <td><code>.tar.xz</code></td>
+                <td><code>tar -xJf archivo.tar.xz</code></td>
+                <td>Compresión xz (la mejor compresión)</td>
+            </tr>
+            <tr>
+                <td><code>.zip</code></td>
+                <td><code>unzip archivo.zip</code></td>
+                <td>Formato ZIP de Windows</td>
+            </tr>
+            <tr>
+                <td><code>.tar</code></td>
+                <td><code>tar -xf archivo.tar</code></td>
+                <td>Sin compresión, solo empaquetado</td>
+            </tr>
+        </tbody>
+    </table>
+
+### Ejemplo práctico de desempaquetado
 
 ```bash
-# Entrar a la zona de extracciones locales
+# Crear la zona de extracciones y navegar a ella
+sudo mkdir -p /usr/local/src
 cd /usr/local/src
 
+# Descargar el tarball (ejemplo con wget)
+wget https://example.com/software_oscuro-1.0.tar.gz
+
 # Desempaquetar extrayendo (eXtract) e imprimiendo la Verbosa (V) vista de Archivos (F)
-sudo tar -xvf software_oscuro-1.0.tar.gz
+# La opción -z indica que está comprimido con gzip
+sudo tar -xzvf software_oscuro-1.0.tar.gz
+
+# Verificar que se creó la carpeta
+ls -la
 
 # Entramos en la carpeta que acaba de dar a luz
 cd software_oscuro-1.0/
+
+# Listar el contenido para ver qué tenemos
+ls -la
 ```
 
-Dentro, normalmente verás decenas de ficheros crudos como `main.c`, `header.h`, y un par de archivos sagrados de texto que SIEMPRE debes leer primero: el `README` y el `INSTALL`.
+### Archivos críticos que debes buscar
+
+Dentro del directorio descomprimido, presta especial atención a estos archivos:
+
+1. **README** o **README.md**: Contiene información general, requisitos y notas importantes.
+2. **INSTALL**: Instrucciones específicas de instalación.
+3. **COPYING** o **LICENSE**: Información sobre la licencia del software.
+4. **CHANGELOG**: Historial de cambios y versiones.
+5. **AUTHORS**: Créditos de los desarrolladores.
+
+**Siempre lee el README y el INSTALL antes de continuar.** Pueden contener instrucciones específicas que difieran del proceso estándar.
+
+### Estructura típica del código fuente
+
+```
+software-1.0/
+├── README          # Información general
+├── INSTALL         # Instrucciones de instalación
+├── COPYING         # Licencia
+├── Makefile.am     # Configuración de Make (para automake)
+├── configure.ac    # Configuración de autoconf
+├── src/            # Código fuente principal
+│   ├── main.c
+│   ├── funciones.c
+│   └── header.h
+├── include/        # Archivos de cabecera públicos
+├── lib/            # Bibliotecas auxiliares
+├── doc/            # Documentación
+└── tests/          # Pruebas unitarias
+```
 
 ---
 
 ## 2. La Santísima Trinidad (GNU Build System)
 
-Salvo que el README indique instrucciones raras, el 90% del código en `C/C++` de la historia de Unix se compila ejecutando secuencialmente estos tres pasos inexcusables dentro de la carpeta fuente:
+Salvo que el README indique instrucciones raras, el 90% del código en `C/C++` de la historia de Unix se compila ejecutando secuencialmente estos tres pasos inexcusables dentro de la carpeta fuente.
 
 ### El Arquitecto (`./configure`)
 
-El código fuente no está listo para tu PC exacto.
-Al ejecutar este pequeño script que viene en la carpeta, el Arquitecto escaneará tu sistema buscando qué compilador tienes, cuánta RAM y qué procesador Intel o AMD usas.
+El código fuente no está listo para tu PC exacto. Al ejecutar este pequeño script que viene en la carpeta, el Arquitecto escaneará tu sistema:
+
+- **Qué compilador tienes** (gcc, clang, etc.)
+- **Qué bibliotecas están instaladas**
+- **Qué arquitectura de procesador** (x86_64, ARM, etc.)
+- **Dónde están los archivos de cabecera**
+- **Qué características del sistema están disponibles**
+
+#### Anatomía del script `./configure`
+
+El script `configure` es generado por herramientas como **Autoconf** y **Automake**, que forman parte del GNU Build System. Este script:
+
+1. Verifica la presencia de un compilador C/C++ funcional.
+2. Busca bibliotecas requeridas (como OpenSSL, libxml2, etc.).
+3. Detecta características del sistema operativo.
+4. Genera el `Makefile` personalizado para tu sistema.
+5. Crea archivos de configuración con los valores detectados.
+
+#### Opciones comunes de `./configure`
 
 ```bash
-./configure
+# Ver todas las opciones disponibles
+./configure --help
+
+# Opciones más comunes:
+./configure --prefix=/usr/local      # Directorio de instalación
+./configure --with-openssl           # Habilitar soporte OpenSSL
+./configure --without-x11            # Deshabilitar soporte X11
+./configure --enable-debug           # Compilar con símbolos de depuración
+./configure --disable-shared         # No compilar bibliotecas compartidas
+./configure --with-python=/usr/bin/python3  # Especificar ruta de Python
 ```
 
-- ¿Qué suele fallar aquí?: Suele morir en el minuto 1 escupiendo `error: gcc compiler not found`. Tendrías que instalar el paquete de herramientas de compilación de tu distro:
+#### Errores comunes de `./configure`
 
-  <Tabs>
-    <TabItem label="Debian / Ubuntu">
-      ```bash
-      sudo apt install build-essential
-      ```
-    </TabItem>
-    <TabItem label="Fedora / RHEL">
-      ```bash
-      sudo dnf groupinstall "Development Tools"
-      ```
-    </TabItem>
-    <TabItem label="Arch">
-      ```bash
-      sudo pacman -S base-devel
-      ```
-    </TabItem>
-  </Tabs>
+**Error: `gcc compiler not found`**
 
-  O puede gritar `error: missing libssl`. Lo cual te obligará a buscar la librería OpenSSL y volver a lanzar el configure.
-- Al terminar, construirá los planos hiperprecisos en un archivo llamado `Makefile`.
+```bash
+# Solución: Instalar el paquete de herramientas de compilación
+sudo apt update
+sudo apt install build-essential
+```
+
+**Error: `missing libssl`**
+
+```bash
+# Solución: Instalar las bibliotecas de desarrollo
+sudo apt install libssl-dev
+```
+
+**Error: `missing libxml2`**
+
+```bash
+# Solución: Instalar las bibliotecas de desarrollo
+sudo apt install libxml2-dev
+```
+
+**Error: `configure: error: C compiler cannot create executables`**
+
+Este error es más grave y puede deberse a:
+- Permisos incorrectos en el directorio de trabajo.
+- Problemas con el compilador (versión incompatible).
+- Falta de bibliotecas estándar (libc-dev).
+
+```bash
+# Diagnóstico: Verificar el compilador
+gcc --version
+
+# Reinstalar herramientas base
+sudo apt install --reinstall build-essential
+```
+
+**Error: `configure: error: cannot run C compiled programs`**
+
+Indica que el compilador no puede crear ejecutables funcionales. Puede ocurrir en sistemas con arquitecturas cruzadas o entornos de compilación restringidos.
+
+```bash
+# Verificar que el compilador funciona correctamente
+echo 'int main(){return 0;}' > test.c
+gcc test.c -o test
+./test
+echo $?  # Debe devolver 0
+```
+
+**Nota**: Los archivos de configuración generados por `./configure` suelen guardarse en archivos como `config.log` que contienen información detallada de los errores. **Siempre revisa `config.log` cuando `./configure` falle.**
+
+#### Ejemplo completo de `./configure`
+
+```bash
+# Verificar que tenemos los requisitos necesarios
+./configure --prefix=/usr/local --with-openssl
+
+# El script generará un Makefile personalizado
+# La salida típica muestra:
+# checking for gcc... gcc
+# checking whether the C compiler works... yes
+# checking for OpenSSL... found
+# checking for library containing sqrt... -lm
+# configure: creating ./config.status
+# config.status: creating Makefile
+```
 
 ### Los Obreros Ciegos (`make`)
 
-Ahora que tenemos los planos, le mandamos a las herramientas constructoras genuinas que empiecen a forjar el acero usando el código. Construirán el ejecutable binario, lo cual dependiendo del tamaño del software podría tardar **segundos o catorce horas**.
+Ahora que tenemos los planos (Makefile), le mandamos a las herramientas constructoras genuinas que empiecen a forjar el acero usando el código. Construirán el ejecutable binario, lo cual dependiendo del tamaño del software podría tardar **segundos o catorce horas**.
+
+#### ¿Qué es realmente `make`?
+
+`make` es una herramienta de automatización que:
+
+1. Lee el **Makefile** generado por `./configure`.
+2. Determina qué archivos necesitan ser compilados (basándose en dependencias).
+3. Ejecuta el compilador (`gcc`, `g++`, etc.) para cada archivo fuente.
+4. Enlaza los objetos compilados en binarios ejecutables y bibliotecas.
+
+#### Comandos `make` útiles
 
 ```bash
-# Levantar el ejecutable (Si quieres que use los 4 núcleos de tu cpu usa make -j4)
+# Compilación normal (usando un núcleo)
 make
+
+# Compilación paralela (usa múltiples núcleos)
+make -j4            # Usar 4 núcleos
+make -j$(nproc)     # Usar todos los núcleos disponibles
+make -j$(nproc) --load-average=2.0  # No sobrecargar el sistema
+
+# Compilación con salida detallada
+make V=1            # Mostrar todos los comandos ejecutados
+
+# Opciones adicionales
+make -k             # Continuar aunque haya errores (útil para pruebas)
+make -n             # Simular la ejecución (dry-run)
+make --debug        # Mostrar información de depuración
 ```
+
+#### Gestión de recursos durante `make`
+
+**Para compilaciones grandes**, considera:
+
+1. **Usar `nice`** para reducir la prioridad del proceso:
+   ```bash
+   nice -n 19 make -j$(nproc)
+   ```
+
+2. **Limitar el uso de memoria**:
+   ```bash
+   # Para compiladores como GCC
+   export CFLAGS="-pipe -O2 -march=native"
+   make -j$(nproc)
+   ```
+
+3. **Monitorear el progreso**:
+   ```bash
+   # Instalar y usar 'progress' para ver el avance
+   make -j$(nproc) 2>&1 | pv -l -s $(find . -name "*.c" | wc -l) > /dev/null
+   ```
+
+#### Compilación en segundo plano
+
+```bash
+# Compilar en segundo plano y guardar el log
+make -j$(nproc) > build.log 2>&1 &
+tail -f build.log  # Seguir el progreso
+```
+
+#### Errores comunes de `make`
+
+**Error: `make: *** No targets specified and no makefile found. Stop.`**
+
+Causa: Ejecutaste `make` sin haber ejecutado `./configure` primero.
+
+**Error: `undefined reference to 'function_name'`**
+
+Causa: Falta enlazar una biblioteca o el código fuente está incompleto.
+
+Solución: Verificar las dependencias y asegurarse de que `./configure` encontró todo.
+
+**Error: `fatal error: header.h: No such file or directory`**
+
+Causa: Faltan archivos de cabecera (header files).
+
+Solución: Instalar el paquete de desarrollo correspondiente (ej: `libxml2-dev`).
+
+**Error: `memory exhausted` o `internal compiler error`**
+
+Causa: El compilador se queda sin memoria RAM.
+
+Solución: Cerrar otros programas o compilar con menos núcleos: `make -j2`.
+
+#### Entendiendo el proceso de compilación
+
+El proceso de compilación en C/C++ se divide en varias etapas:
+
+1. **Preprocesamiento**: Procesa directivas `#include`, `#define`, etc.
+2. **Compilación**: Convierte el código C en código ensamblador.
+3. **Ensamblado**: Convierte el código ensamblador en código objeto (`.o`).
+4. **Enlazado (Linking)**: Combina los objetos en un ejecutable o biblioteca.
+
+`make` orquesta todas estas etapas automáticamente.
 
 ### El Instalador Oficial (`make install`)
 
-El paso 2 forjó exitosamente el programa, pero el programa está secuestrado dentro de su carpeta actual en `/usr/local/src/`.
-Debemos darle la orden de despiojar sus ejecutables finalizados y mandarlos estandarizadamente a la carpeta genuina del sistema donde Linux busca todos los comandos (usualmente de `local` a `/usr/local/bin`). Como esto toca el corazón del sistema, requiere credenciales divinas.
+El paso 2 forjó exitosamente el programa, pero el programa está secuestrado dentro de su carpeta actual en `/usr/local/src/`. Debemos darle la orden de despiojar sus ejecutables finalizados y mandarlos estandarizadamente a la carpeta genuina del sistema donde Linux busca todos los comandos (usualmente de `local` a `/usr/local/bin`). Como esto toca el corazón del sistema, requiere credenciales divinas.
 
 ```bash
 sudo make install
 ```
 
-¡Felicidades! Ahora podrás teclear `software_oscuro` en cualquier parte tu terminal y funcionará, escapando para siempre de la ignorancia de `apt`.
+#### ¿Qué hace exactamente `make install`?
+
+1. **Copia los binarios** a `/usr/local/bin` (o el directorio configurado en `--prefix`).
+2. **Copia bibliotecas** a `/usr/local/lib` (si las hay).
+3. **Copia archivos de cabecera** a `/usr/local/include` (si es una biblioteca).
+4. **Copia documentación** a `/usr/local/share/doc`.
+5. **Copia archivos de configuración** a `/usr/local/etc`.
+6. **Crea los directorios necesarios** en el sistema.
+
+#### Estructura de instalación estándar (FHS)
+
+    <table>
+        <thead>
+            <tr>
+                <th>Directorio</th>
+                <th>Contenido</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>/usr/local/bin</code></td>
+                <td>Binarios ejecutables</td>
+            </tr>
+            <tr>
+                <td><code>/usr/local/lib</code></td>
+                <td>Bibliotecas compartidas</td>
+            </tr>
+            <tr>
+                <td><code>/usr/local/include</code></td>
+                <td>Archivos de cabecera</td>
+            </tr>
+            <tr>
+                <td><code>/usr/local/share</code></td>
+                <td>Archivos independientes de arquitectura</td>
+            </tr>
+            <tr>
+                <td><code>/usr/local/etc</code></td>
+                <td>Archivos de configuración</td>
+            </tr>
+            <tr>
+                <td><code>/usr/local/man</code></td>
+                <td>Páginas de manual</td>
+            </tr>
+        </tbody>
+    </table>
+
+#### Opciones de instalación avanzadas
+
+```bash
+# Instalar en un directorio específico (staging)
+make install DESTDIR=/tmp/paquete
+
+# No instalar documentación
+make install INSTALL_DOC=no
+
+# Instalar solo los binarios (no bibliotecas)
+make install-bin
+```
+
+#### Desinstalación (cuando es posible)
+
+Algunos paquetes incluyen una regla para desinstalar:
+
+```bash
+sudo make uninstall  # No todos los paquetes lo soportan
+```
+
+Si no existe `uninstall`, tendrás que eliminar manualmente los archivos:
+
+```bash
+# Ver qué archivos se instalaron
+make install --dry-run  # Simular instalación
+
+# Eliminar manualmente (ejemplo)
+sudo rm -f /usr/local/bin/software_oscuro
+```
+
+### ¡Felicidades!
+
+¡Felicidades! Ahora podrás teclear `software_oscuro` en cualquier parte de tu terminal y funcionará, escapando para siempre de la ignorancia de `apt`.
 
 ---
 
@@ -109,15 +454,379 @@ sudo make install
 El software compilado ha funcionado meses... pero de repente el servidor se actualiza con `apt upgrade` ayer, y hoy programas oscuros caseros lanzan este horror:
 `error while loading shared libraries: libcrypto.so.1.1: cannot open shared object file`
 
+### ¿Qué son las bibliotecas compartidas?
+
 En Linux, los binarios no siempre vienen con todo incluido. Toman "prestado" de otras librerías del sistema en caliente. (Lo que en Windows se llamaría `.dll`, en Linux se llama ficheros `.so` de _Shared Object_).
+
+Las ventajas de usar bibliotecas compartidas:
+- **Ahorro de espacio**: Una sola copia para múltiples programas.
+- **Actualización centralizada**: Se actualiza la biblioteca y todos los programas se benefician.
+- **Memoria compartida**: Múltiples procesos pueden usar la misma biblioteca en memoria.
+
+El inconveniente: **Los programas dependen de versiones específicas de bibliotecas.**
+
+### Los peligros de las bibliotecas dinámicas
+
+1. **Actualizaciones de sistema**: Una actualización puede cambiar las bibliotecas.
+2. **Versiones incompatibles**: Un programa puede esperar una versión anterior.
+3. **Bibliotecas faltantes**: El paquete correspondiente no está instalado.
+4. **Rutas incorrectas**: La biblioteca está en una ubicación diferente.
+
+### La herramienta `ldd`
 
 Si un programa compilado u oscuro no arranca sin explicar claramente qué le falta, utiliza tu bisturí **List Dynamic Dependencies (`ldd`)** sobre el binario enfermo para examinar sus enlaces rotos:
 
 ```bash
+# Sintaxis básica
 ldd /usr/local/bin/software_oscuro
+
+# También funciona con bibliotecas
+ldd /usr/local/lib/liboscura.so.1
 ```
 
-Esto arrojará un árbol de todas las librerías a las que se conecta. Aquellas que tu software ya no encuentra porque alguien, o algo, las borró o las actualizó agresivamente por detrás en otra versión, saldrán brillantemente listadas con el sello letal: `=> not found`. Tu misión LFCS consistirá en viajar al Repositorio o internet e instalar específicamente el `.so` faltante que pide esa autopsia.
+#### Interpretación de la salida de `ldd`
+
+```bash
+$ ldd /usr/bin/ls
+    linux-vdso.so.1 (0x00007ffe5a3e2000)
+    libselinux.so.1 => /lib/x86_64-linux-gnu/libselinux.so.1 (0x00007f8a2c300000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8a2c100000)
+    libpcre.so.3 => /lib/x86_64-linux-gnu/libpcre.so.3 (0x00007f8a2c080000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f8a2c360000)
+```
+
+Cada línea muestra:
+- **Nombre de la biblioteca** (ej: `libc.so.6`).
+- **Resolución** (`=>` seguido de la ruta) o **`not found`** si falta.
+- **Dirección de carga en memoria** (entre paréntesis).
+
+#### Ejemplo de bibliotecas faltantes
+
+```bash
+$ ldd /usr/local/bin/mi-programa
+    linux-vdso.so.1 (0x00007ffe5a3e2000)
+    libcrypto.so.1.1 => not found
+    libssl.so.1.1 => not found
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8a2c100000)
+```
+
+En este caso, faltan `libcrypto.so.1.1` y `libssl.so.1.1`.
+
+#### Solución de problemas con `ldd`
+
+**Paso 1: Identificar la biblioteca faltante**
+
+```bash
+ldd /usr/local/bin/mi-programa | grep "not found"
+```
+
+**Paso 2: Buscar el paquete que la contiene**
+
+```bash
+# En Debian/Ubuntu
+apt-file search libcrypto.so.1.1
+
+# En RHEL/CentOS/Fedora
+yum provides libcrypto.so.1.1
+# o
+dnf provides libcrypto.so.1.1
+
+# En Arch
+pkgfile libcrypto.so.1.1
+```
+
+**Paso 3: Instalar el paquete faltante**
+
+```bash
+# Debian/Ubuntu
+sudo apt install libssl1.1
+
+# RHEL/CentOS/Fedora
+sudo yum install openssl-libs
+
+# Arch
+sudo pacman -S openssl
+```
+
+**Paso 4: Verificar que se resolvió**
+
+```bash
+ldd /usr/local/bin/mi-programa
+```
+
+### Herramientas avanzadas para dependencias
+
+**`readelf`**: Para examinar binarios ELF (Formato Ejecutable y Enlazable):
+
+```bash
+# Ver secciones y encabezados
+readelf -h /usr/local/bin/mi-programa
+
+# Ver dependencias dinámicas
+readelf -d /usr/local/bin/mi-programa | grep NEEDED
+
+# Ver información de enlaces
+readelf -s /usr/local/bin/mi-programa
+```
+
+**`objdump`**: Información detallada de objetos:
+
+```bash
+# Ver dependencias
+objdump -p /usr/local/bin/mi-programa | grep NEEDED
+
+# Ver tabla de símbolos
+objdump -T /usr/local/bin/mi-programa
+```
+
+**`nm`**: Listar símbolos en objetos:
+
+```bash
+# Ver símbolos exportados
+nm -D /usr/local/lib/liboscura.so
+```
+
+### Variables de entorno para dependencias
+
+**`LD_LIBRARY_PATH`**: Forzar búsqueda en directorios específicos:
+
+```bash
+# Agregar directorio a la ruta de búsqueda
+export LD_LIBRARY_PATH=/opt/software/lib:$LD_LIBRARY_PATH
+./mi-programa
+```
+
+**`LD_PRELOAD`**: Precargar bibliotecas:
+
+```bash
+# Precargar una biblioteca específica
+LD_PRELOAD=/opt/software/lib/libcustom.so ./mi-programa
+```
+
+**`LD_DEBUG`**: Depurar el proceso de enlace:
+
+```bash
+# Ver todos los enlaces en tiempo real
+LD_DEBUG=libs ./mi-programa
+
+# Ver símbolos resueltos
+LD_DEBUG=symbols ./mi-programa
+```
+
+### Crear enlaces simbólicos para compatibilidad
+
+A veces tienes una versión diferente de la biblioteca y necesitas crear un enlace:
+
+```bash
+# Ejemplo: el programa espera libcrypto.so.1.1 pero tienes libcrypto.so.3
+sudo ln -s /usr/lib/libcrypto.so.3 /usr/lib/libcrypto.so.1.1
+
+# Verificar que funciona
+ldd /usr/local/bin/mi-programa
+```
+
+**Advertencia**: Crear enlaces entre versiones diferentes puede causar problemas de compatibilidad. Siempre prueba exhaustivamente.
+
+---
+
+## 4. Mejores Prácticas y Consejos Avanzados
+
+### Usar `stow` para gestionar instalaciones manuales
+
+`stow` permite organizar paquetes compilados en directorios separados y crear enlaces simbólicos:
+
+```bash
+# Instalar stow
+sudo apt install stow
+
+# Compilar con un prefijo específico
+./configure --prefix=/usr/local/stow/mi-software-1.0
+make
+sudo make install
+
+# Crear los enlaces simbólicos
+cd /usr/local/stow
+sudo stow mi-software-1.0
+
+# Desinstalar fácilmente
+sudo stow -D mi-software-1.0
+```
+
+### Crear paquetes .deb (o .rpm) desde el código fuente
+
+Convertir una compilación manual en un paquete manejable:
+
+```bash
+# Usar checkinstall (Debian/Ubuntu)
+sudo apt install checkinstall
+sudo checkinstall
+
+# Usar fpm (crea .deb, .rpm, etc.)
+sudo gem install fpm
+fpm -s dir -t deb -n mi-software -v 1.0 /usr/local/bin/mi-programa
+```
+
+### Auditoría de seguridad antes de compilar
+
+1. **Revisar el código fuente**: Buscar código malicioso o vulnerabilidades.
+2. **Verificar sumas de comprobación**: Usar `sha256sum` para verificar integridad.
+3. **Verificar firmas PGP**: Si el proyecto proporciona firmas.
+4. **Analizar dependencias**: Verificar que todas son confiables.
+
+### Documentación de la instalación
+
+Mantén un registro de lo que instalaste:
+
+```bash
+# Crear un archivo de registro
+echo "mi-software-1.0 installed on $(date)" >> /usr/local/src/install-log.txt
+echo "Compiled with: $(gcc --version | head -n1)" >> /usr/local/src/install-log.txt
+```
+
+### Script de instalación completa
+
+Crea un script para automatizar el proceso:
+
+```bash
+#!/bin/bash
+# install-software.sh - Instalación automática de software oscuro
+
+set -e  # Salir si hay error
+
+SOFTWARE="software_oscuro"
+VERSION="1.0"
+URL="https://example.com/${SOFTWARE}-${VERSION}.tar.gz"
+
+echo "=== Instalando ${SOFTWARE} ${VERSION} ==="
+
+# Instalar dependencias
+sudo apt update
+sudo apt install -y build-essential libssl-dev libxml2-dev
+
+# Descargar y extraer
+cd /usr/local/src
+wget ${URL}
+tar -xzf ${SOFTWARE}-${VERSION}.tar.gz
+cd ${SOFTWARE}-${VERSION}
+
+# Compilar e instalar
+./configure --prefix=/usr/local
+make -j$(nproc)
+sudo make install
+
+# Verificar
+echo "=== Verificación ==="
+which ${SOFTWARE} || echo "ERROR: ${SOFTWARE} no encontrado en PATH"
+ldd $(which ${SOFTWARE}) || echo "ERROR: Dependencias faltantes"
+
+echo "=== INSTALACIÓN COMPLETADA ==="
+```
+
+---
+
+## 5. Casos Especiales
+
+### Compilación cruzada
+
+Compilar para una arquitectura diferente:
+
+```bash
+# Ejemplo: Compilar para ARM desde x86_64
+export CROSS_COMPILE=arm-linux-gnueabihf-
+export CC=${CROSS_COMPILE}gcc
+./configure --host=arm-linux-gnueabihf
+make
+```
+
+### Compilación con soporte de depuración
+
+Para depurar problemas:
+
+```bash
+export CFLAGS="-g -O0 -DDEBUG"
+./configure --enable-debug
+make
+```
+
+### Compilación estática (todo en un solo binario)
+
+Evita dependencias externas:
+
+```bash
+./configure --enable-static --disable-shared
+make LDFLAGS="-static"
+```
+
+**Ventaja**: No hay dependencias de bibliotecas.
+**Desventaja**: Binarios más grandes y no aprovechan actualizaciones de bibliotecas.
+
+---
+
+## 6. Caso Práctico: Compilación de OpenSSL desde Fuente
+
+Vamos a ver un ejemplo completo con OpenSSL (un software común que a veces se compila manualmente por necesidades de seguridad específicas):
+
+```bash
+# 1. Descargar y extraer
+cd /usr/local/src
+wget https://www.openssl.org/source/openssl-3.0.0.tar.gz
+tar -xzf openssl-3.0.0.tar.gz
+cd openssl-3.0.0
+
+# 2. Verificar la integridad (si hay firma disponible)
+# wget https://www.openssl.org/source/openssl-3.0.0.tar.gz.asc
+# gpg --verify openssl-3.0.0.tar.gz.asc openssl-3.0.0.tar.gz
+
+# 3. Configurar con opciones específicas
+./Configure linux-x86_64 \
+    --prefix=/usr/local/openssl-3.0.0 \
+    --openssldir=/etc/ssl \
+    enable-ec_nistp_64_gcc_128 \
+    enable-tls1_3 \
+    enable-crypto-mdebug
+
+# 4. Compilar
+make -j$(nproc)
+
+# 5. Ejecutar pruebas (¡importante!)
+make test
+
+# 6. Instalar
+sudo make install
+
+# 7. Configurar para usar la nueva versión
+sudo update-alternatives --install /usr/bin/openssl openssl /usr/local/openssl-3.0.0/bin/openssl 1
+
+# 8. Verificar
+openssl version
+```
+
+---
+
+## Ejemplo Resumido
+
+```bash
+# 1. Obtener el código fuente
+wget https://example.com/software-1.0.tar.gz
+tar -xzf software-1.0.tar.gz
+cd software-1.0/
+
+# 2. configure — El arquitecto
+# Lee el sistema, comprueba dependencias, genera el Makefile
+./configure --prefix=/usr/local
+
+# 3. make — Los obreros
+# Lee el Makefile y compila el código fuente en binarios
+make -j$(nproc)    # -j = paralelo, nproc = número de CPUs
+
+# 4. make install — El instalador
+# Copia los binarios compilados al sistema (necesita root)
+sudo make install
+
+# 5. Verificación
+which software
+ldd $(which software)
+```
 
 ---
 
@@ -128,13 +837,11 @@ Esto arrojará un árbol de todas las librerías a las que se conecta. Aquellas 
    <MultipleChoice>
      <Option isCorrect>
        El armamento pesado fundacional: `sudo apt install build-essential`.
-       (Otorga de un plumazo de `gcc`, `g++`, librerías clásicas base de libc6 y
-       precisamente el comando ansiado `make`).
+       (Otorga de un plumazo de `gcc`, `g++`, librerías clásicas base de libc6 y precisamente el comando ansiado `make`).
      </Option>
      <Option>`sudo apt install cmake`</Option>
      <Option>
-       El administrador de paquetes `dpkg` ya tiene este compilador C embebido
-       nativo adentro de su núcleo.
+       El administrador de paquetes `dpkg` ya tiene este compilador C embebido nativo adentro de su núcleo.
      </Option>
    </MultipleChoice>
 
@@ -146,16 +853,11 @@ Esto arrojará un árbol de todas las librerías a las que se conecta. Aquellas 
        Porque los obreros necesitan un sistema X11 gráfico presente.
      </Option>
      <Option isCorrect>
-       Saltaste la fase arquitectónica preparativa 1. El programa constructor
-       Make es estúpido, depende del archivo receta textual llamado `Makefile`
-       creado siempre dinámicamente según tu PC por la orden `./configure` que
-       omitiste ejecutar antes. Sin el Makefile local y dinámicamente perfilado
-       para existir en la carpeta fuente, Make no puede teóricamente ni empezar
-       a atar cables.
+       Saltaste la fase arquitectónica preparativa 1. El programa constructor Make es estúpido, depende del archivo receta textual llamado `Makefile` creado siempre dinámicamente según tu PC por la orden `./configure` que omitiste ejecutar antes. Sin el Makefile local y dinámicamente perfilado para existir en la carpeta fuente, Make no puede teóricamente ni empezar a atar cables.
      </Option>
    </MultipleChoice>
 
-3. Un desarrollador de tu backend te envía un software mágico autocompilado `.exe` de UNIX. Lo pones en `/usr/bin/miscript` e intentas ejecutarlo tirando en el shell `./miscript`. Obtienes un lacónico error invisible de "Archvios u Objetos Compartidos no Encontrados". Necesitáis hacerle una radiografía a esa caja negra empaquetada binaria hoy mismo para deducir ciegamente a qué librerías está queriendo enlazar dentro de tu servidor y cuáles están faltantes. ¿Cuál de estos es un paso estándar para este fin?
+3. Un desarrollador de tu backend te envía un software mágico autocompilado `.exe` de UNIX. Lo pones en `/usr/bin/miscript` e intentas ejecutarlo tirando en el shell `./miscript`. Obtienes un lacónico error invisible de "Archivos u Objetos Compartidos no Encontrados". Necesitáis hacerle una radiografía a esa caja negra empaquetada binaria hoy mismo para deducir ciegamente a qué librerías está queriendo enlazar dentro de tu servidor y cuáles están faltantes. ¿Cuál de estos es un paso estándar para este fin?
    
 <MultipleChoice>
   <Option isCorrect>
@@ -168,3 +870,187 @@ Esto arrojará un árbol de todas las librerías a las que se conecta. Aquellas 
     Desensamblándolo en RAM con Systemd Coredump.
   </Option>
 </MultipleChoice>
+
+4. Has seguido todos los pasos de la compilación, pero al intentar ejecutar tu programa recién instalado obtienes: `error while loading shared libraries: libcustom.so.1: cannot open shared object file`. Has verificado que `libcustom.so.1` está en `/opt/mi-software/lib`. ¿Cuáles son dos formas válidas de solucionar este problema?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Añadir `/opt/mi-software/lib` a la variable `LD_LIBRARY_PATH` y exportarla antes de ejecutar el programa, o crear un enlace simbólico desde `/usr/lib` a la biblioteca.
+     </Option>
+     <Option>
+       Recompilar todo el software nuevamente desde cero con `make clean && make`.
+     </Option>
+     <Option>
+       Renombrar el archivo `libcustom.so.1` a `libcustom.so` y esperar que funcione.
+     </Option>
+     <Option>
+       Ejecutar `sudo updatedb` para actualizar el índice de bibliotecas del sistema.
+     </Option>
+   </MultipleChoice>
+
+5. Has compilado exitosamente un software que instala archivos en `/usr/local/bin`. Después de unos meses, quieres desinstalarlo porque ya no lo necesitas. El paquete no tiene `make uninstall`. ¿Cuál es la forma más segura de proceder?
+
+   <MultipleChoice>
+     <Option>
+       Usar `sudo rm -rf /usr/local` para eliminar todo rastro del software.
+     </Option>
+     <Option isCorrect>
+       Revisar el Makefile para ver qué archivos instala (buscando líneas con `$(INSTALL)` o `cp`) y eliminarlos manualmente con `sudo rm`, o usar la herramienta `checkinstall` para crear un paquete .deb y luego desinstalarlo mediante `dpkg`.
+     </Option>
+     <Option>
+       Simplemente borrar el directorio del código fuente en `/usr/local/src`, eso será suficiente.
+     </Option>
+     <Option>
+       Ejecutar `sudo apt autoremove` que detectará automáticamente el software compilado.
+     </Option>
+   </MultipleChoice>
+
+6. Durante la compilación de un software grande (como el kernel de Linux), te das cuenta de que el proceso está usando demasiada memoria RAM y el sistema se vuelve lento. Quieres limitar el uso de recursos. ¿Qué opción de `make` y qué variables de entorno podrías usar?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Usar `make -j2` en lugar de `make -j$(nproc)` para reducir el paralelismo, y exportar `CFLAGS="-pipe"` para reducir el uso de memoria durante la compilación. También puedes usar `--load-average=1.5` para evitar sobrecargar el sistema.
+     </Option>
+     <Option>
+       Usar `make --memory-limit=2048` para limitar la memoria a 2GB.
+     </Option>
+     <Option>
+       Ejecutar `make` dentro de un contenedor Docker con límites de memoria.
+     </Option>
+     <Option>
+       No hay forma de limitar el uso de memoria durante `make`, solo el número de núcleos.
+     </Option>
+   </MultipleChoice>
+
+7. Estás compilando un software que requiere `libxml2`, y `./configure` falla indicando que no la encuentra. Has verificado que `libxml2` está instalado en el sistema. ¿Cuál podría ser el problema y cómo lo solucionarías?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Necesitas instalar el paquete de desarrollo `libxml2-dev` (o `libxml2-devel`), ya que `./configure` busca los archivos de cabecera (`.h`) que no vienen incluidos en el paquete base de la biblioteca.
+     </Option>
+     <Option>
+       El problema es que `libxml2` está instalado en `/opt/libxml2` y `./configure` no busca ahí. Debes especificar la ruta con `./configure --with-libxml2=/opt/libxml2`.
+     </Option>
+     <Option>
+       `libxml2` es incompatible con tu compilador, necesitas una versión más antigua.
+     </Option>
+     <Option>
+       El sistema está usando `libxml2` y no `libxml2`, solo necesitas corregir el nombre en el archivo `configure`.
+     </Option>
+   </MultipleChoice>
+
+8. Después de instalar un software compilado manualmente, notas que otros programas del sistema han dejado de funcionar correctamente. ¿Cuál es la causa más probable y cómo deberías proceder?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       El software pudo haber sobrescrito bibliotecas del sistema (como `libssl` o `libcrypto`) con versiones incompatibles. Deberías revisar el registro de instalación para identificar qué archivos se sobrescribieron, y usar `dpkg -S` o `rpm -qf` para restaurar los archivos originales de los paquetes del sistema.
+     </Option>
+     <Option>
+       El software compilado está mal hecho y corrompió la memoria RAM del sistema.
+     </Option>
+     <Option>
+       El compilador que usaste estaba infectado con un virus que dañó los binarios del sistema.
+     </Option>
+     <Option>
+       Simplemente reinicia el sistema y todo volverá a la normalidad.
+     </Option>
+   </MultipleChoice>
+
+9. Has compilado un programa que incluye un binario llamado `myapp` y varias bibliotecas `.so`. Quieres que otros usuarios puedan ejecutarlo sin configurar `LD_LIBRARY_PATH` cada vez. ¿Qué enfoque es el más recomendado?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       Instalar las bibliotecas en una ubicación estándar como `/usr/local/lib` y ejecutar `sudo ldconfig` para actualizar el caché del enlazador dinámico, de modo que el sistema encuentre automáticamente las bibliotecas.
+     </Option>
+     <Option>
+       Configurar `LD_LIBRARY_PATH` en el archivo `/etc/environment` para todos los usuarios.
+     </Option>
+     <Option>
+       Copiar todas las bibliotecas `.so` en el mismo directorio que el ejecutable `myapp`.
+     </Option>
+     <Option>
+       Editar el archivo `myapp` con un editor hexadecimal para embeder las rutas de las bibliotecas.
+     </Option>
+   </MultipleChoice>
+
+10. El comando `./configure` te muestra el mensaje: `configure: WARNING: unrecognized options: --with-custom-flag`. A pesar de la advertencia, el proceso continúa y completas la compilación. ¿Deberías preocuparte?
+
+    <MultipleChoice>
+      <Option isCorrect>
+        Sí, deberías verificar cuidadosamente si la funcionalidad esperada está realmente presente en el binario compilado. La advertencia indica que la opción no es reconocida, y es probable que la característica deseada no haya sido incluida, aunque la compilación haya completado sin errores.
+      </Option>
+      <Option>
+        No, las advertencias de `./configure` siempre son inofensivas y se pueden ignorar.
+      </Option>
+      <Option>
+        Solo si el mensaje aparece en rojo; en amarillo es seguro ignorarlo.
+      </Option>
+      <Option>
+        Sí, deberías abortar la instalación inmediatamente y reportar el bug al desarrollador.
+      </Option>
+    </MultipleChoice>
+
+---
+
+## Resumen de Comandos Esenciales
+
+<table>
+        <thead>
+            <tr>
+                <th>Comando</th>
+                <th>Función</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>tar -xzvf archivo.tar.gz</code></td>
+                <td>Extraer tarball comprimido con gzip</td>
+            </tr>
+            <tr>
+                <td><code>tar -xjvf archivo.tar.bz2</code></td>
+                <td>Extraer tarball comprimido con bzip2</td>
+            </tr>
+            <tr>
+                <td><code>./configure --prefix=/usr/local</code></td>
+                <td>Preparar la compilación para el sistema actual</td>
+            </tr>
+            <tr>
+                <td><code>make -j$(nproc)</code></td>
+                <td>Compilar usando todos los núcleos disponibles</td>
+            </tr>
+            <tr>
+                <td><code>sudo make install</code></td>
+                <td>Instalar el software en el sistema</td>
+            </tr>
+            <tr>
+                <td><code>ldd /ruta/binario</code></td>
+                <td>Ver dependencias dinámicas del binario</td>
+            </tr>
+            <tr>
+                <td><code>sudo ldconfig</code></td>
+                <td>Actualizar el caché de bibliotecas del sistema</td>
+            </tr>
+            <tr>
+                <td><code>export LD_LIBRARY_PATH=/ruta:$LD_LIBRARY_PATH</code></td>
+                <td>Añadir directorio a la ruta de bibliotecas</td>
+            </tr>
+            <tr>
+                <td><code>objdump -p /ruta/binario | grep NEEDED</code></td>
+                <td>Ver bibliotecas necesarias (alternativa a ldd)</td>
+            </tr>
+            <tr>
+                <td><code>readelf -d /ruta/binario</code></td>
+                <td>Ver dependencias dinámicas en formato ELF</td>
+            </tr>
+        </tbody>
+    </table>
+    
+---
+
+## Enlaces y Recursos Útiles
+
+- [Documentación oficial de GNU Autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+- [Cómo compilar software desde el código fuente en Linux](https://tldp.org/HOWTO/Software-Building-HOWTO.html)
+- [Guía de empaquetado de Debian para desarrolladores](https://www.debian.org/doc/manuals/maint-guide/)
+- [Checkinstall - Crear paquetes desde código fuente](https://checkinstall.izto.org/)
+- [Stow - Manejo de paquetes compilados manualmente](https://www.gnu.org/software/stow/)

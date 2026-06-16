@@ -1,6 +1,6 @@
 ---
 title: 6.1 Repositorios y APT
-description: El ecosistema de software en Debian. Differencias entre dpkg, apt, y la edición manual de sources.list.
+description: El ecosistema de software en Debian. Diferencias entre dpkg, apt, y la edición manual de sources.list.
 sidebar:
   order: 2
 ---
@@ -11,102 +11,188 @@ import MultipleChoice from "@/components/tutorial/MultipleChoice.astro";
 import Option from "@/components/tutorial/Option.astro";
 
 <PreCheck>
-  - Comprenderás la filosofía de seguridad extrema de los "Repositorios"
-  oficiales. - Dominarás el cirujano de bajo nivel `dpkg` para instalar archivos
-  locales sueltos. - Sabrás utilizar el gestor de alto nivel `apt` para resolver
-  infiernos de dependencias. - Aprenderás a amputar software limpiando la
-  configuración (`purge`). - Auditarás orígenes externos editando
-  `/etc/apt/sources.list`.
+  - Comprenderás la filosofía de seguridad de los "Repositorios" oficiales y cómo añadir fuentes externas.
+  - Dominarás el cirujano de bajo nivel `dpkg` para instalar archivos locales y gestionar paquetes rotos.
+  - Sabrás utilizar el gestor de alto nivel `apt` y sus variantes (`apt-get`, `apt-cache`) para resolver dependencias.
+  - Aprenderás a eliminar software limpiando su configuración global (`purge`).
+  - Auditarás orígenes externos editando `/etc/apt/sources.list` y `/etc/apt/sources.list.d/`.
 </PreCheck>
 
 ## 1. La Filosofía del Repositorio
 
-En Windows o macOS, la norma es abrir el navegador, buscar "Descargar Firefox", entrar a una web aleatoria, bajar un `.exe` o `.dmg` y rezar para que no tenga virus.
-En Linux empresarial, esa práctica está **estrictamente desaconsejada**.
+En Windows o macOS, la norma es abrir el navegador y buscar un `.exe` o `.dmg` en una web aleatoria. En Linux empresarial, esa práctica está **estrictamente desaconsejada** por seguridad y trazabilidad.
 
-El software en Debian se descarga desde inmensas bibliotecas centrales verificadas criptográficamente por la comunidad llamadas **Repositorios**. El ciclo de vida del software pasa por dos herramientas que todo LFCS debe dominar: `dpkg` (el cirujano local) y `apt` (el buscador global con internet).
+El software en Debian se descarga desde inmensas bibliotecas centrales verificadas criptográficamente llamadas **Repositorios**. El ciclo de vida se divide en:
+- **Bajo nivel (dpkg)**: Manipula los paquetes `.deb` que ya están en tu disco.
+- **Alto nivel (APT / Aptitude)**: Busca en internet, resuelve dependencias y llama a `dpkg` en segundo plano.
 
 ---
 
-## 2. El Cirujano Ciego: `dpkg`
+## 2. El Cirujano Local: `dpkg`
 
-Debian Package (dpkg) es la herramienta fundamental de bajo nivel. Solamente sirve para manipular archivos de instalación empaquetados (con la extensión `.deb`) que ya tengas físicamente guardados en tu disco duro.
-
-Imagina que alguien te pasa un pendrive con el archivo `google-chrome.deb`.
+`dpkg` (Debian Package) es la herramienta fundamental de bajo nivel. Solo sirve para archivos `.deb` que tengas físicamente en el sistema.
 
 ```bash
 # Instalar un paquete .deb local
 sudo dpkg -i google-chrome.deb
 
-# Listar absolutamente todo el software que hay en tu máquina
+# Si falla por dependencias, forzar la instalación (PELIGROSO, solo para emergencias)
+sudo dpkg --force-depends -i google-chrome.deb
+
+# Listar TODOS los paquetes del sistema (con su estado)
 dpkg -l
+
+# Ver el estado EXACTO de un paquete específico
+dpkg -s nginx
+
+# Listar todos los ficheros que instaló un paquete
+dpkg -L nginx
+
+# Averiguar a qué paquete pertenece un fichero concreto
+dpkg -S /usr/sbin/nginx
 ```
 
-**La Ceguera de DPKG**:
-`dpkg` es estúpido. Si intentas instalar Chrome pero tu servidor no tiene instalada la librería gráfica de fuentes `libfontconfig`, `dpkg` colapsará escupiendo un error gigante rojo llamado **"Fallo de Dependencias"** y dejará la instalación a medias (rota). Como `dpkg` no tiene internet, no sabe de dónde bajarse `libfontconfig` para arreglarlo.
-
-Para solucionar eso inventaron `apt`.
+<Aside type="caution">
+**¿Por qué `dpkg` falla?** Porque no tiene acceso a internet. Si te falta `libfontconfig`, `dpkg` escupirá un error de dependencias y dejará el paquete en estado "half-installed". La solución es usar `sudo apt install -f`.
+</Aside>
 
 ---
 
-## 3. El Dios del Software: `apt` (Advanced Package Tool)
+## 3. El Gestor de Alto Nivel: `apt` (y sus primos)
 
-`apt` envuelve a `dpkg`. Cuando usas `apt`, este se conecta a internet, busca en el repositorio oficial de Debian, descarga el programa, **descarga automáticamente todos los cientos de requisitos y librerías que ese programa necesite (resolución de dependencias)**, y finalmente se los pasa a `dpkg` listos en bandeja de plata para que los instale sin errores.
+`apt` es la interfaz unificada, pero en el examen LFCS también verás `apt-get` y `apt-cache`. `apt` se conecta a internet, descarga el programa, **resuelve todas las dependencias** y pasa el trabajo a `dpkg`.
 
-### El ciclo de vida diario de un Sysadmin con APT
+### El flujo diario del Sysadmin
 
-**1. Sincronizar el Índice Diariamente (`update`)**
-`apt` tiene una libreta local con los nombres del software que existe. Antes de instalar nada, hay que actualizar esa libreta para que sepa si hoy salió una versión nueva.
-
+**1. Actualizar el Índice de Paquetes (`update`)**
+Sincroniza la lista de software disponible con los repositorios remotos.
 ```bash
 sudo apt update
+# Equivalente legacy: sudo apt-get update
 ```
 
-**2. Descubrir Software (`search` / `show`)**
-
+**2. Buscar e Inspeccionar (`search` / `show`)**
 ```bash
-# Buscar programas relacionados con bases de datos
-apt search mariadb
-
-# Ver la ficha técnica profunda de un programa antes de instalarlo
-apt show nginx
+apt search mariadb          # Busca por nombre o descripción
+apt show nginx              # Muestra versión, dependencias, tamaño y descripción
+# Equivalente legacy: apt-cache show nginx
 ```
 
-**3. Instalar (`install) y Actualizar (upgrade`)**
-
+**3. Instalar y Actualizar**
 ```bash
-# Instalar un programa (resuelve dependencias solo)
+# Instalar un programa (resuelve dependencias automáticamente)
 sudo apt install nginx
 
-# Actualizar TODOS los programas de tu servidor a la versión de hoy
+# Actualizar paquetes (solo los que no requieren instalar/eliminar otros)
 sudo apt upgrade
+# Equivalente legacy: sudo apt-get upgrade
+
+# Actualizar TODO el sistema (permite instalar nuevas dependencias o eliminar obsoletas)
+sudo apt dist-upgrade
+# Equivalente legacy: sudo apt-get dist-upgrade
 ```
+
+<Aside type="tip">
+**`upgrade` vs `dist-upgrade`:** Usa `upgrade` para parches de seguridad (no rompe nada). Usa `dist-upgrade` para cambios mayores de versión (ej. Debian 11 a 12), ya que es más inteligente gestionando dependencias nuevas.
+</Aside>
+
+**4. Amputar Definitivamente (Eliminar)**
+```bash
+# Elimina el paquete pero DEJA los archivos de configuración global (/etc/)
+sudo apt remove nginx
+
+# Elimina el paquete y BORRA los archivos de configuración global (/etc/)
+sudo apt purge nginx
+
+# Auto-eliminar paquetes que ya no son necesarios (dependencias huérfanas)
+sudo apt autoremove
+```
+---
+
+## 4. La Configuración de Orígenes: `sources.list`
+
+`apt` sabe dónde comprar porque le damos una dirección en `/etc/apt/sources.list`. También puedes dividir configuraciones en `/etc/apt/sources.list.d/` (útil para repositorios de terceros como Docker o Kubernetes).
+
+**Estructura de una línea estándar:**
+```
+deb http://deb.debian.org/debian bookworm main contrib non-free
+```
+
+| Componente | Descripción |
+| :--- | :--- |
+| **deb** | Paquetes binarios compilados (los que usas al instalar). `deb-src` es para código fuente (desarrolladores). |
+| **URL** | El servidor o mirror que aloja los paquetes (puedes cambiarlo por mirrors más rápidos). |
+| **Distribución** | El nombre en clave de tu versión (ej. `bookworm`=12, `bullseye`=11). **Nunca mezcles versiones distintas**. |
+| **Componentes** | `main` (100% libre), `contrib` (libre pero depende de no-libre), `non-free` (software propietario), `non-free-firmware` (firmwares de hardware desde Bookworm). |
+
+<Aside type="caution">
+**Jamás mezcles repositorios de versiones distintas (ej. `bookworm` y `sid`)** a menos que quieras romper tu sistema. La "fosa de las dependencias" es real.
+</Aside>
+
+### ¿Cómo añadir un repositorio externo? (Ejemplo: Docker)
+
+El proceso siempre es el mismo:
+1.  Importar la **clave GPG** del repositorio para verificar que los paquetes son auténticos.
+2.  Crear un archivo `.list` en `/etc/apt/sources.list.d/`.
+3.  Ejecutar `sudo apt update` para refrescar el índice.
+
+```bash
+# 1. Agregar la clave GPG para verificar la autenticidad
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# 2. Crear un archivo específico en sources.list.d/
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" | sudo tee /etc/apt/sources.list.d/docker.list
+
+# 3. ¡IMPORTANTE! Actualizar el índice para que APT reconozca el nuevo repositorio
+sudo apt update && sudo apt install docker-ce
+```
+
+<Aside type="tip">
+**¿Por qué `signed-by`?** Es una práctica de seguridad moderna. Obliga a `apt` a usar **solo esa clave** para verificar los paquetes de ese repositorio, evitando conflictos si otras claves están instaladas.
+</Aside>
 
 ---
 
-## 4. El Arte de Eliminar Software
+## 5. Registro de Actividad y Reparación
+
+**Logs (Bitácora de auditoría):**
+`apt` guarda todo lo que haces en `/var/log/apt/history.log` (histórico de comandos) y los errores detallados en `/var/log/apt/term.log`. Si un compañero rompió el sistema, aquí encontrarás al culpable.
+
+**Reparar Paquetes Rotos:**
+Si `dpkg` dejó un paquete a medias (estado "half-installed"), el comando milagroso es:
+```bash
+sudo apt install -f
+```
+Este comando (fix-broken) intentará resolver las dependencias pendientes o eliminar paquetes rotos.
+
+---
+
+## 6. El Arte de Eliminar Software
 
 Si ejecutas `sudo apt remove nginx`, el programa se desinstala, sí. **Pero deja atrás en el disco duro todos los archivos de configuración (`/etc/nginx`) intactos** por si te arrepientes "el año que viene" y lo vuelves a instalar.
 
-En producción, a menudo queremos eliminar las huellas absolutas de un software mal configurado para empezar totalmente desde cero. Para amputaciones totales, jamás usamos _remove_, usamos el Purgante:
+En producción, a menudo queremos eliminar las huellas absolutas de un software mal configurado para empezar totalmente desde cero. Para amputaciones totales, jamás usamos `remove`, usamos el **Purgante**:
 
 ```bash
-# Purga: Desinstala y adicionalmente destruye toda huella de configuración.
+# Purga: Desinstala y adicionalmente destruye toda huella de configuración GLOBAL (/etc/).
+# NOTA: No borra configuraciones de usuario en /home/.
 sudo apt purge nginx
 
 # Barrido general: Un comando vital que audita si han quedado librerías huérfanas
-# que se bajaron hace meses para un software que ya borraste, y las elimina para liberar disco duro.
+# que se bajaron hace meses como dependencias de un software que ya borraste.
+# Solo elimina paquetes que fueron instalados automáticamente.
 sudo apt autoremove
 ```
 
 ---
 
-## 5. Bloquear versiones con `apt-mark`
+## 7. Bloquear versiones con `apt-mark` (Holding)
 
-En producción es crítico poder fijar una versión de un paquete para evitar que `apt upgrade` lo actualice automáticamente (p.ej. un kernel o una versión de MySQL validada):
+En producción es crítico poder **fijar una versión** de un paquete para evitar que `apt upgrade` lo actualice automáticamente (p.ej. un kernel o una versión de MySQL validada en un entorno crítico):
 
 ```bash
-# Bloquear un paquete (pin/hold) — no se actualizará
+# Bloquear un paquete (hold) — no se actualizará con `apt upgrade`
 sudo apt-mark hold nginx
 
 # Ver todos los paquetes bloqueados
@@ -117,26 +203,10 @@ sudo apt-mark unhold nginx
 ```
 
 <Aside type="caution">
-Los paquetes en _hold_ quedan excluidos de `apt upgrade` pero siguen instalados. Si hay una vulnerabilidad de seguridad crítica, recuerda desbloquear, parchear y volver a bloquear.
+**Los paquetes en `hold` quedan excluidos de `apt upgrade` y `apt dist-upgrade`.** 
+- Si hay una vulnerabilidad de seguridad crítica, recuerda desbloquear, parchear y volver a bloquear.
+- **Importante:** `apt-mark hold` **no** impide instalar manualmente una versión con `dpkg -i`. Solo afecta a las operaciones de `apt`.
 </Aside>
-
----
-
-## 6. Hackeando los Orígenes (`sources.list`)
-
-"¿Y de qué webs se baja apt sus cosas escondidas?"
-Todo reside en un diminuto y peligroso fichero de texto. Si lo vacías por error, `apt` morirá y creerá que no existe el internet.
-
-```bash
-sudo nano /etc/apt/sources.list
-```
-
-Dentro verás líneas parecidas a esta:
-`deb http://deb.debian.org/debian/ bookworm main contrib non-free`
-
-- **`deb`**: Significa que de aquí descargamos ejecutables compilados listos para usar (si pusiera `deb-src`, bajaría solo código fuente para programadores).
-- **`bookworm`**: Es el nombre en clave de tu versión de Debian.
-- **`main contrib non-free`**: Puesto que Debian es radical con el "Software Libre", por defecto un servidor nuevo solo baja software Open Source (`main`). Si quieres poder bajar drivers propietarios (por ejemplo de Nvidia), tienes que entrar a este fichero y escribir a mano la palabra `non-free-firmware` al final de la línea, guardar y ejecutar `sudo apt update`.
 
 ---
 
@@ -181,7 +251,35 @@ Dentro verás líneas parecidas a esta:
        forzosamente `sudo apt purge backend`.
      </Option>
      <Option>
-       Tenías que haber reiniciado el Pc con Systemd durante el intermedio.
+       Tenías que haber reiniciado el PC con Systemd durante el intermedio.
      </Option>
      <Option>Olvidaste usar --hard en el remove.</Option>
+   </MultipleChoice>
+
+4. Has bloqueado el kernel de tu servidor con `sudo apt-mark hold linux-image-amd64` para evitar que una actualización automática rompa tu sistema. Tiempo después, descubres una vulnerabilidad crítica en el kernel y necesitas actualizarlo manualmente. ¿Qué secuencia de comandos es correcta para aplicar el parche de seguridad?
+
+   <MultipleChoice>
+     <Option>
+       `sudo apt upgrade linux-image-amd64` (sin desbloquear, porque `apt upgrade` ignora los holds)
+     </Option>
+     <Option isCorrect>
+       `sudo apt-mark unhold linux-image-amd64 && sudo apt install linux-image-amd64 && sudo apt-mark hold linux-image-amd64`
+     </Option>
+     <Option>
+       `sudo dpkg -i linux-image-amd64.deb` (el hold no afecta a dpkg, se puede instalar directamente)
+     </Option>
+   </MultipleChoice>
+
+5. Un desarrollador te pide que instales un paquete llamado `super-app` que está en un repositorio externo. Sigues los pasos: añades la clave GPG, creas el archivo en `/etc/apt/sources.list.d/super-app.list` con la URL correcta y ejecutas `sudo apt install super-app`. APT te responde: *"Unable to locate package super-app"*. ¿Qué te has saltado?
+
+   <MultipleChoice>
+     <Option isCorrect>
+       ¡El `sudo apt update`! Aunque hayas creado el archivo .list, el índice local de APT sigue sin conocer los paquetes de ese nuevo repositorio. Necesitas sincronizar primero.
+     </Option>
+     <Option>
+       Reiniciar el servicio `systemctl restart apt-daily.service`
+     </Option>
+     <Option>
+       Firmar manualmente el paquete con `gpg --verify`
+     </Option>
    </MultipleChoice>
