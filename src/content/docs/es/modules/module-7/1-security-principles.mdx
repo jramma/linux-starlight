@@ -110,8 +110,8 @@ sudo rm -rf / var/log/  # También peligroso, pero al menos tienes que confirmar
 2.  **Crear usuarios normales con `sudo`:**
 
     ```bash
-    sudo adduser jramma
-    sudo usermod -aG sudo jramma  # En Debian/Ubuntu, el grupo sudo da permisos de administración
+    sudo adduser <nombre usuario>
+    sudo usermod -aG sudo <nombre usuario>  # En Debian/Ubuntu, el grupo sudo da permisos de administración
     ```
 
 3.  **Configurar `sudo` para requerir contraseña (ya es el comportamiento por defecto):**
