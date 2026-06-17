@@ -17,28 +17,63 @@ import Option from "@/components/tutorial/Option.astro";
   está usando el puerto 80.
 </PreCheck>
 
-## 1. La Anatomía de los Puertos
+### 1. La Anatomía de los Puertos
 
-Imagina que tu servidor es un edificio corporativo enorme con la Dirección IP `192.168.1.10`.
-Si un ordenador externo intenta enviar un paquete a ese edificio, el paquete llega a la puerta principal y choca contra un muro. ¿A quién iba dirigido el paquete? ¿Al servidor web? ¿Al servidor de correo? ¿Al chat?
+Imagina que tu servidor es un edificio corporativo enorme con la Dirección IP `192.168.1.10`. Si un ordenador externo intenta enviar un paquete a ese edificio, el paquete llega a la puerta principal y choca contra un muro. ¿A quién iba dirigido el paquete? ¿Al servidor web? ¿Al servidor de correo? ¿Al chat?
 
-Para solucionar esto existen **Los Puertos** (Numerados típicamente del `1` al `65535`). Son como las "extensiones telefónicas" del edificio.
+Para solucionar esto existen **Los Puertos** (Numerados típicamente del `1` al `65535`). Son como las "extensiones telefónicas" del edificio. Cuando un paquete llega a la IP del servidor, el sistema operativo examina el número de puerto en el encabezado del paquete y lo redirige al proceso que está "escuchando" en ese puerto.
 
-- Todo paquete web llega a la extensión **`80` (HTTP)** o **`443` (HTTPS)**.
-- Todo protocolo de terminal remota llega al **`22` (SSH)**.
-- Todo paquete de correo llega al **`25` (SMTP)**.
+**Clasificación de puertos:**
 
-Los demonios (servicios como systemd de los que hemos hablado todo el curso), cuando se encienden, se **"Atan" (Bind)** a un puerto, quedándose de brazos cruzados, congelados _"en modo escucha"_ (`LISTEN`), esperando a que alguien les llame.
+<table>
+  <thead>
+    <tr>
+      <th>Rango</th>
+      <th>Descripción</th>
+      <th>Ejemplos</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1-1023</strong></td>
+      <td>Puertos privilegiados (solo procesos con privilegios de root pueden usar)</td>
+      <td>22 (SSH), 80 (HTTP), 443 (HTTPS)</td>
+    </tr>
+    <tr>
+      <td><strong>1024-49151</strong></td>
+      <td>Puertos registrados (asignados a servicios específicos)</td>
+      <td>3306 (MySQL), 5432 (PostgreSQL)</td>
+    </tr>
+    <tr>
+      <td><strong>49152-65535</strong></td>
+      <td>Puertos dinámicos/ephemeral (para conexiones salientes)</td>
+      <td>Usados por clientes, no por servidores</td>
+    </tr>
+  </tbody>
+</table>
 
-### La Peligrosa Pregunta LFCS
+**El proceso de "escucha" (Bind):**
 
-_¿Cómo sé yo qué demonios están ahora mismo escuchando puertas a mis espaldas y hacia qué redes están abiertos?_
+Cuando un demonio (servicio) se inicia, realiza una operación llamada **bind** (atar) en un puerto específico. Esto reserva ese puerto para el proceso, y el proceso queda en estado **LISTEN** (escucha), esperando que lleguen paquetes destinados a ese puerto.
+
+```bash
+# Ejemplo conceptual: Un servidor web se ata al puerto 80
+# El sistema operativo asigna el puerto 80 al proceso nginx (PID 1055)
+# Cualquier paquete que llegue al puerto 80 será entregado a nginx
+```
+
+**¿Por qué es importante auditar los puertos?**
+
+- **Seguridad:** Un puerto abierto innecesariamente es una superficie de ataque. Si no estás usando un servicio, deberías cerrar su puerto o limitar su acceso.
+- **Resolución de conflictos:** Dos servicios no pueden usar el mismo puerto al mismo tiempo. Si un servicio no arranca, puede ser porque otro está ocupando su puerto.
+- **Cumplimiento normativo:** Auditorías de seguridad (como PCI-DSS) requieren que solo los puertos necesarios estén abiertos.
+- **Detección de intrusiones:** Un puerto abierto inesperadamente podría indicar la presencia de malware o un backdoor.
 
 ---
 
-## 2. El Radar Moderno (`ss`)
+### 2. El Radar Moderno (`ss`)
 
-En la antigüedad se usaba el comando `netstat`. Hoy en día (y en tu examen LFCS), está obsoleto por lento y ha sido reemplazado por **Socket Statistics (`ss`)** del paquete de redes que vimos en el módulo 3 (`iproute2`).
+En la antigüedad se usaba el comando `netstat`. Hoy en día (y en tu examen LFCS), está obsoleto por lento y ha sido reemplazado por **Socket Statistics (`ss`)** del paquete de redes (`iproute2`).
 
 `ss` a pelo te lanzaría un millón de líneas con cada conexión interna de red. Los Sysadmins usamos siempre la misma composición de letras inamovibles: **`-tulpn`**
 
@@ -46,97 +81,418 @@ En la antigüedad se usaba el comando `netstat`. Hoy en día (y en tu examen LFC
 sudo ss -tulpn
 ```
 
-**¿Qué significan las mágicas `-tulpn`?**
+**Desglose detallado de las opciones:**
 
-- **-t**: Muestra conexiones TCP (Web, SSH, bases de datos).
-- **-u**: Muestra conexiones UDP (Cosas rápidas sin confirmación de llegada como DNS o Videojuegos).
-- **-l**: _¡VITAL!_ Solo muestra demonios atados en modo `LISTEN` y oculta todo el ruido de conexiones ya establecidas de usuarios.
-- **-p**: _¡VITAL!_ Muestra el nombre humano del Programa PID que es dueño de ese puerto. Si no pones la 'p', solo verás números. (Requiere Sudo).
-- **-n**: Numeric. Evita que Linux intente traducir "22" a la palabra "ssh", mostrándonos los números crudos de los puertos reales.
+<table>
+  <thead>
+    <tr>
+      <th>Opción</th>
+      <th>Descripción</th>
+      <th>Ejemplo de uso</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>-t</strong></td>
+      <td>Muestra conexiones TCP (protocolo con confirmación, usado en web, SSH, bases de datos)</td>
+      <td>Ver servicios web o SSH</td>
+    </tr>
+    <tr>
+      <td><strong>-u</strong></td>
+      <td>Muestra conexiones UDP (protocolo sin confirmación, usado en DNS, streaming, gaming)</td>
+      <td>Ver servicios DNS o NTP</td>
+    </tr>
+    <tr>
+      <td><strong>-l</strong></td>
+      <td><strong>LISTEN</strong> - Solo muestra puertos en modo escucha, oculta conexiones ya establecidas</td>
+      <td>Enfocarse en servicios activos, no en clientes</td>
+    </tr>
+    <tr>
+      <td><strong>-p</strong></td>
+      <td><strong>PROGRAM</strong> - Muestra el PID y nombre del proceso dueño del puerto</td>
+      <td>Identificar qué programa está usando cada puerto</td>
+    </tr>
+    <tr>
+      <td><strong>-n</strong></td>
+      <td><strong>NUMERIC</strong> - Muestra puertos como números, evita resolver nombres de servicio</td>
+      <td>Ver <code>:22</code> en lugar de <code>:ssh</code>, más rápido y claro</td>
+    </tr>
+  </tbody>
+</table>
 
-### Comprendiendo la salida de `ss`
+**Interpretación de la salida de `ss`:**
 
-Supongamos que ves esto:
-`tcp   LISTEN 0      128    0.0.0.0:80        0.0.0.0:*      users:(("nginx",pid=1055,fd=6))`
+```bash
+tcp   LISTEN  0  128  0.0.0.0:80  0.0.0.0:*  users:(("nginx",pid=1055,fd=6))
+```
 
-Significa que **Nginx** (pid 1055) tiene adueñado el puerto web `80` por TCP.
-Lo más importante es la parte `0.0.0.0`. Esa es la "Dirección Atada".
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Significado</th>
+      <th>Ejemplo</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Protocolo</strong></td>
+      <td>TCP o UDP</td>
+      <td><code>tcp</code></td>
+    </tr>
+    <tr>
+      <td><strong>Estado</strong></td>
+      <td>LISTEN (escuchando), ESTABLISHED (establecida), etc.</td>
+      <td><code>LISTEN</code></td>
+    </tr>
+    <tr>
+      <td><strong>Recv-Q</strong></td>
+      <td>Bytes recibidos en cola sin procesar</td>
+      <td><code>0</code> (sin datos pendientes)</td>
+    </tr>
+    <tr>
+      <td><strong>Send-Q</strong></td>
+      <td>Bytes enviados en cola sin confirmar</td>
+      <td><code>128</code> (tamaño de la cola)</td>
+    </tr>
+    <tr>
+      <td><strong>Dirección Local</strong></td>
+      <td>IP y puerto donde el proceso está escuchando (0.0.0.0 = todas las interfaces)</td>
+      <td><code>0.0.0.0:80</code></td>
+    </tr>
+    <tr>
+      <td><strong>Dirección Remota</strong></td>
+      <td>IP y puerto del cliente (si hay conexión establecida)</td>
+      <td><code>0.0.0.0:*</code> (cualquier cliente)</td>
+    </tr>
+    <tr>
+      <td><strong>Proceso</strong></td>
+      <td>Programa dueño del puerto, con su PID y descriptor de archivo</td>
+      <td><code>("nginx",pid=1055,fd=6)</code></td>
+    </tr>
+  </tbody>
+</table>
 
-- `0.0.0.0` significa: **"Escucho peticiones viniendo desde cualquier parte del universo y de Internet"**. (Peligroso).
-- Si pusiera `127.0.0.1:80` (Localhost) significaría: **"Solo escucho peticiones seguras de otros programas instalados dentro de este mismo ordenador, soy ciego hacia internet"**.
+**Análisis de "Dirección Atada" (la clave de seguridad):**
+
+<table>
+  <thead>
+    <tr>
+      <th>Dirección Atada</th>
+      <th>Significado</th>
+      <th>Nivel de Exposición</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>0.0.0.0:80</strong></td>
+      <td>Escucha en <strong>todas las interfaces de red</strong> (públicas y privadas). Accesible desde Internet.</td>
+      <td>🔴 <strong>ALTO</strong></td>
+    </tr>
+    <tr>
+      <td><strong>127.0.0.1:80</strong></td>
+      <td>Escucha <strong>solo en localhost</strong> (bucle interno). Solo accesible desde el mismo servidor.</td>
+      <td>🟢 <strong>BAJO</strong></td>
+    </tr>
+    <tr>
+      <td><strong>192.168.1.10:80</strong></td>
+      <td>Escucha en una IP específica de la red interna. Accesible solo desde esa red.</td>
+      <td>🟡 <strong>MEDIO</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+**Ejemplo de un servidor mal configurado:**
+
+```bash
+# MySQL escuchando en todas las interfaces (PELIGROSO)
+tcp   LISTEN  0  128  0.0.0.0:3306  0.0.0.0:*  users:(("mysqld",pid=1234,fd=10))
+
+# MySQL bien configurado (solo localhost)
+tcp   LISTEN  0  128  127.0.0.1:3306  0.0.0.0:*  users:(("mysqld",pid=1234,fd=10))
+```
 
 ---
 
-## 3. Investigador Privado (`lsof`)
+### 3. Investigador Privado (`lsof`)
 
 Si `ss` es la visión general del país, _List Open Files (`lsof`)_ es el láser milimétrico enfocado a una sola ciudad.
 
+**El principio fundamental de Unix:**
+
 <Aside type="tip" title="El estándar Unix">
-  Recuerda que en Linux *todo es un archivo*. Si Chrome abre una conexión red a
-  internet hacia un vídeo de youtube, para el Kernel, esa conexión viva de red
-  es un archivo abierto más como si fuera un .txt
+  Recuerda que en Linux *todo es un archivo*. Si Chrome abre una conexión de red
+  a internet hacia un vídeo de YouTube, para el Kernel, esa conexión viva de red
+  es un archivo abierto más, como si fuera un `.txt`. Esto incluye:
+  - Archivos regulares (`.txt`, `.conf`, etc.)
+  - Directorios
+  - Dispositivos de bloque (discos)
+  - Tuberías (pipes)
+  - Conexiones de red (sockets)
 </Aside>
 
-Si instalas el servidor Apache, e intentas encenderlo con `systemctl start apache2`, a veces revienta arrojando el error `Port 80 is already in use` (El puerto 80 ya está en uso).
-¿Qué otro demonio te robó el puerto a tus espaldas antes de encender tú Apache? `ss` podría mostrártelo, pero `lsof` es explícitamente divino para esto:
+**Casos de uso comunes de `lsof`:**
+
+1. **Resolver conflictos de puertos:**
+   ```bash
+   # ¿Quién está usando el puerto 80?
+   sudo lsof -i :80
+   # Salida:
+   # nginx   1055  root   6u  IPv4  12345  0t0  TCP *:http (LISTEN)
+   ```
+
+2. **Ver qué procesos están usando un archivo específico:**
+   ```bash
+   # ¿Quién está usando el archivo de configuración de Apache?
+   sudo lsof /etc/apache2/apache2.conf
+   ```
+
+3. **Listar todas las conexiones de red de un usuario específico:**
+   ```bash
+   # ¿Qué conexiones de red tiene abiertas el usuario jramma?
+   sudo lsof -u jramma -i
+   ```
+
+4. **Ver qué archivos tiene abiertos un proceso específico:**
+   ```bash
+   # ¿Qué archivos tiene abiertos nginx?
+   sudo lsof -p 1055
+   ```
+
+5. **Combinar con grep para búsquedas específicas:**
+   ```bash
+   # Buscar procesos que escuchan en puertos altos (posibles backdoors)
+   sudo lsof -i | grep LISTEN | grep -E ':[0-9]{5}'
+   ```
+
+**Estructura de la salida de `lsof`:**
 
 ```bash
-# ¿Quién demonios (-i internet) está agarrando mi puerto de dos puntos (:80)?
-sudo lsof -i :80
+COMMAND   PID   USER   FD   TYPE   DEVICE  SIZE/OFF  NODE  NAME
+nginx    1055   root    6u  IPv4    12345   0t0      TCP   *:http (LISTEN)
+nginx    1056  www-data 7u  IPv4    12346   0t0      TCP   *:http (LISTEN)
 ```
 
-Ese simple comando volcará al culpable (por ejemplo, tal vez dejaste un Nginx viejo encendido por error) listando al usuario exacto (`root`, `www-data...`) para que vayas y detengas el conflicto matando su PID con `kill -9 1055` o deteniendo el servicio con `systemctl stop nginx`.
+<table>
+  <thead>
+    <tr>
+      <th>Campo</th>
+      <th>Significado</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>COMMAND</strong></td>
+      <td>Nombre del comando/proceso</td>
+    </tr>
+    <tr>
+      <td><strong>PID</strong></td>
+      <td>ID del proceso</td>
+    </tr>
+    <tr>
+      <td><strong>USER</strong></td>
+      <td>Propietario del proceso</td>
+    </tr>
+    <tr>
+      <td><strong>FD</strong></td>
+      <td>Descriptor de archivo (6u = archivo abierto en modo lectura-escritura)</td>
+    </tr>
+    <tr>
+      <td><strong>TYPE</strong></td>
+      <td>Tipo de archivo (IPv4, IPv6, REG = regular, DIR = directorio)</td>
+    </tr>
+    <tr>
+      <td><strong>DEVICE</strong></td>
+      <td>Número de dispositivo</td>
+    </tr>
+    <tr>
+      <td><strong>SIZE/OFF</strong></td>
+      <td>Tamaño del archivo o offset</td>
+    </tr>
+    <tr>
+      <td><strong>NODE</strong></td>
+      <td>Número de inodo</td>
+    </tr>
+    <tr>
+      <td><strong>NAME</strong></td>
+      <td>Nombre del archivo o dirección IP:puerto</td>
+    </tr>
+  </tbody>
+</table>
+
+**Solución de problemas comunes con puertos:**
+
+```bash
+# Escenario: Apache no arranca porque el puerto 80 está ocupado
+
+# Paso 1: Verificar quién está usando el puerto 80
+sudo lsof -i :80
+# Salida: 
+# nginx   1055  root   6u  IPv4  12345  0t0  TCP *:http (LISTEN)
+
+# Paso 2: Decidir si detener nginx o cambiar el puerto de Apache
+sudo systemctl stop nginx
+
+# Paso 3: Verificar que el puerto está libre
+sudo ss -tulpn | grep :80
+# No debe haber salida
+
+# Paso 4: Iniciar Apache
+sudo systemctl start apache2
+
+# Opción alternativa: Matar el proceso directamente (con cuidado)
+sudo kill -9 1055
+```
 
 ---
 
-## Comprueba tus conocimientos
+### 4. Otros Comandos Útiles para Auditoría de Puertos
 
-1. Es tu segundo día como sysadmin junior y estás configurando tu primer servidor de base de datos MySQL en Debian 12. Al iniciar MySQL y asegurarte de que está corriendo mediante systemctl, decides auditar tu exposición abriendo tu radar y tecleando el imperativo mandato `sudo ss -tulpn`. Observas la siguiente línea atando el puerto oficial 3306 de bases de datos: `tcp LISTEN 127.0.0.1:3306 users:(("mysqld"...))`. Teniendo en cuenta la dirección de atado local, ¿A qué nivel estás expuesto al universo de internet en este instante concreto?
+**1. `nmap` (escaneo de puertos remoto):**
+
+```bash
+# Escanear puertos comunes en un servidor remoto (desde otra máquina)
+nmap -sS -p 22,80,443,3306 192.168.1.10
+
+# Escaneo rápido de los 1000 puertos más comunes
+nmap -T4 -F 192.168.1.10
+```
+
+**2. `netstat` (obsoleto pero aún presente):**
+
+```bash
+# Alternativa antigua a ss (no recomendada para el examen LFCS)
+netstat -tulpn
+```
+
+**3. `fuser` (identificar procesos por puerto o archivo):**
+
+```bash
+# Identificar el proceso que usa el puerto 80
+sudo fuser -v 80/tcp
+
+# Matar el proceso que usa el puerto 80
+sudo fuser -k 80/tcp
+```
+
+**4. `journalctl` (logs de servicios):**
+
+```bash
+# Ver logs relacionados con fallos de bind (puerto en uso)
+sudo journalctl -u apache2 -f
+```
+
+---
+
+### 5. Buenas Prácticas para la Auditoría de Puertos
+
+1. **Auditar regularmente los puertos abiertos:**
+   ```bash
+   # Script simple para revisar puertos abiertos diariamente
+   sudo ss -tulpn > /var/log/port_audit_$(date +%Y%m%d).log
+   ```
+
+2. **Usar firewalls para limitar el acceso:**
+   ```bash
+   # Permitir solo SSH desde la red local
+   sudo ufw allow from 192.168.1.0/24 to any port 22
+   ```
+
+3. **Configurar servicios para que escuchen solo en localhost cuando sea posible:**
+   ```bash
+   # En /etc/mysql/mysql.conf.d/mysqld.cnf
+   bind-address = 127.0.0.1
+   ```
+
+4. **Monitorear cambios inesperados en los puertos:**
+   ```bash
+   # Comparar estado actual con una línea base
+   sudo ss -tulpn | diff - /var/log/port_audit_baseline.log
+   ```
+
+5. **Documentar todos los puertos abiertos y su propósito:**
+   
+<table>
+  <thead>
+    <tr>
+      <th>Puerto</th>
+      <th>Servicio</th>
+      <th>Propósito</th>
+      <th>Responsable</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>22</strong></td>
+      <td>SSH</td>
+      <td>Administración remota</td>
+      <td>Sysadmin</td>
+    </tr>
+    <tr>
+      <td><strong>80</strong></td>
+      <td>HTTP</td>
+      <td>Servidor web</td>
+      <td>Dev Team</td>
+    </tr>
+    <tr>
+      <td><strong>443</strong></td>
+      <td>HTTPS</td>
+      <td>Servidor web seguro</td>
+      <td>Dev Team</td>
+    </tr>
+    <tr>
+      <td><strong>3306</strong></td>
+      <td>MySQL</td>
+      <td>Base de datos (solo localhost)</td>
+      <td>DBA</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Comprueba tus conocimientos (Versión Mejorada)
+
+1. **Contexto:** Acabas de instalar un servidor de base de datos PostgreSQL en tu servidor de producción. Después de iniciar el servicio, ejecutas `sudo ss -tulpn` y ves la siguiente línea: `tcp LISTEN 0 128 0.0.0.0:5432 0.0.0.0:* users:(("postgres",pid=456,fd=3))`. Analizando la dirección de atado (`0.0.0.0:5432`), ¿cuál es tu evaluación de seguridad?
 
    <MultipleChoice>
      <Option>
-       Expuesto masivamente a toda subred externa, siendo `127.0.0.1` la puerta
-       de enlace genérica global de TCP/IP.
+       La base de datos está correctamente aislada, ya que `0.0.0.0` es la dirección de loopback interna, equivalente a `127.0.0.1`. Solo procesos del mismo servidor pueden acceder.
      </Option>
      <Option isCorrect>
-       Seguridad 100% Hermética y blindada contra el exterior. El demonio de la
-       base de datos se ató al bucle interno (Localhost / `127.0.0.1`), lo cual
-       declara tajantemente a nivel Kernel que el puerto de base de datos SOLO
-       aceptará conexiones procedentes de programas corriendo internamente
-       dentro de esa misma caja física servidor (como por ejemplo, el backend
-       Apache local), e ignorará e invisibilizará universalmente cualquier
-       acceso que golpee su tarjeta de red física desde un portátil en la ofina
-       exterior.
+       Es una configuración peligrosa. `0.0.0.0` significa que PostgreSQL está escuchando en **todas** las interfaces de red, incluyendo la interfaz pública. Cualquier máquina con acceso a la red (incluyendo Internet, si está expuesta) podría intentar conectarse a la base de datos. Deberías cambiar la configuración a `listen_addresses = '127.0.0.1'` si solo debe ser accesible localmente.
      </Option>
      <Option>
-       Seguro porque UDP no admite escuchas pasivas con Localhost de serie.
+       Es seguro porque PostgreSQL usa el puerto 5432, que no es un puerto privilegiado (está por encima de 1024), por lo que solo puede ser usado por procesos no-root. Esto limita el riesgo de ataques.
      </Option>
    </MultipleChoice>
 
-2. Hemos aprendido durante el Módulo 3 que los Hackers chinos dedican sus vidas a rastrear IPs públicas y mandar diccionarios infinitos intentando adivinar contraseñas al protocolo rey de comunicación en el **famoso puerto 22**. ¿Qué programa residente y dueño (`users:((..))`) te arrojará el comando de radiografía `ss -tulpn` si buscas el que está atado crónicamente como proceso padre esuchando el mencionado puerto 22?
+2. **Contexto:** Un desarrollador te reporta que su aplicación Java no puede iniciarse porque el puerto 8080 ya está en uso. Necesitas identificar rápidamente qué proceso está ocupando ese puerto para detenerlo o reconfigurarlo. De los siguientes comandos, ¿cuál es el más efectivo para obtener información precisa (PID, nombre del proceso, usuario) de forma directa y sin ruido?
 
    <MultipleChoice>
      <Option isCorrect>
-       El viejo y rocoso Secure Shell Daemon: `sshd` (Con la 'd' de demonio
-       residente final para diferenciarlo del comando cliente 'ssh' a secas).
+       `sudo lsof -i :8080` - Este comando muestra exactamente el proceso que está usando el puerto 8080, incluyendo su PID, usuario y el comando completo. Es la herramienta más directa y específica para este escenario.
      </Option>
-     <Option>El manipulador de kernel `grub-daemon`</Option>
-     <Option>La aplicación de reloj atómimo global `chronyd`</Option>
+     <Option>
+       `sudo ss -tulpn | grep 8080` - Aunque también funciona, requiere filtrar la salida con grep y muestra todas las conexiones, no solo el proceso en escucha. Es menos directo que `lsof` para este caso específico.
+     </Option>
+     <Option>
+       `sudo netstat -ano | grep 8080` - Es una opción válida pero `netstat` está obsoleto y es más lento que `ss`. Además, requiere opciones adicionales para mostrar el PID. `lsof` es más rápido y directo.
+     </Option>
    </MultipleChoice>
 
-3. Te quejas de que tu aplicación en Java recién programada revienta mortalmente al arrancarla en el servidor de pruebas soltando excepciones del estilo `Bind Exception Address Already In Use: 8080`. Se te exige saber el PID exacto y el nombre de línea de comandos del intruso que esté consumiendo ese preciso socket de internet en solitario de un plumazo. Sabiendo que `ss` puede abrumarte, ¿cuál usarías como un láser forense quirúrgico y directo a la herida?
+3. **Contexto:** Estás realizando una auditoría de seguridad en tu servidor y encuentras un servicio llamado `redis-server` escuchando en el puerto 6379 con la siguiente salida de `ss -tulpn`: `tcp LISTEN 0 128 127.0.0.1:6379 0.0.0.0:* users:(("redis-server",pid=789,fd=6))`. Además, notas que el archivo de configuración de Redis tiene `bind 0.0.0.0` y `protected-mode no`. ¿Cuál es la mejor acción a tomar?
+
    <MultipleChoice>
+     <Option>
+       No es necesario hacer nada. `ss` muestra que Redis está escuchando en `127.0.0.1`, lo que significa que solo es accesible localmente, a pesar de la configuración de `bind 0.0.0.0`.
+     </Option>
+     <Option>
+       La configuración actual es segura porque `protected-mode no` desactiva todas las restricciones de seguridad, lo cual es aceptable en entornos de desarrollo. En producción, deberías habilitar autenticación con `requirepass`.
+     </Option>
      <Option isCorrect>
-       Preguntar al inmenso y legendario Listador de Ficheros Abiertos la
-       cláusula de internet: `sudo lsof -i :8080` devolviéndome instantáneamente
-       el ejecutable adueñado sin rodeos ni líneas extrañas.
-     </Option>
-     <Option>
-       Pedir a Systemd un chequeo temporal cronificado usando `journalctl -p
-       err` para el año en curso.
-     </Option>
-     <Option>
-       Volcar un archivo .tar.gz de kernel y auditarlo luego con gcc
-       build-essentials.
+       Hay una inconsistencia grave. `ss` muestra que Redis está escuchando en `127.0.0.1` (solo localhost), pero la configuración indica `bind 0.0.0.0` (todas las interfaces). Esto sugiere que Redis no está usando el archivo de configuración esperado, o que hay otra instancia de Redis ejecutándose. Debes revisar qué archivo de configuración está usando el proceso con `sudo lsof -p 789 | grep redis.conf` y corregir la configuración para que coincida con el comportamiento esperado. Además, `protected-mode no` es peligroso y debe ser `yes` en producción.
      </Option>
    </MultipleChoice>
+
+---

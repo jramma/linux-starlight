@@ -41,3 +41,13 @@ Un Administrador LFCS no reza para que no lo ataquen. Un Administrador sabe que 
 - Denegación estricta por defecto.
 - Perforando huecos específicos y seguros (`ufw allow 80/tcp`).
 - Defensa activa contra ataques masivos de diccionario a tu servidor usando contramedidas limitadoras de fuerza bruta (`ufw limit ssh`).
+
+### [7.5 iptables y nftables](/es/modules/module-7/5-iptables/)
+
+- UFW (módulo 4.4) es una capa de abstracción sobre iptables, que a su vez es la interfaz de espacio de usuario para netfilter, el subsistema de filtrado de paquetes del kernel.
+- El examen LFCS puede pedirte trabajar directamente con iptables cuando UFW no está disponible o cuando necesitas reglas más precisas.
+
+### [7.6 Seguridad SSH Avanzada](/es/modules/module-7/6-ssh-security/)
+
+- SSH (Secure Shell) es la arteria vital que te conecta a tus servidores desde cualquier punto del planeta. También es la puerta que los bots automatizados bombardean sin descanso, los 365 días del año.
+- Un servidor Debian recién conectado a internet con el puerto 22 abierto recibirá sus primeros intentos de intrusión en menos de 60 segundos. No es exageración; es matemática de internet.

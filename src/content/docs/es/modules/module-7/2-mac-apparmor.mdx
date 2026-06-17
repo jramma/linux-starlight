@@ -17,138 +17,146 @@ import Option from "@/components/tutorial/Option.astro";
   el modo "soplón" (`complain`) y el modo dictador (`enforce`).
 </PreCheck>
 
+---
+
 ## 1. El Fracaso de los Permisos Clásicos (DAC)
 
-En el Módulo 2 de este curso, invertimos horas aprendiendo cómo usar `chmod` y `chown` para establecer permisos "rwx" (Lectura, Escritura, Ejecución) en archivos. Todo este sistema arcaico mundialmente utilizado se denomina **DAC (Discretionary Access Control o Control Discrecional)**.
+El sistema de permisos `rwx` que conocemos (gestionado con `chmod` y `chown`) se denomina **DAC (Discretionary Access Control)**. Su nombre es clave: la seguridad queda a **discreción** del propietario del recurso. Si el dueño de un archivo comete un error o su cuenta es comprometida, el acceso a sus datos está en riesgo.
 
-Se llama "Discrecional" porque la seguridad queda a **discreción de los usuarios**.
-_Imagina que eres un cajero de banco normal. Tienes permiso de Lectura para ver una caja fuerte secreta. Usando los sistemas DAC habituales, como tú "posees" el archivo, podrías decidir discretamente darle permiso a todo el universo (`chmod 777`) para que cualquier persona en internet pudiera acceder a la caja fuerte del banco._
+**Profundicemos en el problema:**
 
-### El Riesgo con los Demonios (Servicios Hackeados)
+Imagina que eres el administrador de un servidor web. Tienes un archivo importante llamado `database.conf` que contiene las credenciales de acceso a MySQL. Este archivo es propiedad del usuario `www-data` (el usuario bajo el cual corre el servidor web) y tiene permisos `600` (solo lectura/escritura para el propietario). En teoría, es seguro.
 
-Si ejecutas un servidor web como Nginx bajo el usuario raíz de sistema `root` y un hacker ruso en internet averigua un error en la programación de Nginx para romper la página web e inyectar su propio código... Nginx ejecutará el código del Ruso de buena fe con el poder infinito de los permisos `root`, controlando absolutamente toda la CPU y destruyéndote.
+**El fallo del DAC se manifiesta así:**
 
-Para frenar a los programas desbocados o a los propios usuarios que se dan permisos peligrosos, en alta seguridad corporativa usamos **MAC**.
+1.  **Error humano:** Un desarrollador novato ejecuta `sudo chmod 777 /var/www/html/database.conf` para "solucionar" un problema de permisos temporalmente y se olvida de revertirlo. Ahora, cualquier usuario en el sistema puede leer las credenciales de la base de datos. DAC no tiene mecanismos para prevenir que el propietario (o un usuario con privilegios) tome decisiones de seguridad peligrosas.
+
+2.  **Compromiso de cuenta:** El mismo desarrollador reutiliza su contraseña de `www-data` en un sitio de juegos que es hackeado. El atacante obtiene las credenciales del usuario `www-data`, inicia sesión en el servidor y, como `www-data` es el propietario del archivo `database.conf`, puede leerlo sin problemas. El sistema DAC no puede distinguir entre una conexión legítima del desarrollador y una conexión maliciosa que usa sus credenciales robadas.
+
+3.  **Ataque a un demonio (el más peligroso):** Un servidor web como Apache o Nginx se ejecuta bajo el usuario `www-data` para limitar su alcance. Sin embargo, imaginemos que por error se ejecuta como `root` (un error de configuración común en entornos mal gestionados). El atacante encuentra una vulnerabilidad de **inyección de comandos** o **buffer overflow** en un plugin de WordPress. Al explotarla, el atacante puede ejecutar comandos arbitrarios en el sistema. Como el servidor web corre como `root`, el atacante **hereda todos los privilegios de root**. Puede leer `/etc/shadow`, instalar un rootkit, o exfiltrar toda la base de datos. DAC no puede detener esto porque el proceso `httpd` (ahora controlado por el atacante) tiene legítimamente permisos para acceder a todo el sistema.
+
+**¿La solución?** DAC funciona para entornos multiusuario donde los usuarios confían entre sí o donde el administrador confía en los usuarios. Pero en el mundo moderno de servicios expuestos a Internet, necesitamos un control más estricto y basado en políticas, no en la discreción del propietario.
 
 ---
 
 ## 2. El Dictador de Kernel: MAC y AppArmor
 
-**MAC (Mandatory Access Control o Control Obligatorio)** desecha la opinión de los usuarios. Aquí define las reglas un dictador inquebrantable desde lo más hondo del propio Kernel Linux.
+Para superar estas limitaciones, existe el **MAC (Mandatory Access Control)**. A diferencia del DAC, las reglas las impone el **kernel** y **no** pueden ser modificadas por los usuarios o los procesos, ni siquiera por `root`.
 
-En Debian (y Ubuntu), este dictador se llama **AppArmor** (En RedHat se llama SELinux).
+**Conceptos clave de MAC:**
 
-Bajo MAC/AppArmor, a los programas se les pone una "Camisa de Fuerza" especial matemática en forma de archivo de texto llamada **Perfil**.
-Si el kernel de Debian tiene cargado un "Perfil de Apparmor" especial para Nginx que dice _"Nginx JAMÁS bajo ninguna circunstancia puede usar herramientas del grupo Bash"_, da igual que configures el programa con permisos Root, da igual que metas a Nginx a usar herramientas de administración, y da igual que lo hackeen: en el momento en que Nginx intente ejecutar algo prohibido en el Perfil, AppArmor invocará el martillo de Thor bloqueando la acción a nivel Cero y enviándote una alerta silenciosa.
+- **Política centralizada:** El administrador del sistema define una política global de seguridad. Esta política se aplica a todos los procesos y usuarios, y no puede ser anulada por los propietarios de los archivos.
+- **Aislamiento del proceso:** Cada proceso se ejecuta en un "caja de arena" (sandbox) definida por su perfil. El perfil limita a qué archivos, redes, capacidades del sistema y otros recursos puede acceder el proceso. Ni siquiera el usuario `root` puede forzar a un proceso a salir de su perfil si la política de AppArmor está activa.
+- **Defensa en profundidad:** MAC complementa a DAC. No lo reemplaza. Un proceso debe superar **ambas** capas de control: primero debe tener los permisos DAC adecuados y luego debe cumplir con la política MAC.
+
+**AppArmor en detalle:**
+
+En sistemas Debian/Ubuntu, la herramienta MAC es **AppArmor**. Su funcionamiento se basa en **Perfiles**. Estos perfiles son archivos de texto que contienen reglas muy granulares sobre lo que un programa puede o no puede hacer (qué archivos leer, escribir, qué red usar, qué capacidades del sistema invocar, etc.).
+
+**Estructura de un perfil de AppArmor (ejemplo simplificado de `/etc/apparmor.d/usr.sbin.nginx`):**
+
+```apparmor
+/usr/sbin/nginx {
+    # Incluir reglas base de abstracciones
+    include <abstractions/base>
+    include <abstractions/nameservice>
+
+    # Capacidades del sistema (drop privileges)
+    capability setgid,
+    capability setuid,
+
+    # Acceso a archivos específicos
+    /var/log/nginx/* rw,
+    /etc/nginx/** r,
+    /var/www/** r,
+    /usr/share/nginx/** r,
+
+    # Denegar explícitamente el acceso a ciertos recursos
+    deny /etc/shadow r,
+    deny /root/** rwx,
+}
+```
+
+**¿Cómo funciona en la práctica?**
+
+- Cuando `nginx` inicia, AppArmor carga su perfil en el kernel.
+- Cuando `nginx` intenta abrir el archivo `/etc/nginx/nginx.conf`, el kernel verifica el perfil: permite (regla `/etc/nginx/** r`).
+- Cuando `nginx` intenta abrir `/etc/shadow` (por ejemplo, si un atacante inyecta un comando), el kernel verifica el perfil: **deniega** la operación (regla `deny /etc/shadow r`) y registra el evento en el log del sistema.
+- El proceso recibe un error de "Permiso denegado", y el sistema operativo no se ve comprometido.
+
+**¿Qué pasa con root?** Incluso si `nginx` se ejecuta como `root`, AppArmor **limita lo que root puede hacer** en este contexto. Root no puede eludir las reglas de AppArmor sin modificar el perfil (y para eso, se necesita permisos de escritura en `/etc/apparmor.d/` y recargar la política, lo cual es una acción administrativa controlada).
 
 ---
 
-## 3. Comandos vitales como Auditor LFCS
+## 3. Los Modos de AppArmor: Vigilante vs. Ejecutor
 
-AppArmor ya viene instalado en sistemas comerciales en la actualidad y trae "Perfiles prefabricados" de camisa de fuerza listos y activos en RAM para encapsular al 90% del software crítico instalable de Debian.
+AppArmor opera principalmente en dos modos, lo que lo hace muy flexible para administradores:
 
-Los binarios de auditoría empiezan por `aa-` (App Armor).
+**1. Enforce (Ejecución / Modo Producción):**
 
-### Ver los encerramientos activos
+- **Comportamiento:** Las reglas del perfil se aplican **obligatoriamente**. Si un programa intenta realizar una acción prohibida, el kernel **la bloquea** y registra el evento en los logs.
+- **Uso:** Este es el modo que se utiliza en entornos de producción. Garantiza que los servicios estén correctamente aislados y que cualquier intento de violación de la política sea detenido.
+- **Ejemplo:** Ejecutas `sudo aa-enforce /usr/sbin/mysqld`. Ahora, si MySQL intenta leer `/etc/passwd` (algo que no debería hacer), AppArmor bloqueará el acceso y el intento fallará.
+- **Logs:** Los eventos de denegación se registran en `/var/log/syslog` con la etiqueta `apparmor="DENIED"`. Es crucial monitorear estos logs para detectar posibles ataques o fallos de configuración.
 
-La primera tarea de un sysadmin por la mañana:
+**2. Complain (Queja / Aprendizaje / Modo Auditoría):**
 
-```bash
-sudo aa-status
-```
+- **Comportamiento:** Las reglas del perfil se **monitorean, pero no se aplican**. Si un programa realiza una acción prohibida, el kernel **la permite** pero **registra la infracción** en los logs.
+- **Uso:** Ideal para entornos de desarrollo, pruebas o para depurar perfiles existentes. Permite ver todas las acciones que un programa intenta realizar (incluso las que serían bloqueadas en producción) sin causar interrupciones en el servicio.
+- **Ejemplo:** Ejecutas `sudo aa-complain /usr/sbin/mysqld`. Ahora, si MySQL intenta leer `/etc/passwd`, AppArmor **permitirá** la operación (por lo que MySQL funcionará) pero **registrará** un evento de tipo `apparmor="ALLOWED"` en los logs. El administrador puede revisar estos logs y decidir si esa operación debe permitirse permanentemente en el perfil.
+- **Construcción de perfiles:** La utilidad `aa-logprof` analiza los logs de modo `complain` y sugiere reglas de perfil basadas en el comportamiento real del programa. El administrador puede revisar y aceptar estas sugerencias para construir un perfil completo y funcional.
 
-Esto arrojará dos listas muy diferenciadas:
+**Flujo de trabajo típico de un administrador:**
 
-1. **Perfiles cargados en modo `Enforce`**: Su camisa de fuerza obliga físicamente. Si un programa de esta lista pisa lo prohibido, será aniquilado instantáneamente.
-2. **Perfiles cargados en modo `Complain`**: Están siendo vigilados. Si cruzan la línea, el perfil te apuntará silenciosamente "Oye, este programa acaba de hacer cosas raras en tu carpeta home", pero **NO detendrá su ejecución**. (Generalmente usado por programadores para diagnosticar sus propios programas durante 1 semana antes de poner su camisa local de fábrica en Enforce).
+1.  **Instalación:** Instalas un nuevo servicio (ej: un servidor FTP).
+2.  **Modo Complain (Pruebas):** Colocas el perfil de AppArmor (o creas uno desde cero) en modo `complain`.
+3.  **Ejecución:** Ejecutas el servicio en un entorno de pruebas y realizas todas las operaciones que se espera que realice (subir archivos, descargar, cambiar permisos, etc.).
+4.  **Análisis:** Usas `aa-logprof` para procesar los logs generados durante las pruebas. La herramienta te mostrará todas las acciones que el servicio intentó realizar y te preguntará si quieres permitirlas en el perfil.
+5.  **Perfeccionamiento:** Respondes a las preguntas de `aa-logprof` (ej: "Permitir acceso a /var/ftp/pub? (Y/n/a)") y la herramienta actualiza el perfil automáticamente.
+6.  **Modo Enforce (Producción):** Cuando estás seguro de que el perfil cubre todas las necesidades del servicio, cambias al modo `enforce` con `sudo aa-enforce /usr/sbin/vsftpd`.
+7.  **Monitoreo:** Supervisas los logs en busca de eventos `DENIED` en producción. Si aparecen, puedes investigar y, si es necesario, ajustar el perfil y volver a pasarlo a modo `complain` temporalmente.
 
-### Administrar los Modos de los Archivos
 
-Si quieres enmudecer las reglas letales de un programa de bases de datos `mysqld` porque no para de tirarse y crees que un falso positivo rompió algo tras una actualización, puedes empujarlo temporal y calmadamente a modo "quejidos" (Complain).
+## Comprueba tus conocimientos (Versión Mejorada)
 
-```bash
-# Empujando al modo Soplón/Quejido pacífico
-sudo aa-complain /usr/sbin/mysqld
+1.  **Contexto:** Tu equipo debe desplegar una aplicación web antigua y con vulnerabilidades conocidas. Un compañero novato propone: *"La ejecutamos con un usuario no privilegiado y usamos permisos DAC (chmod/chown) para que solo ese usuario pueda leer sus archivos. Eso ya es seguro."* Como experto en seguridad, ¿cuál es tu réplica técnica más precisa?
 
-# Volviendo a restablecer la dictadura marcial castrense
-sudo aa-enforce /usr/sbin/mysqld
-```
+    <MultipleChoice>
+      <Option isCorrect>
+        El DAC es insuficiente porque si la aplicación es comprometida (ej: mediante un buffer overflow), el atacante ejecutará código en el contexto de ese usuario y, a través del DAC, podrá leer y modificar cualquier archivo que ese usuario posea. AppArmor proporcionaría una capa adicional (MAC) que limitaría las acciones del proceso incluso si este es hackeado, restringiendo el acceso a archivos específicos mediante un perfil.
+      </Option>
+      <Option>
+        Es correcto, los permisos DAC son la única barrera necesaria si el usuario no tiene permisos de `sudo`. La seguridad perimetral con un firewall es más importante que la seguridad a nivel de sistema de archivos.
+      </Option>
+      <Option>
+        No deberías preocuparte, ya que el sistema de permisos DAC es obligatorio y el kernel lo aplica antes que cualquier otra medida, como AppArmor. Si el usuario no es `root`, el sistema está a salvo.
+      </Option>
+    </MultipleChoice>
 
-\*_(NOTA: Los perfiles completos, escritos con sintaxis arcana, suelen alojarse todos juntos estáticos en la caja fuerte local en `/etc/apparmor.d/`)_.\*
+2.  **Contexto:** Revisas el estado de AppArmor en tu servidor con `sudo aa-status` y observas que tu demonio crítico `nginx` se encuentra en modo **`complain`**. Un atacante logra explotar una vulnerabilidad en `nginx` e intenta leer el archivo `/etc/ssl/private/server.key`. ¿Qué sucede?
 
-### Generar un perfil desde los logs (`aa-logprof`)
+    <MultipleChoice>
+      <Option>
+        El intento de lectura será bloqueado por AppArmor, ya que el modo `complain` es una versión más estricta que `enforce` y se utiliza como última capa de defensa.
+      </Option>
+      <Option isCorrect>
+        El intento de lectura será exitoso. AppArmor, en modo `complain`, solo registra la violación del perfil en los logs, pero no bloquea la acción. Esto permite al atacante acceder a la clave privada, y el incidente quedará documentado para su posterior análisis.
+      </Option>
+      <Option>
+        El intento de lectura será exitoso, pero el modo `complain` envía una alerta inmediata a todos los terminales SSH conectados, permitiendo al administrador reaccionar a tiempo.
+      </Option>
+    </MultipleChoice>
 
-Cuando un programa en modo `complain` genera alertas, puedes convertir esas alertas en reglas de perfil automáticamente:
+3.  **Contexto:** Estás depurando un proceso en un servidor de desarrollo. Las operaciones de este proceso están siendo bloqueadas, y los logs muestran entradas de AppArmor con `"DENIED"`. Para poder ver **todas** las acciones que el proceso intenta realizar sin que nada se interrumpa, y poder construir un perfil robusto más tarde, ¿qué comando es el más adecuado para cambiar temporalmente el estado del binario `/opt/myapp/bin/daemon`?
 
-```bash
-# Leer las alertas de AppArmor del kernel y proponer reglas
-sudo aa-logprof
-
-# Ver las denegaciones directamente en el log del kernel
-journalctl -k | grep apparmor
-```
-
-`aa-logprof` analiza `/var/log/syslog` o el journal buscando eventos `ALLOWED` de perfiles en complain y pregunta interactivamente si añadir cada permiso al perfil. Es la forma estándar LFCS de construir perfiles para software propio.
-
----
-
-## Comprueba tus conocimientos
-
-1. Tu equipo ha subido un software anticuado para renderizar PDF en un clúster empresarial. Sabéis que el software tiene muchos bugs sin parchear y es un riesgo. Uno de tus colegas sugiere: "Instálalo normalmente y asóciale como usuario un grupo local rancio mediante DAC convencional, y configúralos con ugo=rw. Con eso ya lo controlas para que nadie lo pueda usar a nivel root". Como profesional LFCS, ¿qué crítica argumentada le refutas con el protocolo MAC moderno?
-
-   <MultipleChoice>
-     <Option isCorrect>
-       Usar Seguridad Discrecional DAC (`chmod/chown`) resulta asombrosamente
-       inútil para atajar vectores si este propio software renderizador de PDF
-       es vulnerado desde la misma red externa y logran un rebose de búfer
-       (Buffer Overflow), obteniendo acceso dinámico interno. Necesitamos atarle
-       una camisa de fuerza Obligatoria (MAC) perfilándolo explícitamente sin
-       importar quién es el usuario dueño a ojos del fichero.
-     </Option>
-     <Option>
-       Que hay que instalarle un Firewall UFW local primero mediante DROP
-       universal.
-     </Option>
-     <Option>
-       Enseñarle que el comando visudo hace exactamente eso mismo.
-     </Option>
-   </MultipleChoice>
-
-2. Acabas de encender la última versión estable de Debian e instalaste un paquete extraño llamado "supervisor". Tiras para investigar tus perfiles cargados ejecutando valerosamente en consola: `sudo aa-status`. El listado es claro y ves 45 perfiles activados, de los cuáles adviertes que tu "supervisor" está encasillado en un contenedor categorizado textualmente como listado en modo `Complain`. A altas horas de la noche, un atacante iraní compromete "supervisor" e intenta borrar tus certificados con él. ¿Actuará el martillo férreo de Thor de AppArmor de Debian salvándote de la desgracia atajando ese perjudicial comportamiento?
-
-   <MultipleChoice>
-     <Option>
-       Sí, destrozará la ejecución porque las camisas MAC nunca fallan en modo
-       quejido (Complain) y se anteponen agresivamente.
-     </Option>
-     <Option>
-       Para salvarte hay que ejecutar un reload usando el comando aa-enforce 3
-       veces localmente.
-     </Option>
-     <Option isCorrect>
-       ¡No te salvará de ninguna manera! Estás vendido. Los perfiles en modo
-       listado como `complain` loguean profusamente "Quejas Administrativas" al
-       gestor diario de logs avisando que el software violó perfiles,
-       comportándose como un Chivato/Soplón. PERO no intervien ni ejercen fuerza
-       detenedora sobre la acción destructora hostil. Exige intervención
-       `enforce`.
-     </Option>
-   </MultipleChoice>
-
-3. Existe un demonio crítico de control satelital gestionado por la Fuerza Aérea que os tira constantemente caídas fatales e incomprensibles y corrupciones misteriosas durante el procesamiento. Tus logs forenses de Kernel arrojan líneas como: `audit: type=1400 apparmor="DENIED" operation="open"`. Estás en medio de una auditoría y tienes que rebajar temporalmente a nivel 0 el impacto blindador para ver tranquilamente qué está intentando hacer ese demonio y recolectar indicios antes de aislarlo en el firewall ¿Qué comando es el apropiado para empujar este binario (`/usr/bin/satelite_server`) a estado inofensivo monitorizado?
-   <MultipleChoice>
-     <Option isCorrect>
-       Instruiremos la orden administrativa: `sudo aa-complain
-       /usr/bin/satelite_server`. Con eso cesarán los bloqueos físicos
-       inyectando puramente registros valiosos de lectura en los registros
-       kernel logs sin quebrar de nuevo.
-     </Option>
-     <Option>
-       Hay que editar el `/etc/apt/sources.list` inyectando un parche no libre
-       en main contrib.
-     </Option>
-     <Option>
-       Lo empujaremos silenciándolo ejecutando `sudo aa-disable
-       /usr/bin/satelite_server`.
-     </Option>
-   </MultipleChoice>
+    <MultipleChoice>
+      <Option>
+        `sudo aa-logprof /opt/myapp/bin/daemon`, para que AppArmor analice su comportamiento y lo cambie automáticamente al modo más adecuado.
+      </Option>
+      <Option isCorrect>
+        `sudo aa-complain /opt/myapp/bin/daemon`. Este comando cambia el perfil de la aplicación al modo `complain`, permitiendo que todas las acciones se ejecuten (sin bloqueos) y generando entradas de log detalladas para su posterior análisis.
+      </Option>
+      <Option>
+        `sudo aa-disable /opt/myapp/bin/daemon`. Esto desactiva completamente el perfil de AppArmor, permitiendo que la aplicación funcione sin restricciones. Es un enfoque menos granular que `complain`, pero igualmente válido para esta tarea.
+      </Option>
+    </MultipleChoice>
